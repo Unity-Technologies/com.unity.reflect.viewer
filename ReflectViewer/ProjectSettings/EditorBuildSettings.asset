@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/Reflect.unity
+    guid: e510078408ff340cda133085416a0934
+  - enabled: 1
+    path: Assets/Scenes/ReflectAR.unity
+    guid: 1bb8ecc27a563401baacfec1aff86f24
+  - enabled: 1
+    path: Assets/Scenes/ReflectVR.unity
+    guid: 718b46326659da9428d6f9ebaf542893
+  m_configObjects:
+    Unity.XR.Oculus.Settings: {fileID: 11400000, guid: f8595a9732671fb43ac25fb91ddfd1ee,
+      type: 2}
+    Unity.XR.OpenVR.Settings: {fileID: 11400000, guid: 454486449fa4338419724f2ae2012680,
+      type: 2}
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 765d7aee5e60ad14c80f0e02d1f6e4c5,
+      type: 2}

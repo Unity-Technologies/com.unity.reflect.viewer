@@ -1,0 +1,35 @@
+{
+    "name": "ReflectViewer",
+    "references": [
+        "GUID:c6c4e6c6d92818b4f8de2a6eacc86757",
+        "GUID:75469ad4d38634e559750d17036d5f7c",
+        "GUID:6cf67fea318af2844a952982933563b0",
+        "GUID:951584c526119ab418b67bd907336c9d",
+        "GUID:49fede9355492427f852ef03bae5250e",
+        "GUID:6055be8ebefd69e48b49212b09b47b2f",
+        "GUID:e513f6a23cbca864c817bd913d7b14f5",
+        "GUID:15fc0a57446b3144c949da3e2b9737a9",
+        "GUID:df380645f10b7bc4b97d4f5eb6303d95",
+        "GUID:519a0499ccff9c445bffcfd12430817d",
+        "GUID:ef7f6b716a264b049993a584d963484c",
+        "GUID:0883e24d6bedf46469b3243a961cc01f",
+        "GUID:b9a30ca79885842dfb9a603455a835cc",
+        "GUID:408226d2799e61548b8318afa77b9abb",
+        "GUID:e40ba710768534012815d3193fa296cb",
+        "GUID:fe685ec1767f73d42b749ea8045bfe43",
+        "GUID:ce82f726ed182154aac02c9492b00dbb",
+        "GUID:65c272766bfb4354f914f750edb6a0ff",
+        "GUID:f4c143880a87548c7ac0f435209da270"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Reflect.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

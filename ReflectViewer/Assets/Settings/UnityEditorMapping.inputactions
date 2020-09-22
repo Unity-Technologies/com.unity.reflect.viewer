@@ -1,0 +1,547 @@
+{
+    "name": "UnityEditorMapping",
+    "maps": [
+        {
+            "name": "Navigation",
+            "id": "99c4776c-daf9-45be-86b3-f0f4e645d86b",
+            "actions": [
+                {
+                    "name": "Zoom Action",
+                    "type": "Value",
+                    "id": "d24462c7-359e-4445-85b1-0467985f7cc1",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "MouseDrag"
+                },
+                {
+                    "name": "Orbit Action",
+                    "type": "Value",
+                    "id": "56287671-577a-4a18-9bdb-c535a2126b79",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "MouseDrag"
+                },
+                {
+                    "name": "Pan Action",
+                    "type": "Value",
+                    "id": "4fd91a74-389e-4742-a979-819d2b1deab6",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "MouseDrag"
+                },
+                {
+                    "name": "Quick Zoom Action",
+                    "type": "Button",
+                    "id": "f460eecc-4712-4976-95b9-e6f0bfa9dd57",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "Press(behavior=2)"
+                },
+                {
+                    "name": "Quick Pan Action",
+                    "type": "Value",
+                    "id": "dedca3ff-8b77-4b11-9fa8-e077fd003e13",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "MouseDrag"
+                },
+                {
+                    "name": "Quick WorldOrbit Action",
+                    "type": "Value",
+                    "id": "1dac2e56-504f-4669-a939-98c811c3e90e",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "MouseDrag"
+                },
+                {
+                    "name": "Moving Action",
+                    "type": "Value",
+                    "id": "f24505a8-dd2a-4a2a-92f6-9e9e234a8bff",
+                    "expectedControlType": "Vector3",
+                    "processors": "",
+                    "interactions": ""
+                },
+                {
+                    "name": "Teleport Action",
+                    "type": "Button",
+                    "id": "91a18718-d61d-4b7f-bf77-5799d499bb11",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": ""
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "Mouse Drag",
+                    "id": "98ead0d9-e256-44bf-9e77-774abf195240",
+                    "path": "MouseDrag",
+                    "interactions": "",
+                    "processors": "ScaleVector2(y=0.01)",
+                    "groups": "",
+                    "action": "Zoom Action",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Button",
+                    "id": "587bac59-6394-4f4b-bb26-dc3f53b2cc24",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Zoom Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis1",
+                    "id": "4f889f10-8ab1-4551-9713-ccce839de3a4",
+                    "path": "<Mouse>/delta/x",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Zoom Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis2",
+                    "id": "45ec58b3-440b-412b-a255-f7776ec7716e",
+                    "path": "<Mouse>/delta/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Zoom Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Mouse Drag",
+                    "id": "6a059fd5-008b-4b41-bd86-9fa30bea1dfd",
+                    "path": "MouseDrag",
+                    "interactions": "",
+                    "processors": "ScaleVector2(x=0.1,y=0.1)",
+                    "groups": "",
+                    "action": "Orbit Action",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Button",
+                    "id": "51b83849-4a5e-42f1-810a-e8b0e50dfb97",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Orbit Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis1",
+                    "id": "1ff47d76-1b5e-4030-b48f-aacf050b4372",
+                    "path": "<Mouse>/delta/x",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Orbit Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis2",
+                    "id": "bd3c48aa-2971-4e76-8a8b-abfe65edac71",
+                    "path": "<Mouse>/delta/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Orbit Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "acf3db36-9c38-4232-b4d5-0325becf9018",
+                    "path": "<Touchscreen>/primaryTouch/delta",
+                    "interactions": "",
+                    "processors": "ScaleVector2(x=0.1,y=0.1)",
+                    "groups": "",
+                    "action": "Orbit Action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Mouse Drag",
+                    "id": "90242687-00e0-4b15-959d-37c929fe26f3",
+                    "path": "MouseDrag",
+                    "interactions": "",
+                    "processors": "ScaleVector2(x=0.03,y=0.03)",
+                    "groups": "",
+                    "action": "Pan Action",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Button",
+                    "id": "63900b25-44ae-4383-8b4d-ca5e1191588f",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pan Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis1",
+                    "id": "2eac60e8-f3e8-40f3-baee-9799d722ed2c",
+                    "path": "<Mouse>/delta/x",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pan Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis2",
+                    "id": "e614cbed-7d7a-4c95-aea2-48facddacc5d",
+                    "path": "<Mouse>/delta/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pan Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "57b67569-9776-49cf-8a1e-67d7da852f90",
+                    "path": "<Touchscreen>/primaryTouch/delta",
+                    "interactions": "",
+                    "processors": "ScaleVector2(x=0.03,y=0.03)",
+                    "groups": "",
+                    "action": "Pan Action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "8f0bc97a-8b92-4426-904d-62233ec8cbf1",
+                    "path": "<Mouse>/scroll",
+                    "interactions": "",
+                    "processors": "ScaleVector2(y=0.01)",
+                    "groups": "",
+                    "action": "Quick Zoom Action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Mouse Drag",
+                    "id": "28f6fc48-fec0-499c-bc44-fef61bd6081e",
+                    "path": "MouseDrag",
+                    "interactions": "",
+                    "processors": "ScaleVector2(x=0.03,y=0.03)",
+                    "groups": "",
+                    "action": "Quick Pan Action",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Button",
+                    "id": "556adf45-432f-4479-8185-0288be75d9e5",
+                    "path": "<Mouse>/middleButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Quick Pan Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis1",
+                    "id": "4cb58a70-1373-41a9-848e-6c09ea87c3bf",
+                    "path": "<Mouse>/delta/x",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Quick Pan Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis2",
+                    "id": "3566bd6e-9a23-4db5-82b1-209a804d0726",
+                    "path": "<Mouse>/delta/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Quick Pan Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Mouse Drag",
+                    "id": "1e0ca072-be97-486d-b9d5-8218b8907db5",
+                    "path": "MouseDrag",
+                    "interactions": "",
+                    "processors": "ScaleVector2(x=0.1,y=0.1)",
+                    "groups": "",
+                    "action": "Quick WorldOrbit Action",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Button",
+                    "id": "d0947bf3-1506-4894-8c75-b709f27dc49a",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Quick WorldOrbit Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis1",
+                    "id": "7735b0d6-b424-42c5-8ec1-6268e8869de7",
+                    "path": "<Mouse>/delta/x",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Quick WorldOrbit Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis2",
+                    "id": "925c0642-8d49-40ed-8df2-66aa978865f1",
+                    "path": "<Mouse>/delta/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Quick WorldOrbit Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Vector 3",
+                    "id": "ee9cf0ff-a3e9-4431-ac07-733d7a11b9f5",
+                    "path": "Vector3",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "up",
+                    "id": "fb81b692-667e-4470-9da5-3e5b997669fa",
+                    "path": "<Keyboard>/e",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "down",
+                    "id": "1d25907a-2053-465c-a75b-3a6f74822b2b",
+                    "path": "<Keyboard>/q",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "left",
+                    "id": "eb0cb0b0-8ed7-46a8-8b13-b49d60ca4ebd",
+                    "path": "<Keyboard>/a",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "right",
+                    "id": "3a7cb0f8-5463-4a7e-9f8d-4f1b8b276347",
+                    "path": "<Keyboard>/d",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "forward",
+                    "id": "0d8d3e74-a567-4089-a45e-fa4376fbe166",
+                    "path": "<Keyboard>/w",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "backward",
+                    "id": "5a8b18c5-9aa3-4332-9bac-d708acbc16eb",
+                    "path": "<Keyboard>/s",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "944495cd-e954-46be-9192-6a99d0c93fcb",
+                    "path": "<Mouse>/press",
+                    "interactions": "MultiTap",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Teleport Action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d6a946eb-8555-41c2-93d4-45f50c11fcee",
+                    "path": "<Touchscreen>/primaryTouch/delta",
+                    "interactions": "",
+                    "processors": "ScaleVector2(y=0.01)",
+                    "groups": "",
+                    "action": "Zoom Action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "UI",
+            "id": "d6729ec2-0cc2-41e7-a5bc-a9adcd5e4463",
+            "actions": [
+                {
+                    "name": "Pan Mode Action",
+                    "type": "Button",
+                    "id": "40f7845c-f37d-464c-8cfe-ab75957e87e2",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "Press(behavior=2)"
+                },
+                {
+                    "name": "Zoom Mode Action",
+                    "type": "Button",
+                    "id": "0ff10dcb-630c-4854-b98b-bce6441236ac",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "Press(behavior=2)"
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "e13be3c3-45c3-410f-806c-3ec645b5ecf9",
+                    "path": "<Keyboard>/leftAlt",
+                    "interactions": "Press(behavior=2)",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pan Mode Action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "96b73c0b-6c51-4347-8a4a-6a2edf796523",
+                    "path": "<Keyboard>/leftCtrl",
+                    "interactions": "Press(behavior=2)",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Zoom Mode Action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "AR",
+            "id": "4535f234-765d-44be-b92b-49af2e33038e",
+            "actions": [
+                {
+                    "name": "Placement Rotate Action",
+                    "type": "Value",
+                    "id": "612d3d3d-d4e6-4097-9c7e-f1b9d2ee742b",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "MouseDrag"
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "Mouse Drag",
+                    "id": "21c4169d-159f-4d0e-a504-c05347058a27",
+                    "path": "MouseDrag",
+                    "interactions": "",
+                    "processors": "ScaleVector2(y=0.01)",
+                    "groups": "",
+                    "action": "Placement Rotate Action",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Button",
+                    "id": "be970a39-0393-41ba-bed3-d759b2285f19",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Placement Rotate Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis1",
+                    "id": "b3d6ba26-2240-4485-a572-8f4a0c92e1d3",
+                    "path": "<Mouse>/delta/x",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Placement Rotate Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Axis2",
+                    "id": "f74ffab1-c139-4e05-a9da-aa22d3ba0155",
+                    "path": "<Mouse>/delta/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Placement Rotate Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "dfc1da1f-0340-4e51-b12a-c5f8b8f281e5",
+                    "path": "<Touchscreen>/primaryTouch/delta",
+                    "interactions": "",
+                    "processors": "ScaleVector2(x=0.1,y=0.1)",
+                    "groups": "",
+                    "action": "Placement Rotate Action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}
