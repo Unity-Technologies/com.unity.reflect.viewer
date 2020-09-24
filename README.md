@@ -19,10 +19,13 @@ The touch-framework package in-development at [Official Repo](https://github.com
 ## Installation
 This repository uses [Git LFS](https://git-lfs.github.com/) so make sure you have LFS installed to get all the files. Unfortunately this means that the large files are also not included in the "Download ZIP" option on Github.
 
+### Modifying the Viewer
+This repository currently does not accept contributions.  You can fork this repository to make changes to it.
+
 ## Building Locally
  - Open the ReflectViewer project
  - From the File->Build Settings, select the desired platform and build
- 
+
 ## MARS and Simulator
 You will be required to have MARS installed with the Simulation Environments to use the Device Simulator.  It should be installed automatically as you first open the project.
 
