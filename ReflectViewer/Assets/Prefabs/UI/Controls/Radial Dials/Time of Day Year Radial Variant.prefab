@@ -69,21 +69,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Hour Dial Control
       objectReference: {fileID: 0}
-    - target: {fileID: 2807643795726727602, guid: 757d171fba02e42ed9d72d864870926a,
-        type: 3}
-      propertyPath: m_Color.r
-      value: 0.89411765
-      objectReference: {fileID: 0}
-    - target: {fileID: 2807643795726727602, guid: 757d171fba02e42ed9d72d864870926a,
-        type: 3}
-      propertyPath: m_Color.g
-      value: 0.89411765
-      objectReference: {fileID: 0}
-    - target: {fileID: 2807643795726727602, guid: 757d171fba02e42ed9d72d864870926a,
-        type: 3}
-      propertyPath: m_Color.b
-      value: 0.89411765
-      objectReference: {fileID: 0}
     - target: {fileID: 2845116337499364758, guid: 757d171fba02e42ed9d72d864870926a,
         type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -781,21 +766,6 @@ PrefabInstance:
         type: 3}
       propertyPath: m_DisplayNumberType
       value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 8001598769740803017, guid: 757d171fba02e42ed9d72d864870926a,
-        type: 3}
-      propertyPath: m_Color.r
-      value: 0.89411765
-      objectReference: {fileID: 0}
-    - target: {fileID: 8001598769740803017, guid: 757d171fba02e42ed9d72d864870926a,
-        type: 3}
-      propertyPath: m_Color.g
-      value: 0.89411765
-      objectReference: {fileID: 0}
-    - target: {fileID: 8001598769740803017, guid: 757d171fba02e42ed9d72d864870926a,
-        type: 3}
-      propertyPath: m_Color.b
-      value: 0.89411765
       objectReference: {fileID: 0}
     - target: {fileID: 8038885732885018628, guid: 757d171fba02e42ed9d72d864870926a,
         type: 3}

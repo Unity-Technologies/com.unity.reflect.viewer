@@ -117,7 +117,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: 162.49994, y: 95.100586}
+  m_AnchoredPosition: {x: -42.00006, y: 326.6006}
   m_SizeDelta: {x: 386, y: 386}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!223 &3071353388703758977
@@ -597,6 +597,37 @@ PrefabInstance:
       propertyPath: m_ScaleGraphic
       value: 
       objectReference: {fileID: 4243630762982545447}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Color.r
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Color.g
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Color.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Color.a
+      value: 0.87058824
+      objectReference: {fileID: 0}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Material
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 1f65f0e4a352e46eaac2d7819df01637,
+        type: 3}
     - target: {fileID: 3726496868276728933, guid: bf74358cd4745487b88573dab628f19d,
         type: 3}
       propertyPath: m_Name
@@ -1734,6 +1765,37 @@ PrefabInstance:
       propertyPath: m_MarkedEntryRadius
       value: 145
       objectReference: {fileID: 0}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Color.r
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Color.g
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Color.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Color.a
+      value: 0.87058824
+      objectReference: {fileID: 0}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Material
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 1776818748683922152, guid: bf74358cd4745487b88573dab628f19d,
+        type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 1f65f0e4a352e46eaac2d7819df01637,
+        type: 3}
     - target: {fileID: 3726496868276728933, guid: bf74358cd4745487b88573dab628f19d,
         type: 3}
       propertyPath: m_Name

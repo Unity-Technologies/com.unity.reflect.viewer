@@ -42,7 +42,10 @@ QualitySettings:
     resolutionScalingFixedDPIFactor: 1
     customRenderPipeline: {fileID: 11400000, guid: a31e9f9f9c9d4b9429ed0d1234e22103,
       type: 2}
-    excludedTargetPlatforms: []
+    excludedTargetPlatforms:
+    - Standalone
+    - iPhone
+    - Android
   - serializedVersion: 2
     name: Medium
     pixelLightCount: 1
@@ -81,6 +84,8 @@ QualitySettings:
       type: 2}
     excludedTargetPlatforms:
     - Android
+    - iPhone
+    - Standalone
   - serializedVersion: 2
     name: High
     pixelLightCount: 2
@@ -119,7 +124,7 @@ QualitySettings:
       type: 2}
     excludedTargetPlatforms: []
   m_PerPlatformDefaultQuality:
-    Android: 1
+    Android: 2
     Nintendo 3DS: 2
     Nintendo Switch: 2
     PS4: 2
@@ -130,5 +135,5 @@ QualitySettings:
     WiiU: 2
     Windows Store Apps: 2
     XboxOne: 2
-    iPhone: 1
+    iPhone: 2
     tvOS: 1
