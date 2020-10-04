@@ -1,7 +1,5 @@
-﻿using System;
-using SharpFlux;
+﻿using SharpFlux;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -31,12 +29,19 @@ namespace Unity.Reflect.Viewer.UI
 
         ToolType m_CurrentOrbitButtonType;
 
-        bool m_ToolbarsEnabled;
         ToolState m_CurrentToolState;
 
         void Start()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
+
+            Selector.useSelector("toolbarsEnabled", (toolbarEnabled) =>
+            {
+                m_OrbitButton.button.interactable = toolbarEnabled;
+                m_LookAroundButton.button.interactable = toolbarEnabled;
+                m_SelectButton.button.interactable = toolbarEnabled;
+                m_SunStudyButton.button.interactable = toolbarEnabled;
+            });
 
             m_OrbitButton.buttonClicked += OnOrbitButtonClicked;
             m_OrbitButton.buttonLongPressed += OnOrbitButtonLongPressed;
@@ -47,19 +52,9 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnStateDataChanged(UIStateData data)
         {
-            if (m_ToolbarsEnabled != data.toolbarsEnabled)
-            {
-                m_OrbitButton.button.interactable = data.toolbarsEnabled;
-                m_LookAroundButton.button.interactable = data.toolbarsEnabled;
-                m_SelectButton.button.interactable = data.toolbarsEnabled;
-                m_SunStudyButton.button.interactable = data.toolbarsEnabled;
-                m_ToolbarsEnabled = data.toolbarsEnabled;
-            }
-
             if (m_CurrentToolState != data.toolState)
             {
                 m_OrbitButton.selected = false;
-
                 m_LookAroundButton.selected = false;
                 m_SelectButton.selected = false;
 

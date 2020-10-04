@@ -45,7 +45,6 @@ namespace Unity.Reflect.Viewer.UI
         uint m_InputSkipper = 0;
 
         bool m_IsBlocked;
-        bool m_ToolbarsEnabled;
 
         public void Awake()
         {
@@ -64,6 +63,29 @@ namespace Unity.Reflect.Viewer.UI
             m_MovingAction = m_InputActionAsset["Moving Action"];
 
             m_ResetButton.buttonClicked += OnResetButtonClicked;
+
+            Selector.useSelector("toolbarsEnabled", (toolbarEnabled) =>
+            {
+                if (toolbarEnabled)
+                {
+                    if (m_CachedNavigationMode == NavigationMode.Orbit)
+                    {
+                        m_Camera.enabled = true;
+                        m_InputActionAsset.Enable();
+                    }
+                    else
+                    {
+                        m_Camera.enabled = false;
+                        m_InputActionAsset.Disable();
+                    }
+                }
+                else
+                {
+                    m_Camera.enabled = false;
+                    m_InputActionAsset.Disable();
+                }
+                m_ResetButton.button.interactable = toolbarEnabled;
+            });
         }
 
         void Update()
@@ -117,31 +139,6 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnStateDataChanged(UIStateData stateData)
         {
-            if (m_ToolbarsEnabled != stateData.toolbarsEnabled)
-            {
-                if (stateData.toolbarsEnabled)
-                {
-                    if (stateData.navigationState.navigationMode == NavigationMode.Orbit)
-                    {
-                        m_Camera.enabled = true;
-                        m_InputActionAsset.Enable();
-                    }
-                    else
-                    {
-                        m_Camera.enabled = false;
-                        m_InputActionAsset.Disable();
-                    }
-                }
-                else
-                {
-                    m_Camera.enabled = false;
-                    m_InputActionAsset.Disable();
-                }
-                m_ResetButton.button.interactable = stateData.toolbarsEnabled;
-
-                m_ToolbarsEnabled = stateData.toolbarsEnabled;
-            }
-
             if (m_CachedNavigationMode != stateData.navigationState.navigationMode)
             {
                 if (stateData.navigationState.navigationMode == NavigationMode.Orbit)

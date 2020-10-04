@@ -100,7 +100,7 @@ namespace Unity.Reflect.Viewer.UI
     }
 
     [Serializable]
-    public struct UIStateData : IEquatable<UIStateData>
+    public struct UIStateData : IEquatable<UIStateData>, ISelector<bool>
     {
         public bool toolbarsEnabled;
         public bool syncEnabled;
@@ -179,6 +179,16 @@ namespace Unity.Reflect.Viewer.UI
                 hashCode = (hashCode * 397) ^ deviceCapability.GetHashCode();
                 return hashCode;
             }
+        }
+
+        public bool getValueByName(string name)
+        {
+            if (name.Equals(nameof(toolbarsEnabled)))
+            {
+                return toolbarsEnabled;
+            }
+
+            throw new MissingFieldException($"{name} does not exist.");
         }
 
         public override bool Equals(object obj)
