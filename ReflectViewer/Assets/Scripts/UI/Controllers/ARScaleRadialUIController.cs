@@ -25,7 +25,7 @@ namespace Unity.Reflect.Viewer.UI
         ARLabelConverter m_LabelConverter = new ARLabelConverter();
         public static ToolbarType m_previousToolbar; // Note, will only be either ARSidebar or ARInstructionSidebar and set in those sidebar controllers
         ArchitectureScale m_CurrentScale;
-        NavigationMode? m_CurrentNavigationMode;
+        bool? m_ShowScaleReference;
 
         void Awake()
         {
@@ -52,17 +52,10 @@ namespace Unity.Reflect.Viewer.UI
                 m_CurrentScale = data.modelScale;
             }
 
-            if (m_CurrentNavigationMode != data.navigationState.navigationMode)
+            if (m_ShowScaleReference != data.navigationState.showScaleReference)
             {
-                if (data.navigationState.navigationMode == NavigationMode.AR)
-                {
-                    m_ARScaleText.gameObject.SetActive(true);
-                }
-                else
-                {
-                    m_ARScaleText.gameObject.SetActive(false);
-                }
-                m_CurrentNavigationMode = data.navigationState.navigationMode;
+                m_ARScaleText.gameObject.SetActive(data.navigationState.showScaleReference);
+                m_ShowScaleReference = data.navigationState.showScaleReference;
             }
         }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Events;
@@ -101,6 +102,9 @@ namespace Unity.TouchFramework
         float m_ScaleAntialiasing;
 #pragma warning restore CS0649
 
+        // WARNING: this error margin should not be too small, or the heuristic could never converge
+        const float k_relativeAngleErrorMargin = 0.15f;
+
         // Angular range is exposed since it may be required by custom scalers.
         public float angularRange => m_AngularRange;
 
@@ -137,6 +141,9 @@ namespace Unity.TouchFramework
         float m_SnapKineticEnergy; // Energy level letting us determine whether we should snap or not.
         float m_LastSnapDirection;
 
+        /// <summary>
+        /// The currently selected value
+        /// </summary>
         public float selectedValue
         {
             get => m_SelectedValue;
@@ -149,6 +156,9 @@ namespace Unity.TouchFramework
             }
         }
 
+        /// <summary>
+        /// The minimum value of the dial. Setting is only valid when the <see cref="MarkedEntryType"/> is Incremental.
+        /// </summary>
         public float minimumValue
         {
             get => m_MinimumValue;
@@ -162,7 +172,7 @@ namespace Unity.TouchFramework
 
                 // Note: no early return, it is client code's responsibility to update range when appropriate
                 // Once invoked, m_MinimumValue must reflect passed value
-                m_EntriesNeedUpdate = m_MinimumValue != value; // Updating entries is not free, only when needed.
+                m_EntriesNeedUpdate |= m_MinimumValue != value; // Updating entries is not free, only when needed.
                 m_MinimumValue = value;
 
                 // Bounds have changed, make sure the selected value is within those.
@@ -170,6 +180,9 @@ namespace Unity.TouchFramework
             }
         }
 
+        /// <summary>
+        /// The maximum value of the dial. Setting is only valid when the <see cref="MarkedEntryType"/> is Incremental.
+        /// </summary>
         public float maximumValue
         {
             get => m_MaximumValue;
@@ -183,12 +196,30 @@ namespace Unity.TouchFramework
 
                 // Note: no early return, it is client code's responsibility to update range when appropriate
                 // Once invoked, m_MaximumValue must reflect passed value
-                m_EntriesNeedUpdate = m_MaximumValue != value; // Updating entries is not free, only when needed.
+                m_EntriesNeedUpdate |= m_MaximumValue != value; // Updating entries is not free, only when needed.
                 m_MaximumValue = value;
 
                 // Bounds have changed, make sure the selected value is within those.
                 selectedValue = m_SelectedValue;
             }
+        }
+
+        /// <summary>
+        /// Set the marked entries
+        /// </summary>
+        /// <remarks>
+        /// This will set the marked entry values regardless of the <see cref="MarkedEntryType"/> but will only be
+        /// represented on the dial when the <see cref="MarkedEntryType"/> is set to Manual.
+        /// </remarks>
+        /// <param name="entries">A sorted array of entry values.</param>
+        public void SetMarkedEntries(float[] entries)
+        {
+            if (m_MarkedEntryType != MarkedEntryType.Manual)
+                throw new InvalidOperationException("Entries can only be set in manual mode.");
+
+            m_MarkedEntries.Clear();
+            m_MarkedEntries.AddRange(entries);
+            m_EntriesNeedUpdate = true;
         }
 
         void Awake()
@@ -258,15 +289,18 @@ namespace Unity.TouchFramework
 
         void Update()
         {
+            var labelsAlphaNeedUpdate = false;
             if (m_EntriesNeedUpdate || m_Scaler.isDirty)
             {
                 m_EntriesNeedUpdate = false;
                 UpdateEntries();
+                labelsAlphaNeedUpdate = true;
                 m_Scaler.MarkClean();
             }
 
             var angle = m_Scaler.ValueToAngle(m_MinimumValue, m_MaximumValue, m_AngularRange, m_SelectedValue);
-            if (Mathf.Abs(Mathf.DeltaAngle(angle, m_CachedAngleForLabelAlphaUpdate)) > 10e-3)
+            labelsAlphaNeedUpdate |= Mathf.Abs(Mathf.DeltaAngle(angle, m_CachedAngleForLabelAlphaUpdate)) > 10e-3;
+            if (labelsAlphaNeedUpdate)
             {
                 m_CachedAngleForLabelAlphaUpdate = angle;
                 UpdateLabelsAlpha();
@@ -297,12 +331,48 @@ namespace Unity.TouchFramework
             }
 
             m_IncrementEntries.Clear();
-            var increment = (maximumValue - minimumValue) / (m_MarkedEntrySegmentCount + 1);
+            var angleIncrement = (2 * m_AngularRange) / (m_MarkedEntrySegmentCount + 1);
             m_IncrementEntries.Add(m_MinimumValue);
             for (var i = 1; i <= m_MarkedEntrySegmentCount; i++)
-                m_IncrementEntries.Add(minimumValue + increment * i);
+            {
+                var angle = m_AngularRange - (angleIncrement * i);
+                m_IncrementEntries.Add(m_Scaler.AngleToValue(minimumValue, maximumValue , angularRange, angle));
+            }
             m_IncrementEntries.Add(m_MaximumValue);
+
+            for (var i = 1; i < m_IncrementEntries.Count - 1; i++)
+            {
+                var gap = Mathf.Abs(m_IncrementEntries[i + 1] - m_IncrementEntries[i - 1]);
+                m_IncrementEntries[i] = RoundNumberHeuristic(m_IncrementEntries[i], gap);
+            }
             return m_IncrementEntries;
+        }
+
+        float RoundNumberHeuristic(float value, float gap)
+        {
+            var logScale = Mathf.Log(gap, 10);
+            var exponent = Mathf.Floor(logScale);
+            var multiplier = (logScale - exponent) > Mathf.Log(5, 10) ? 5 : 1;
+            var roundingReference = Mathf.Pow(10, exponent) * multiplier;
+            var originalAngle = m_Scaler.ValueToAngle(minimumValue, maximumValue, m_AngularRange, value);
+            var errorMargin = k_relativeAngleErrorMargin * (2 * m_AngularRange) / (m_MarkedEntrySegmentCount + 1);
+            float newAngle;
+            float roundedValue;
+            // This tries to round to a multiple of 10^x or a multiple of 5*(10^x)
+            // It decrements x until the angle error is within the margin
+            do
+            {
+                roundingReference /= (multiplier == 1 ? 2 : 5);
+                roundedValue = RoundToReference(value, roundingReference);
+                newAngle = m_Scaler.ValueToAngle(minimumValue, maximumValue, m_AngularRange, roundedValue);
+            }
+            while (!(Mathf.Abs(originalAngle - newAngle) < errorMargin));
+            return roundedValue;
+        }
+
+        static float RoundToReference(float value, float reference)
+        {
+            return Mathf.Round(value / reference) * reference;
         }
 
         // Returns a configured entry prefab. Fetched from pool or instantiated if pool was empty.
@@ -352,7 +422,7 @@ namespace Unity.TouchFramework
             {
                 var button = entry.gameObject.GetComponentInChildren<Button>();
                 button.onClick.RemoveAllListeners();
-                entry.gameObject.transform.SetParent(null);
+                entry.gameObject.SetActive(false);
                 m_EntryObjectPool.Push(entry.gameObject);
             }
 
@@ -369,17 +439,20 @@ namespace Unity.TouchFramework
             {
                 m_MinimumValue = m_CachedCurrentEntries[0];
                 m_MaximumValue = m_CachedCurrentEntries[m_CachedCurrentEntries.Count - 1];
+                // Bounds may have changed, make sure the selected value is within those.
+                selectedValue = m_SelectedValue;
             }
 
             foreach (var val in m_CachedCurrentEntries)
             {
-                var gameObject = AllocEntryObject(
+                var go = AllocEntryObject(
                     m_Rect, val, m_MarkedEntryRadius, m_MarkedEntryFontSize, m_TapToJumpToEntry);
-                var text = gameObject.GetComponentInChildren<TextMeshProUGUI>();
+                go.SetActive(true);
+                var text = go.GetComponentInChildren<TextMeshProUGUI>();
                 Assert.IsNotNull(text);
                 m_ActiveEntryObjects.Add(new EntryObject()
                 {
-                    gameObject = gameObject,
+                    gameObject = go,
                     textField = text
                 });
             }
@@ -460,7 +533,7 @@ namespace Unity.TouchFramework
                     {
                         // Then, enter snap mode if there is a value to snap to and we just crossed it.
                         var closestEntry = TrySnapToClosestEntry(newSelectedValue, m_AngularSnapThreshold, out var snappedToClosestEntry);
-                        var crossing = WithinRange(closestEntry, selectedValue, newSelectedValue);
+                        var crossing = IsWithinRange(closestEntry, selectedValue, newSelectedValue);
                         if (snappedToClosestEntry && crossing)
                         {
                             m_Snapped = true;
@@ -537,7 +610,7 @@ namespace Unity.TouchFramework
             var boundB = m_Scaler.AngleToValue(m_MinimumValue, m_MaximumValue, m_AngularRange, m_Scaler.ValueToAngle(m_MinimumValue, m_MaximumValue, m_AngularRange, value) + angularSnapThreshold);
             var closestEntry = FindClosestEntry(selectedValue);
 
-            if (WithinRange(closestEntry, boundA, boundB))
+            if (IsWithinRange(closestEntry, boundA, boundB))
             {
                 snapped = true;
                 return closestEntry;
@@ -547,7 +620,7 @@ namespace Unity.TouchFramework
             return value;
         }
 
-        static bool WithinRange(float value, float boundA, float boundB)
+        static bool IsWithinRange(float value, float boundA, float boundB)
         {
             var minRangeValue = Mathf.Min(boundA, boundB);
             var maxRangeValue = Mathf.Max(boundA, boundB);

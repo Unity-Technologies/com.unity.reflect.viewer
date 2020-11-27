@@ -483,6 +483,7 @@ MonoBehaviour:
   m_FilterGroupDropdown: {fileID: 8290289598732544450}
   m_NoDataText: {fileID: 5978585071073690284}
   m_DropdownMask: {fileID: 9154132662826742665}
+  m_DialogButtonManager: {fileID: 0}
 --- !u!114 &7075640641589244804
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -495,6 +496,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1a5f9ddf75d014e4b87dd9f81edb7ff7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_HideInVr: 0
   m_Device: 1
   m_Alignment: 3
   m_PositionOffset: {x: 100, y: 0, z: 0}

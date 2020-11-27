@@ -22,19 +22,47 @@ namespace Unity.Reflect.Viewer.UI
         LandingScreen = 13,
         NavigationMode = 14,
         StatsInfo = 15,
+        ARCardSelection = 16,
+        GizmoMode = 17,
+        InfoSelect = 18,
+        DebugOptions = 19,
+    }
+    /// <summary>
+    /// Defines a global mode for dialog buttons. For example Help Mode, which makes clicking any dialog button open a help dialog.
+    /// </summary>
+    public enum DialogMode
+    {
+        Normal,
+        Help,
+        //Options,
+    }
+
+    /// <summary>
+    /// Defines a global mode for HelpMode Buttons that don't have dialog/subdialog.
+    /// </summary>
+    public enum HelpModeEntryID // rename to Last Button Clicked
+    {
+        None,
+        Sync,
+        HomeReset,
+        // Right Toolbar
+        OrbitSelect,
+        LookAround,
+        SunStudyDial,
     }
 
     public enum ToolbarType
     {
         OrbitSidebar = 0,
-        FlySidebar = 1,
-        WalkSidebar = 2,
-        ARSidebar = 3,
-        ARInstructionSidebar = 4,
-        TimeOfDayYearDial = 5,
-        AltitudeAzimuthDial = 6,
-        VRSidebar = 7,
-        ARScaleDial = 8,
+        FlySidebar,
+        WalkSidebar,
+        ARSidebar,
+        ARModelAlignSidebar,
+        ARInstructionSidebar,
+        ARScaleDial,
+        TimeOfDayYearDial,
+        AltitudeAzimuthDial,
+        VRSidebar
     }
 
     public enum OptionDialogType
@@ -103,6 +131,7 @@ namespace Unity.Reflect.Viewer.UI
     public struct UIStateData : IEquatable<UIStateData>
     {
         public bool toolbarsEnabled;
+        public SettingsToolStateData settingsToolStateData;
         public bool syncEnabled;
         public bool operationCancelled;
         public string statusMessage;
@@ -110,10 +139,11 @@ namespace Unity.Reflect.Viewer.UI
         public ToolState toolState;
         public DialogType activeDialog;
         public DialogType activeSubDialog;
+        public DialogMode dialogMode;
+        public HelpModeEntryID helpModeEntryId;
         public ToolbarType activeToolbar;
         public OptionDialogType activeOptionDialog;
         public SettingsDialogState settingsDialogState;
-        public ScreenOrientation screenOrientation;
         public NavigationState navigationState;
         public CameraOptionData cameraOptionData;
         public SceneOptionData sceneOptionData;
@@ -123,15 +153,20 @@ namespace Unity.Reflect.Viewer.UI
         public SunStudyData sunStudyData;
         public ProgressData progressData;
         public string bimGroup;
+        public string filterGroup;
         public ProjectListFilterData landingScreenFilterData;
-        public StatsInfoData statsInfoData;
         public ArchitectureScale modelScale;
         public DeviceCapability deviceCapability;
+        public string themeName;
 
         public override string ToString()
         {
-            return ToString("( ToolbarEnabled{0}, Sync Enabled {1}, OperationCancelled {2}, StatusMessage {3} , ActiveTool {4}, ActiveDialog {5}, ActiveToolbar {6}, ActiveOptionDialog {7}" +
-                "ScreenOrientation {8},  NavigationState {9}, SessionState {10}");
+            return ToString("( ToolbarEnabled {0}, Sync Enabled {1}, OperationCancelled {2}, StatusMessage {3}, " +
+                "StatusMessageLevel {4}, ToolState {5}, ActiveDialog {6}, ActiveSubDialog {7}, DialogMode {8}, " +
+                "HelpModeEntryId {9}, ActiveToolbar {10} , ActiveOptionDialog {11}, SettingsDialogState {12}, " +
+                "NavigationState {13}, CameraOptionData {14}, SceneOptionData {15}, ProjectOptionIndex {16}, " +
+                "SunStudyData {17}, ProgressData {18}, BimGroup {19}, FilterGroup {20}, LandingScreenFilterData {21}, ModelScale {22}, DeviceCapability {23}, " +
+                "ThemeName {24}");
         }
 
         public string ToString(string format)
@@ -141,14 +176,27 @@ namespace Unity.Reflect.Viewer.UI
                 syncEnabled,
                 operationCancelled,
                 statusMessage,
-                (object)this.toolState,
-                (object)this.activeDialog,
-                (object)this.activeToolbar,
-                (object)this.activeOptionDialog,
-                (object)this.screenOrientation,
-                (object)this.navigationState,
-                (object)this.cameraOptionData,
-                (object)this.sceneOptionData);
+                statusMessageLevel,
+                toolState,
+                activeDialog,
+                activeSubDialog,
+                dialogMode,
+                helpModeEntryId,
+                activeToolbar,
+                activeOptionDialog,
+                settingsDialogState,
+                navigationState,
+                cameraOptionData,
+                sceneOptionData,
+                projectOptionIndex,
+                sunStudyData,
+                progressData,
+                bimGroup,
+                filterGroup,
+                landingScreenFilterData,
+                modelScale,
+                deviceCapability,
+                themeName);
         }
 
         public override int GetHashCode()
@@ -156,16 +204,18 @@ namespace Unity.Reflect.Viewer.UI
             unchecked
             {
                 var hashCode = toolbarsEnabled.GetHashCode();
+                hashCode = (hashCode * 397) ^ settingsToolStateData.GetHashCode();
                 hashCode = (hashCode * 397) ^ syncEnabled.GetHashCode();
                 hashCode = (hashCode * 397) ^ operationCancelled.GetHashCode();
                 hashCode = (hashCode * 397) ^ (statusMessage != null ? statusMessage.GetHashCode() : 0);
                 hashCode = (hashCode * 397) ^ toolState.GetHashCode();
                 hashCode = (hashCode * 397) ^ (int) activeDialog;
                 hashCode = (hashCode * 397) ^ (int) activeSubDialog;
+                hashCode = (hashCode * 397) ^ (int) dialogMode;
+                hashCode = (hashCode * 397) ^ (int) helpModeEntryId;
                 hashCode = (hashCode * 397) ^ (int) activeToolbar;
                 hashCode = (hashCode * 397) ^ (int) activeOptionDialog;
                 hashCode = (hashCode * 397) ^ settingsDialogState.GetHashCode();
-                hashCode = (hashCode * 397) ^ (int) screenOrientation;
                 hashCode = (hashCode * 397) ^ navigationState.GetHashCode();
                 hashCode = (hashCode * 397) ^ cameraOptionData.GetHashCode();
                 hashCode = (hashCode * 397) ^ sceneOptionData.GetHashCode();
@@ -174,9 +224,12 @@ namespace Unity.Reflect.Viewer.UI
                 hashCode = (hashCode * 397) ^ sunStudyData.GetHashCode();
                 hashCode = (hashCode * 397) ^ progressData.GetHashCode();
                 hashCode = (hashCode * 397) ^ bimGroup.GetHashCode();
+                hashCode = (hashCode * 397) ^ filterGroup.GetHashCode();
                 hashCode = (hashCode * 397) ^ landingScreenFilterData.GetHashCode();
                 hashCode = (hashCode * 397) ^ modelScale.GetHashCode();
                 hashCode = (hashCode * 397) ^ deviceCapability.GetHashCode();
+                hashCode = (hashCode * 397) ^ themeName.GetHashCode();
+
                 return hashCode;
             }
         }
@@ -189,16 +242,18 @@ namespace Unity.Reflect.Viewer.UI
         public bool Equals(UIStateData other)
         {
             return toolbarsEnabled == other.toolbarsEnabled &&
+                settingsToolStateData == other.settingsToolStateData &&
                 syncEnabled == other.syncEnabled &&
                 operationCancelled == other.operationCancelled &&
                 statusMessage == other.statusMessage &&
                 toolState.Equals(other.toolState) &&
                 activeDialog == other.activeDialog &&
                 activeSubDialog == other.activeSubDialog &&
+                dialogMode == other.dialogMode &&
+                helpModeEntryId == other.helpModeEntryId &&
                 activeToolbar == other.activeToolbar &&
                 activeOptionDialog == other.activeOptionDialog &&
                 settingsDialogState.Equals(other.settingsDialogState) &&
-                screenOrientation == other.screenOrientation &&
                 navigationState.Equals(other.navigationState) &&
                 cameraOptionData.Equals(other.cameraOptionData) &&
                 sceneOptionData.Equals(other.sceneOptionData) &&
@@ -207,9 +262,11 @@ namespace Unity.Reflect.Viewer.UI
                 sunStudyData.Equals(other.sunStudyData) &&
                 progressData.Equals(other.progressData) &&
                 bimGroup == other.bimGroup &&
+                filterGroup == other.filterGroup && 
                 landingScreenFilterData == other.landingScreenFilterData &&
                 modelScale == other.modelScale &&
-                deviceCapability == other.deviceCapability;
+                deviceCapability == other.deviceCapability &&
+                themeName == other.themeName;
         }
 
         public static bool operator ==(UIStateData a, UIStateData b)

@@ -1,8 +1,10 @@
 using System;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
+[assembly:InternalsVisibleTo("Unity.Reflect.Viewer.Editor.Tests")]
 namespace Unity.Reflect.Viewer
 {
     public static class CustomShaderKeywordStrings

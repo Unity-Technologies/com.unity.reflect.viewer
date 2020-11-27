@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using Unity.Reflect;
 using UnityEngine.Reflect.Pipeline;
 
 namespace UnityEngine.Reflect.Viewer.Pipeline
@@ -16,7 +17,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         public LightFilterSettings settings;
 
-        protected override LightFilter Create(ISyncModelProvider provider, IExposedPropertyTable resolver)
+        protected override LightFilter Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
             var p = new LightFilter(settings);
 

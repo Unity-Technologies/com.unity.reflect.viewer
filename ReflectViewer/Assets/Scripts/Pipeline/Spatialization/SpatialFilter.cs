@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Reflect;
 using Unity.Reflect.Data;
 using Unity.Reflect.Model;
 using UnityEngine.Reflect.Pipeline;
@@ -21,10 +22,10 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         public ISpatialPicker<ISpatialObject> SpatialPicker => processor;
 
-        protected override SpatialFilter Create(ISyncModelProvider provider, IExposedPropertyTable resolver)
+        protected override SpatialFilter Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
             var root = settings.boundingBoxRoot.Resolve(resolver);
-            var p = new SpatialFilter(root, settings, assetOutput);
+            var p = new SpatialFilter(hook.helpers.clock, hook.helpers.memoryStats, hook.services.eventHub, hook.systems.memoryCleaner.memoryLevel, root, settings, assetOutput);
 
             assetInput.streamBegin = assetOutput.SendBegin;
             assetInput.streamEvent = p.OnStreamAssetEvent;
@@ -34,6 +35,11 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
             return p;
         }
+    }
+
+    public class MaxNbDisplayableObjectsChanged
+    {
+        public int MaxNbObjects;
     }
 
     public sealed class SpatialFilter : ReflectTaskNodeProcessor,
@@ -121,6 +127,19 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             public MeshRenderer meshRenderer;
         }
 
+        static readonly int k_MinNbObjects = 100;
+
+        readonly Clock.Proxy m_Clock;
+        readonly MemoryStats.Proxy m_Stats;
+        readonly EventHub m_Hub;
+        EventHub.Group m_Group;
+
+        MemoryLevel m_MemoryLevel;
+        bool m_IsMemoryLevelFresh;
+        TimeSpan m_LastSpeculationUpdate;
+        int m_NbLoadedGameObjects;
+        volatile int m_CurrentMaxVisibleObjects;
+
         readonly StreamAssetOutput m_StreamOutput;
         public SpatialFilterSettings settings { get; }
 
@@ -145,20 +164,33 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         readonly Func<ISpatialObject, float> m_VisibilityPrioritizer;
 
         bool m_ProjectLifecycleStarted;
-        bool m_IsPendingVisibilityUpdate;
         bool m_DisplayOnlyBoundingBoxes;
+        volatile bool m_IsPendingVisibilityUpdate;
 
         Ray m_SelectionRay;
         Ray[] m_SelectionRaySamplePoints;
 
         public ISpatialCollection<ISpatialObject> spatialCollection { get; }
 
-        public SpatialFilter(Transform root, SpatialFilterSettings settings,
+        bool useDynamicNbVisibleObjects =>
+        #if UNITY_IOS || UNITY_ANDROID
+            settings.useDynamicNbVisibleObjectsMobile;
+        #else
+            settings.useDynamicNbVisibleObjectsDesktop;
+        #endif
+
+        public SpatialFilter(Clock.Proxy clock, MemoryStats.Proxy stats, EventHub hub, MemoryLevel memoryLevel, Transform root, SpatialFilterSettings settings,
             StreamAssetOutput streamOutput,
             ISpatialCollection<ISpatialObject> spatialCollection = null,
             Func<ISpatialObject, bool> visibilityPredicate = null,
             Func<ISpatialObject, float> visibilityPrioritizer = null)
         {
+            m_Clock = clock;
+            m_Stats = stats;
+            m_Hub = hub;
+
+            m_MemoryLevel = memoryLevel;
+
             m_Root = root;
             this.settings = settings;
             m_StreamOutput = streamOutput;
@@ -167,12 +199,20 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             m_VisibilityPredicate = visibilityPredicate ?? DefaultVisibilityPredicate;
             m_VisibilityPrioritizer = visibilityPrioritizer ?? DefaultVisibilityPrioritizer;
 
+            m_CurrentMaxVisibleObjects = settings.visibleObjectsMax;
+
+            m_Group = m_Hub.CreateGroup();
+            m_Hub.Subscribe<MemoryLevelChanged>(m_Group, OnMemoryEvent);
+
             InitCamera();
 
             if (settings.displayUnloadedObjectBoundingBoxes)
                 InitBoundingBoxSceneObjects();
 
             m_ObjectsToLoad = new PriorityHeap<SpatialObject>(settings.visibleObjectsMax, Comparer<SpatialObject>.Create((a, b) => a.priority.CompareTo(b.priority)));
+
+            if (useDynamicNbVisibleObjects)
+                m_CurrentMaxVisibleObjects = Math.Min(k_MinNbObjects, settings.visibleObjectsMax);
         }
 
         public override void Dispose()
@@ -198,6 +238,8 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             m_CameraTransform = null;
             m_BoundingBoxes = null;
             m_BoundingBoxParent = null;
+
+            m_Hub.DestroyGroup(m_Group);
         }
 
         public override void OnPipelineInitialized()
@@ -212,6 +254,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
             CacheCameraData();
             Run();
+
+            m_LastSpeculationUpdate = m_Clock.deltaTime;
+            UpdateCurrentMaxVisibleObjects(m_CurrentMaxVisibleObjects);
         }
 
         public override void OnPipelineShutdown()
@@ -253,6 +298,19 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
             if (spatialCollection.objectCount <= 0)
                 return;
+
+            m_LastSpeculationUpdate += m_Clock.deltaTime;
+
+            if (m_IsMemoryLevelFresh)
+            {
+                UpdateSpeculation();
+                m_IsMemoryLevelFresh = false;
+            }
+            else if (m_LastSpeculationUpdate > TimeSpan.FromSeconds(3))
+            {
+                m_LastSpeculationUpdate = TimeSpan.Zero;
+                UpdateSpeculation();
+            }
 
             if (!m_IsPendingVisibilityUpdate)
                 return;
@@ -386,19 +444,84 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             switch (eventType)
             {
                 case StreamEvent.Added:
+                    ++m_NbLoadedGameObjects;
+                    if (m_NbLoadedGameObjects >= m_CurrentMaxVisibleObjects * 0.98f)
+                        UpdateSpeculation();
+                    UpdateObject(obj, gameObject);
+                    break;
                 case StreamEvent.Changed:
-                    obj.loadedObject = gameObject.data;
-                    obj.MeshRenderers = gameObject.data.GetComponentsInChildren<MeshRenderer>();
-                    // disable mesh renderers to avoid popping when displaying only bounding boxes
-                    foreach (var meshRenderer in obj.MeshRenderers)
-                        meshRenderer.enabled = false;
+                    UpdateObject(obj, gameObject);
                     break;
                 case StreamEvent.Removed:
+                    --m_NbLoadedGameObjects;
                     obj.loadedObject = null;
                     obj.MeshRenderers = null;
                     break;
             }
             obj.HasMeshRendererChanged = true;
+        }
+
+        static void UpdateObject(SpatialObject obj, SyncedData<GameObject> gameObject)
+        {
+            obj.loadedObject = gameObject.data;
+            obj.MeshRenderers = gameObject.data.GetComponentsInChildren<MeshRenderer>();
+            // disable mesh renderers to avoid popping when displaying only bounding boxes
+            foreach (var meshRenderer in obj.MeshRenderers)
+                meshRenderer.enabled = false;
+        }
+
+        void UpdateSpeculation()
+        {
+            if (!useDynamicNbVisibleObjects)
+            {
+                if (m_CurrentMaxVisibleObjects != settings.visibleObjectsMax)
+                    UpdateCurrentMaxVisibleObjects(settings.visibleObjectsMax);
+                return;
+            }
+
+            if (m_MemoryLevel == MemoryLevel.Critical)
+            {
+                // Really aggressive policy to try to not crash, reduce by 75%
+                UpdateCurrentMaxVisibleObjects((int)(m_NbLoadedGameObjects * 0.25f));
+            }
+            else if (m_MemoryLevel == MemoryLevel.High)
+            {
+                var ratio = m_NbLoadedGameObjects / (float)m_CurrentMaxVisibleObjects;
+                if (m_NbLoadedGameObjects > m_CurrentMaxVisibleObjects)
+                {
+                    // some gameObjects are expected to be freed, reduce it just a little bit
+                    UpdateCurrentMaxVisibleObjects((int)(m_CurrentMaxVisibleObjects * 0.99f));
+                }
+                else if (ratio >= 0.9f)
+                {
+                    // nb loaded is close to currently displayed, reduce it just a little more
+                    UpdateCurrentMaxVisibleObjects((int)(m_CurrentMaxVisibleObjects * 0.95f));
+                }
+                else
+                {
+                    // Drastically drop the max nb objects to current nb loaded as the difference between them is big (in %)
+                    UpdateCurrentMaxVisibleObjects(m_NbLoadedGameObjects);
+                }
+            }
+            else if (m_MemoryLevel == MemoryLevel.Medium || m_MemoryLevel == MemoryLevel.Low)
+            {
+                var isCloseEnough = m_NbLoadedGameObjects / (float)m_CurrentMaxVisibleObjects > 0.95f;
+                if (isCloseEnough)
+                {
+                    if (m_MemoryLevel == MemoryLevel.Low || m_Stats.frameUsedMemory / (float)m_Stats.frameTotalMemory < 0.75f)
+                    {
+                        // If low, just add +50 objects, if medium, check that the pools still have some remaining space that may be able to accomodate
+                        // more objects.
+                        UpdateCurrentMaxVisibleObjects(Mathf.Clamp(m_CurrentMaxVisibleObjects + 50, k_MinNbObjects, settings.visibleObjectsMax));
+                    }
+                }
+            }
+        }
+
+        void UpdateCurrentMaxVisibleObjects(int newValue)
+        {
+            m_CurrentMaxVisibleObjects = Mathf.Clamp(newValue, k_MinNbObjects, settings.visibleObjectsMax);
+            m_Hub.Broadcast(new MaxNbDisplayableObjectsChanged{ MaxNbObjects = m_CurrentMaxVisibleObjects });
         }
 
         void OnLoad(SpatialObject obj)
@@ -410,6 +533,12 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         {
             obj.IsLoaded = false;
             m_StreamOutput.SendStreamRemoved(obj.StreamAsset);
+        }
+
+        void OnMemoryEvent(MemoryLevelChanged e)
+        {
+            m_MemoryLevel = e.Level;
+            m_IsMemoryLevelFresh = true;
         }
 
         void Add(ISpatialObject obj)
@@ -441,7 +570,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 // this is where the magic happens
                 spatialCollection.Search(m_VisibilityPredicate,
                     m_VisibilityPrioritizer,
-                    settings.visibleObjectsMax,
+                    m_CurrentMaxVisibleObjects,
                     m_VisibilityResults);
 
                 foreach (var obj in m_VisibilityResults.Except(m_PrevVisibilityResults))
@@ -504,7 +633,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         void InitBoundingBoxSceneObjects()
         {
             // init bounding boxes
-            var amount = settings.visibleObjectsMax;
+            var amount = m_CurrentMaxVisibleObjects;
             m_BoundingBoxParent = m_Root != null
                 ? m_Root
                 : new GameObject("BoundingBoxRoot").transform;

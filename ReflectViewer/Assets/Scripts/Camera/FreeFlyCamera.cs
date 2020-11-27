@@ -1,3 +1,5 @@
+using Unity.Reflect.Viewer.UI;
+
 public enum LookAtConstraint
 {
     /// <summary>
@@ -44,6 +46,7 @@ namespace UnityEngine.Reflect
 
         Vector3 m_CameraCenter;
         float m_SqrCameraMaxDistance;
+        Vector2 m_AngleOffset;
 
         public new Camera camera => m_Camera;
 
@@ -209,6 +212,33 @@ namespace UnityEngine.Reflect
             UpdateSphericalMovement(true);
         }
 
+        public void FixedOrbitAroundLookAt(Vector2 angleOffset)
+        {
+            m_DesiredRotationEuler = angleOffset;
+            m_DesiredRotation = Quaternion.Euler(angleOffset);
+
+            var negDistance = new Vector3(0.0f, 0.0f, -GetDistanceFromLookAt());
+            m_DesiredPosition = m_DesiredRotation * negDistance + m_DesiredLookAt;
+
+            UpdateSphericalMovement(true);
+        }
+
+        public void ContinuousOrbitAroundLookAt(Vector2 angleOffset, bool isXAxis)
+        {
+            ResetDesiredPosition();
+            m_AngleOffset += angleOffset;
+
+            if (isXAxis)
+            {
+                m_AngleOffset = angleOffset;
+            }
+            else
+            {
+                m_AngleOffset.x = 0;
+            }
+            FixedOrbitAroundLookAt(m_AngleOffset);
+        }
+
         /// <summary>
         ///     Move on the forward axis of the camera. The operation is similar
         ///     to a zoom without changing FOV.
@@ -243,6 +273,18 @@ namespace UnityEngine.Reflect
             UpdateSphericalMovement(false);
         }
 
+        public void FocusOnPoint(Vector3 value)
+        {
+            var cameraPlane = new Plane(transform.forward, transform.position);
+            var targetCameraPos = cameraPlane.ClosestPointOnPlane(value);
+            if(m_DesiredLookAt != value)
+                m_DesiredLookAt = value;
+            if(m_DesiredPosition != targetCameraPos)
+                m_DesiredPosition = targetCameraPos;
+
+            UpdateSphericalMovement(true);
+        }
+
         /// <summary>
         ///     Setup the camera at a position where <see cref="percentOfView"/> of the entire scene will be visible from.
         /// </summary>
@@ -256,6 +298,7 @@ namespace UnityEngine.Reflect
 
             FitInView(bb, pitch, percentOfView);
             SetupCameraSpeed(bb);
+            m_AngleOffset = Vector2.zero;
         }
 
         public void SetupInitialCameraPosition()
@@ -270,29 +313,51 @@ namespace UnityEngine.Reflect
             m_IsSphericalMovement = isSphericalMovement;
         }
 
-        float GetDistanceFromLookAt()
+        public float GetDistanceFromLookAt()
         {
             return (m_DesiredLookAt - m_DesiredPosition).magnitude;
         }
 
+        public void SetDistanceFromLookAt(float distance)
+        {
+            if (distance < m_Settings.minDistanceFromLookAt)
+            {
+                distance = m_Settings.minDistanceFromLookAt;
+            }
+            m_DesiredPosition = m_DesiredLookAt + (m_DesiredPosition - m_DesiredLookAt).normalized * distance;
+        }
+
         void FitInView(Bounds bb, float pitch, float percentOfView)
         {
+            var fitPosition = CalculateViewFitPosition(bb, pitch, percentOfView, m_Camera.fieldOfView);
+
+            m_DesiredPosition = fitPosition.position;
+            m_DesiredRotation = Quaternion.Euler(fitPosition.rotation);
+            m_DesiredRotationEuler = fitPosition.rotation;
+            m_DesiredLookAt = bb.center;
+
+            m_Camera.transform.rotation = m_DesiredRotation;
+            m_Camera.transform.position = m_DesiredPosition;
+        }
+
+        public static CameraTransformInfo CalculateViewFitPosition(Bounds bb, float pitch, float percentOfView, float fov)
+        {
             var adjacent = bb.extents.x;
-            var angle = (180.0f - m_Camera.fieldOfView) / 2.0f;
+            var angle = (180.0f - fov) / 2.0f;
             var ratio = Mathf.Tan(Mathf.Deg2Rad * angle);
             var opposite = ratio * adjacent;
             var distanceFromBoundSurface = opposite;
 
-            m_DesiredLookAt = bb.center;
+            var lookAt = bb.center;
 
-            var distanceFromLookAt = m_DesiredLookAt.z - bb.min.z + distanceFromBoundSurface * percentOfView;
+            var distanceFromLookAt = lookAt.z - bb.min.z + distanceFromBoundSurface * percentOfView;
+            var desiredEuler = new Vector3(pitch, 0, 0);
 
-            m_DesiredRotationEuler = new Vector3(pitch, 0, 0);
-            m_DesiredRotation = Quaternion.Euler(m_DesiredRotationEuler);
-            m_DesiredPosition = m_DesiredLookAt - distanceFromLookAt * (m_DesiredRotation * Vector3.forward);
-
-            m_Camera.transform.rotation = m_DesiredRotation;
-            m_Camera.transform.position = m_DesiredPosition;
+            return new CameraTransformInfo()
+            {
+                rotation = UIStateManager.current.m_RootNode.transform.rotation*desiredEuler,
+                position = UIStateManager.current.m_RootNode.transform.TransformPoint(lookAt - distanceFromLookAt * (Quaternion.Euler(desiredEuler) * Vector3.forward)),
+            };
         }
 
         void SetupCameraSpeed(Bounds bb)

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Unity.Reflect.Viewer.UI;
+using UnityEngine.InputSystem;
 using UnityEngine.Reflect.Viewer.Pipeline;
-using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
 
 namespace UnityEngine.Reflect.Viewer
@@ -13,10 +13,11 @@ namespace UnityEngine.Reflect.Viewer
         const int k_MaxLinePoints = 20;
 
         #pragma warning disable 0649
+        [SerializeField] InputActionAsset m_InputActionAsset;
         [SerializeField] BaseTeleportationInteractable m_TeleportationTarget;
         #pragma warning restore 0649
 
-        XRController m_XrController;
+        InputAction m_TeleportAction;
         XRRayInteractor m_XrRayInteractor;
         XRInteractorLineVisual m_XrInteractorLineVisual;
 
@@ -29,7 +30,6 @@ namespace UnityEngine.Reflect.Viewer
 
         void Start()
         {
-            m_XrController = GetComponent<XRController>();
             m_XrRayInteractor = GetComponent<XRRayInteractor>();
             m_XrInteractorLineVisual = GetComponent<XRInteractorLineVisual>();
 
@@ -39,12 +39,13 @@ namespace UnityEngine.Reflect.Viewer
 
             UIStateManager.stateChanged += OnStateDataChanged;
             UIStateManager.projectStateChanged += OnProjectStateDataChanged;
+
+            m_TeleportAction = m_InputActionAsset["VR/Teleport"];
         }
 
         void Update()
         {
-            if (!m_XrController.inputDevice.TryGetFeatureValue(CommonUsages.primaryButton, out var isButtonPressed))
-                return;
+            var isButtonPressed = m_TeleportAction.ReadValue<float>() > 0;
 
             if (m_IsTeleporting)
             {
@@ -64,7 +65,7 @@ namespace UnityEngine.Reflect.Viewer
 
         void OnProjectStateDataChanged(UIProjectStateData data)
         {
-            m_ObjectPicker = data.objectPicker;
+            m_ObjectPicker = data.teleportPicker;
         }
 
         void StartTeleport()
@@ -86,8 +87,7 @@ namespace UnityEngine.Reflect.Viewer
 
         void UpdateTarget()
         {
-            var nbPoints = 0;
-            if (!m_XrRayInteractor.GetLinePoints(ref m_LinePoints, ref nbPoints))
+            if (!m_XrRayInteractor.GetLinePoints(ref m_LinePoints, out var nbPoints))
             {
                 Debug.LogError($"[{nameof(VRTeleporter)}] XRRayInteractor.GetLinePoints failed!");
                 return;

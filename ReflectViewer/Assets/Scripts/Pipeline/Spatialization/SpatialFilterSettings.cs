@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine.Events;
 
@@ -18,7 +18,16 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         public int minPerNode = 6;
 
         [Header("Visibility")]
-        [Range(1000, 10000)] public int visibleObjectsMax = 10000;
+        [Tooltip("Max objects visible at once, including bounding boxes. This should probably be at least 1000. Default is 10000. " +
+                 "Values up to 100000 or more can be used, however AT YOUR OWN RISK since they may cause performance drops.")]
+        public int visibleObjectsMax = 10000;
+
+        [Tooltip("If enabled, the maximum number of displayed objects will dynamically change between 0 and visibleObjectsMax. Use this" +
+            " feature if you develop on mobile device, where RAM is limited.")]
+        public bool useDynamicNbVisibleObjectsMobile = true;
+        [Tooltip("If enabled, the maximum number of displayed objects will dynamically change between 0 and visibleObjectsMax. This " +
+            "generally can be turned off for viewers running on desktop.")]
+        public bool useDynamicNbVisibleObjectsDesktop = false;
         public bool displayUnloadedObjectBoundingBoxes = true;
         public bool displayOnlyBoundingBoxes = false;
         public GameObject boundingBoxPrefab = null;

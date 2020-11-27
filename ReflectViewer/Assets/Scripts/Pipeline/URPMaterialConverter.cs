@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Reflect;
 using Unity.Reflect.Data;
 using Unity.Reflect.Model;
 
@@ -20,6 +21,12 @@ namespace UnityEngine.Reflect.Pipeline
 
         [SerializeField]
         Shader m_URPTransparentShader;
+
+        [SerializeField]
+        Shader m_URPDoubleOpaqueShader;
+
+        [SerializeField]
+        Shader m_URPDoubleTransparentShader;
 #pragma warning restore CS0649
 
 #if UNITY_EDITOR
@@ -32,6 +39,9 @@ namespace UnityEngine.Reflect.Pipeline
         public Shader GetShader(SyncMaterial syncMaterial)
         {
             var transparent = StandardShaderHelper.IsTransparent(syncMaterial);
+            if (syncMaterial.IsDoubleSided)
+                return transparent ? m_URPDoubleTransparentShader : m_URPDoubleOpaqueShader;
+                
             return transparent ? m_URPTransparentShader : m_URPOpaqueShader;
         }
 
@@ -57,9 +67,9 @@ namespace UnityEngine.Reflect.Pipeline
         public SyncMaterialInput input = new SyncMaterialInput();
         public MaterialOutput output = new MaterialOutput();
 
-        protected override URPMaterialConverter Create(ISyncModelProvider provider, IExposedPropertyTable resolver)
+        protected override URPMaterialConverter Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
-            var p = new URPMaterialConverter(textureCacheParam.value, output, m_ReflectUniversalRp);
+            var p = new URPMaterialConverter(hook.services.eventHub, hook.services.memoryTracker, textureCacheParam.value, output, m_ReflectUniversalRp);
 
             input.streamEvent = p.OnStreamEvent;
 
@@ -74,8 +84,8 @@ namespace UnityEngine.Reflect.Pipeline
 
     public class URPMaterialConverter : MaterialConverter
     {
-        public URPMaterialConverter(ITextureCache textureCache, IOutput<SyncedData<Material>> output, IReflectMaterialConverter converter)
-            : base(textureCache, output)
+        public URPMaterialConverter(EventHub hub, MemoryTracker memTracker, ITextureCache textureCache, IOutput<SyncedData<Material>> output, IReflectMaterialConverter converter)
+            : base(hub, memTracker, textureCache, output)
         {
             ReflectMaterialManager.RegisterConverter(converter);
         }

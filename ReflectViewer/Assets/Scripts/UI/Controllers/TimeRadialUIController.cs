@@ -27,6 +27,8 @@ namespace Unity.Reflect.Viewer.UI
         readonly MonthLabelConverter m_MonthLabels = new MonthLabelConverter();
         readonly HourLabelConverter m_HourLabels = new HourLabelConverter();
 
+        SunStudyData m_CachedSunStudyData;
+
         void Awake()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
@@ -52,12 +54,17 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnStateDataChanged(UIStateData data)
         {
-            m_HourDialControl.selectedValue = GetFloatFromMin(data.sunStudyData.timeOfDay);
-            m_MonthDialControl.selectedValue = GetFloatFromDay(data.sunStudyData.timeOfYear);
-
-            if (data.activeToolbar != ToolbarType.TimeOfDayYearDial && data.activeToolbar != ToolbarType.AltitudeAzimuthDial)
+            if (data.activeToolbar != ToolbarType.TimeOfDayYearDial &&
+                data.activeToolbar != ToolbarType.AltitudeAzimuthDial)
             {
                 m_previousToolbar = data.activeToolbar;
+            }
+
+            if (m_CachedSunStudyData != data.sunStudyData)
+            {
+                m_HourDialControl.selectedValue = GetFloatFromMin(data.sunStudyData.timeOfDay);
+                m_MonthDialControl.selectedValue = GetFloatFromDay(data.sunStudyData.timeOfYear);
+                m_CachedSunStudyData = data.sunStudyData;
             }
         }
 

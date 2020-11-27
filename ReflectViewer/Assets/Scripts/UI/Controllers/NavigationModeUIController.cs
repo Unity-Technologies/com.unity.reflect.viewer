@@ -1,9 +1,8 @@
+using System;
 using SharpFlux;
 using System.Collections.Generic;
 using Unity.TouchFramework;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -25,17 +24,17 @@ namespace Unity.Reflect.Viewer.UI
         ToolButton m_ARButton;
         [SerializeField]
         ToolButton m_VRButton;
-        [SerializeField, Tooltip("List of NavigationModeInfo.")]
-        List<NavigationModeInfo> m_NavigationModeToolbar = new List<NavigationModeInfo>();
 #pragma warning restore CS0649
 
         bool m_ToolbarsEnabled;
         FanOutWindow m_FanOutgWindow;
         ButtonControl m_ActiveButtonControl;
-        NavigationMode? m_CachedNavigationMode;
         DeviceCapability? m_DeviceCapability;
-        Dictionary<ToolbarType, string> m_SceneDictionary = new Dictionary<ToolbarType, string>();
-        string m_CachedScenePath;
+        ARMode? m_CachedARMode;
+        NavigationMode? m_NavigationMode;
+        DialogType? m_ActiveDialog;
+
+        Dictionary<NavigationMode, string> m_SceneDictionary = new Dictionary<NavigationMode, string>();
 
         void Awake()
         {
@@ -49,71 +48,91 @@ namespace Unity.Reflect.Viewer.UI
             m_ARButton.buttonClicked += OnARButtonClicked;
             m_VRButton.buttonClicked += OnVRButtonClicked;
 
-            foreach (var info in m_NavigationModeToolbar)
+            foreach (var info in UIStateManager.current.stateData.navigationState.navigationModeInfos)
             {
-                m_SceneDictionary[info.modeToolbar] = info.modeScenePath;
+                m_SceneDictionary[info.navigationMode] = info.modeScenePath;
             }
         }
 
-        [ContextMenu("OnVRButtonClicked")]
-        private void OnVRButtonClicked()
+        [ContextMenu(nameof(OnVRButtonClicked))]
+        void OnVRButtonClicked()
         {
+            var navigationState = UIStateManager.current.stateData.navigationState;
+            var currentNavigationMode = navigationState.navigationMode;
+
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableAR, false));
+
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
 
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusLevel, StatusMessageLevel.Info));
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.UnloadScene, m_CachedScenePath));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationMode, NavigationMode.VR));
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.UnloadScene, m_SceneDictionary[currentNavigationMode]));
 
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
 
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.VRSidebar));
 
-            m_CachedScenePath = m_SceneDictionary[ToolbarType.VRSidebar];
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.LoadScene, m_CachedScenePath));
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetTheme, ThemeController.k_VROpaque));
+
+            navigationState.EnableAllNavigation(true);
+            navigationState.navigationMode = NavigationMode.VR;
+            navigationState.showScaleReference = false;
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.LoadScene, m_SceneDictionary[NavigationMode.VR]));
+
+            SettingsToolStateData settingsToolState = SettingsToolStateData.defaultData;
+            settingsToolState.bimFilterEnabled = true;
+            settingsToolState.sceneOptionEnabled = true;
+            settingsToolState.sunStudyEnabled = true;
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSettingsToolState, settingsToolState));
+
         }
 
-        [ContextMenu("OnARButtonClicked")]
-        private void OnARButtonClicked()
+        [ContextMenu(nameof(OnARButtonClicked))]
+        void OnARButtonClicked()
         {
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.ARCardSelection));
+        }
+
+        [ContextMenu(nameof(OnOrbitButtonClicked))]
+        void OnOrbitButtonClicked()
+        {
+            var navigationState = UIStateManager.current.stateData.navigationState;
+            var currentNavigationMode = navigationState.navigationMode;
+
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowModel, true));
+
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableAR, false));
+
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
 
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusLevel, StatusMessageLevel.Info));
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.UnloadScene, m_CachedScenePath));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationMode, NavigationMode.AR));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARSidebar));
-
-            m_CachedScenePath = m_SceneDictionary[ToolbarType.ARSidebar];
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.LoadScene, m_CachedScenePath));
-        }
-
-        [ContextMenu("OnOrbitButtonClicked")]
-        private void OnOrbitButtonClicked()
-        {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusLevel, StatusMessageLevel.Info));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.UnloadScene, m_CachedScenePath));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationMode, NavigationMode.Orbit));
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.UnloadScene, m_SceneDictionary[currentNavigationMode]));
 
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
 
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.OrbitSidebar));
 
-            m_CachedScenePath = m_SceneDictionary[ToolbarType.OrbitSidebar];
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.LoadScene, m_CachedScenePath));
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetTheme, ThemeController.k_Default));
+
+            navigationState.EnableAllNavigation(true);
+            navigationState.navigationMode = NavigationMode.Orbit;
+            navigationState.showScaleReference = false;
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.LoadScene, m_SceneDictionary[NavigationMode.Orbit]));
+
+            SettingsToolStateData settingsToolState = SettingsToolStateData.defaultData;
+            settingsToolState.bimFilterEnabled = true;
+            settingsToolState.sceneOptionEnabled = true;
+            settingsToolState.sunStudyEnabled = true;
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSettingsToolState, settingsToolState));
         }
 
-        [ContextMenu("OnNavigationButtonClicked")]
-        private void OnNavigationButtonClicked()
+        [ContextMenu(nameof(OnNavigationButtonClicked))]
+        void OnNavigationButtonClicked()
         {
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
 
@@ -123,7 +142,24 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnStateDataChanged(UIStateData stateData)
         {
-            m_NavigationButton.selected = stateData.activeDialog == DialogType.NavigationMode;
+            if (m_ActiveDialog != stateData.activeDialog)
+            {
+                if (stateData.activeDialog == DialogType.ARCardSelection)
+                {
+                    m_NavigationButton.SetIcon(m_ARButton.buttonIcon.sprite);
+                    m_NavigationButton.selected = true;
+                }
+                else
+                {
+                    if (m_NavigationButton.selected != (stateData.activeDialog == DialogType.NavigationMode))
+                    {
+                        SetNavigationButtonIcon(stateData.navigationState.navigationMode);
+                    }
+                    m_NavigationButton.selected = stateData.activeDialog == DialogType.NavigationMode;
+                }
+
+                m_ActiveDialog = stateData.activeDialog;
+            }
 
             if (m_DeviceCapability != stateData.deviceCapability)
             {
@@ -149,23 +185,32 @@ namespace Unity.Reflect.Viewer.UI
                 m_ToolbarsEnabled = stateData.toolbarsEnabled;
             }
 
-            if (m_CachedNavigationMode != stateData.navigationState.navigationMode)
+            if (m_NavigationMode != stateData.navigationState.navigationMode)
             {
-                switch (stateData.navigationState.navigationMode)
-                {
-                    case NavigationMode.AR:
-                        m_NavigationButton.SetIcon(m_ARButton.buttonIcon.sprite);
-                        break;
+                SetNavigationButtonIcon(stateData.navigationState.navigationMode);
+                m_NavigationMode = stateData.navigationState.navigationMode;
+            }
+        }
 
-                    case NavigationMode.VR:
-                        m_NavigationButton.SetIcon(m_VRButton.buttonIcon.sprite);
-                        break;
+        void SetNavigationButtonIcon(NavigationMode navigationMode)
+        {
+            Image buttonIcon = null;
+            switch (navigationMode)
+            {
+                case NavigationMode.Orbit:
+                    buttonIcon = m_OrbitButton.buttonIcon;
+                    break;
+                case NavigationMode.AR:
+                    buttonIcon = m_ARButton.buttonIcon;
+                    break;
+                case NavigationMode.VR:
+                    buttonIcon = m_VRButton.buttonIcon;
+                    break;
+            }
 
-                    default:
-                        m_NavigationButton.SetIcon(m_OrbitButton.buttonIcon.sprite);
-                        break;
-                }
-                m_CachedNavigationMode = stateData.navigationState.navigationMode;
+            if (buttonIcon != null)
+            {
+                m_NavigationButton.SetIcon(buttonIcon.sprite);
             }
         }
     }

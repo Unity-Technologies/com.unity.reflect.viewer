@@ -1,18 +1,55 @@
-﻿using System.Collections;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEngine.EventSystems;
+using UnityEngine.XR;
+using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.InputSystem;
 using UnityEngine.XR.Management;
 
 namespace UnityEngine.Reflect.Viewer
 {
+    [Serializable]
+    public enum VRControllerType
+    {
+        Generic=0,
+        OculusTouch,
+        OculusTouchS,
+        OculusTouchQuest2,
+        ViveWand,
+        ViveIndex,
+        ViveCosmos
+    }
+
+    [Serializable]
+    public class VRController
+    {
+        public VRControllerType Type;
+        public Transform LeftPrefab;
+        public Transform RightPrefab;
+        public Vector3 Rotation;
+    }
+
     public class VRMode : MonoBehaviour
     {
         #pragma warning disable 0649
+        [SerializeField] InputActionAsset m_InputActionAsset;
         [SerializeField] VRAnchorController m_VrAnchorController;
         [SerializeField] bool m_SkipVrInit;
+        [SerializeField] XRBaseController m_LeftHandController;
+        [SerializeField] XRBaseController m_RightHandController;
+        [SerializeField] List<VRController> m_VRControllers;
+        [Space(10)]
+        [SerializeField] List<string> XRManagerNames;
+        [SerializeField] List<GameObject> m_XRManagerObjectsToInstantiate;
+        [Space(10)]
         #pragma warning restore 0649
 
         XRManagerSettings m_Manager;
         Camera m_ScreenModeCamera;
+        InputActionMap m_ActionMap;
 
         void Start()
         {
@@ -22,6 +59,9 @@ namespace UnityEngine.Reflect.Viewer
             var standaloneInputModule = FindObjectOfType<StandaloneInputModule>();
             if (standaloneInputModule != null)
                 Destroy(standaloneInputModule);
+
+            m_ActionMap = m_InputActionAsset.FindActionMap("VR", true);
+            m_ActionMap.Enable();
 
             StartCoroutine(Load());
         }
@@ -51,6 +91,22 @@ namespace UnityEngine.Reflect.Viewer
                 m_Manager.StartSubsystems();
             }
 
+            // wait one frame to let InputDevice initialise
+            yield return null;
+
+            ChooseVRControllerModels();
+
+            if (!m_SkipVrInit)
+            {
+                var xRManagerIndex = XRManagerNames.IndexOf(m_Manager.activeLoader.name);
+                if (xRManagerIndex != -1 && m_XRManagerObjectsToInstantiate[xRManagerIndex] != null)
+                {
+                    Instantiate(m_XRManagerObjectsToInstantiate[xRManagerIndex]);
+                }
+            }
+
+            yield return null;
+
             m_VrAnchorController.Load();
         }
 
@@ -69,6 +125,71 @@ namespace UnityEngine.Reflect.Viewer
 
             // swap cameras
             m_ScreenModeCamera.gameObject.SetActive(true);
+
+            if (m_ActionMap != null)
+            {
+                m_ActionMap.Disable();
+            }
+        }
+
+        void ChooseVRControllerModels()
+        {
+            var type = VRControllerType.Generic;
+            var deviceName = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand).name;
+            Debug.Log($"Device name : {deviceName}");
+            if (!string.IsNullOrEmpty(deviceName))
+            {
+                deviceName = Regex.Replace(deviceName.ToLower(), @"\s+", "");
+                if (deviceName.Contains("quest2"))
+                {
+                    //TODO: Not supported yet
+                    //type = VRControllerType.OculusTouchQuest2;
+                }
+                else if (deviceName.Contains("rifts") ||
+                         deviceName.Contains("touchs") ||
+                         deviceName.Contains("quest"))
+                {
+                    //TODO: Not supported yet
+                    //type = VRControllerType.OculusTouchS;
+                }
+                else if (deviceName.Contains("oculus") ||
+                         deviceName.Contains("rift") ||
+                         deviceName.Contains("touch"))
+                {
+                    type = VRControllerType.OculusTouch;
+                }
+                else if (deviceName.Contains("index") ||
+                         deviceName.Contains("knuckle"))
+                {
+                    //TODO: Not supported yet
+                    //type = VRControllerType.ViveIndex;
+                }
+                else if (deviceName.Contains("cosmos"))
+                {
+                    //TODO: Not supported yet
+                    //type = VRControllerType.ViveCosmos;
+                }
+                else if (deviceName.Contains("vive") ||
+                         deviceName.Contains("valve"))
+                {
+                    type = VRControllerType.ViveWand;
+                }
+            }
+
+            Debug.Log(type);
+
+            var vrController = m_VRControllers.FirstOrDefault(c => c.Type == type);
+            if (vrController != null)
+            {
+                var left = Instantiate(vrController.LeftPrefab, m_LeftHandController.transform);
+                var right = Instantiate(vrController.RightPrefab, m_RightHandController.transform);
+
+                var leftWidget = left.GetComponent<VRControllerWidget>();
+                var rightWidget = right.GetComponent<VRControllerWidget>();
+
+                leftWidget.Rotation = vrController.Rotation;
+                rightWidget.Rotation = vrController.Rotation;
+            }
         }
     }
 }

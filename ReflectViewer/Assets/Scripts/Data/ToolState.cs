@@ -10,6 +10,12 @@ namespace Unity.Reflect.Viewer.UI
         OrbitAtPoint = 2,
     }
 
+    public enum InfoType
+    {
+        Info = 0,
+        Debug = 1,
+    }
+
     public enum ClippingTool
     {
         AddXPlane = 0,
@@ -33,10 +39,15 @@ namespace Unity.Reflect.Viewer.UI
         public OrbitType orbitType;
         public ClippingTool clippingTool;
         public MeasureTool measureTool;
+        public InfoType infoType;
 
         public bool Equals(ToolState other)
         {
-            return activeTool == other.activeTool && orbitType == other.orbitType && clippingTool == other.clippingTool && measureTool == other.measureTool;
+            return activeTool == other.activeTool &&
+                orbitType == other.orbitType &&
+                clippingTool == other.clippingTool &&
+                measureTool == other.measureTool &&
+                infoType == other.infoType;
         }
 
         public override bool Equals(object obj)
@@ -52,6 +63,7 @@ namespace Unity.Reflect.Viewer.UI
                 hashCode = (hashCode * 397) ^ (int) orbitType;
                 hashCode = (hashCode * 397) ^ (int) clippingTool;
                 hashCode = (hashCode * 397) ^ (int) measureTool;
+                hashCode = (hashCode * 397) ^ (int) infoType;
                 return hashCode;
             }
         }

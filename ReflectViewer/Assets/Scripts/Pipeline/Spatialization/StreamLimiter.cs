@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Reflect;
 using UnityEngine;
 using UnityEngine.Reflect.Pipeline;
 
@@ -31,7 +32,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         public StreamLimiterSettings settings;
 
-        protected override StreamLimiter<StreamInstance> Create(ISyncModelProvider provider, IExposedPropertyTable resolver)
+        protected override StreamLimiter<StreamInstance> Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
             var node = new StreamLimiter<StreamInstance>(settings, instanceOutput);
 

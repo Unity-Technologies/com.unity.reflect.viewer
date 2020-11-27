@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,6 +6,7 @@ using SharpFlux;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -16,6 +17,9 @@ namespace Unity.Reflect.Viewer.UI
     [RequireComponent(typeof(DialogWindow))]
     public class FiltersUIController : MonoBehaviour
     {
+        public const string noCategoryOptionName = "No Category";
+        private static readonly new TMP_Dropdown.OptionData k_NoCategoryOption = new TMP_Dropdown.OptionData(noCategoryOptionName);
+
 #pragma warning disable CS0649
         [SerializeField]
         Button m_DialogButton;
@@ -47,16 +51,12 @@ namespace Unity.Reflect.Viewer.UI
         List<string> m_CurrentFilterGroupList;
         FilterItemInfo m_LastChangedFilterItem;
         HighlightFilterInfo m_CurrentHighlightFilter;
-
-        InstructionUI? m_CurrentInstructionUI;
-        bool m_ToolbarsEnabled;
-        NavigationMode? m_CurrentNavigationMode;
+        string m_CurrentFilterGroup;
 
         void Awake()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
             UIStateManager.projectStateChanged += OnProjectStateDataChanged;
-            UIStateManager.arStateChanged += OnARStateDataChanged;
 
             m_DialogButtonImage = m_DialogButton.GetComponent<Image>();
             m_DialogWindow = GetComponent<DialogWindow>();
@@ -126,44 +126,11 @@ namespace Unity.Reflect.Viewer.UI
         void OnStateDataChanged(UIStateData data)
         {
             m_DialogButtonImage.enabled = data.activeDialog == DialogType.Filters;
-
-            if (m_ToolbarsEnabled != data.toolbarsEnabled)
-            {
-                m_ToolbarsEnabled = data.toolbarsEnabled;
-                OnARStateDataChanged(UIStateManager.current.arStateData);
-            }
-            if (m_CurrentNavigationMode != data.navigationState.navigationMode)
-            {
-                m_CurrentNavigationMode = data.navigationState.navigationMode;
-                OnARStateDataChanged(UIStateManager.current.arStateData);
-            }
-        }
-        void OnARStateDataChanged(UIARStateData stateData)
-        {
-            if (m_CurrentNavigationMode != NavigationMode.AR)
-            {
-                m_DialogButton.interactable = m_ToolbarsEnabled;
-            }
-            else
-            {
-                if (m_CurrentInstructionUI != stateData.instructionUI)
-                {
-                    m_CurrentInstructionUI = stateData.instructionUI;
-                    if (m_CurrentInstructionUI == InstructionUI.OnBoardingComplete)
-                    {
-                        m_DialogButton.interactable = m_ToolbarsEnabled;
-                    }
-                    else
-                    {
-                        m_DialogButton.interactable = false;
-                    }
-                }
-            }
         }
 
         void OnProjectStateDataChanged(UIProjectStateData data)
         {
-            if (data.filterGroupList != m_CurrentFilterGroupList)
+            if (!EnumerableExtension.SafeSequenceEquals(data.filterGroupList, m_CurrentFilterGroupList))
             {
                 // fill filter group Dropdown
                 m_FilterGroupDropdown.options.Clear();
@@ -173,7 +140,7 @@ namespace Unity.Reflect.Viewer.UI
                     // show no data
                     ClearFilterList();
                     m_FilterGroupDropdown.interactable = false;
-                    m_FilterGroupDropdown.options.Add(new TMP_Dropdown.OptionData("No Category"));
+                    m_FilterGroupDropdown.options.Add(k_NoCategoryOption);
                     m_NoDataText.gameObject.SetActive(true);
                     m_DropdownMask.SetActive(true);
                 }
@@ -196,7 +163,7 @@ namespace Unity.Reflect.Viewer.UI
 
             }
 
-            if (data.filterItemInfos != m_CurrentFilterKeys)
+            if (!EnumerableExtension.SafeSequenceEquals(data.filterItemInfos, m_CurrentFilterKeys))
             {
                 ClearFilterList();
                 foreach (var filterItemInfo in data.filterItemInfos)
@@ -256,6 +223,21 @@ namespace Unity.Reflect.Viewer.UI
         void OnDialogButtonClicked()
         {
             var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.Filters;
+            bool filterActive = !string.IsNullOrEmpty(UIStateManager.current.projectStateData.highlightFilter.filterKey) ||
+                !string.IsNullOrEmpty(UIStateManager.current.projectStateData.highlightFilter.groupKey);
+
+            // enable selection when BimInfo is open
+            var navigationState = UIStateManager.current.stateData.navigationState;
+            if (filterActive)
+            {
+                navigationState.selectionUsageCount++;
+            }
+            else
+            {
+                navigationState.selectionUsageCount--;
+            }
+
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
         }
     }

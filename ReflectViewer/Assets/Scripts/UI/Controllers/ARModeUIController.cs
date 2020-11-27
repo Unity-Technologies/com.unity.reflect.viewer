@@ -1,60 +1,106 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using SharpFlux;
 #if UNITY_EDITOR
 using UnityEditor.MARS.Simulation;
+using Unity.MARS.Simulation;
+using Unity.MARS.Providers.Synthetic;
 #endif
-using Unity.MARS;
-using Unity.MARS.Data;
 using Unity.MARS.Providers;
-using Unity.MARS.Query;
-using Unity.XRTools.ModuleLoader;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Reflect.Viewer.Input;
 using UnityEngine.Rendering.Universal;
+using Object = UnityEngine.Object;
 
 namespace Unity.Reflect.Viewer.UI
 {
     /// <summary>
     /// Controller responsible for managing the selection of the type of orbit tool
     /// </summary>
-    public class ARModeUIController : MonoBehaviour
+    public class ARModeUIController : MonoBehaviour, IExposedPropertyTable
     {
 #pragma warning disable CS0649
         [SerializeField]
         InputActionAsset m_InputActionAsset;
         [SerializeField, Tooltip("Rate at which to rotate object with a drag.")]
         float m_RotationRateDegreesDrag = 100.0f;
+        [SerializeField]
+        public ScriptableObject[] InstructionUIList;
+        [SerializeField]
+        List<PropertyName> m_PropertyNameList;
+        [SerializeField]
+        List<Object> m_ReferenceList;
 
-        public Canvas m_InstructionUICanvas;
-        public Raycaster m_Raycaster;
+        [SerializeField]
+        GameObject m_InstructionUI;
+
+        [SerializeField]
+        float m_DefaultSimulationCameraHeight = 1.7f;
 #pragma warning restore CS0649
 
-        private const string instructionFindAPlaneText = "Pan your device to find a horizontal surface...";
-        private const string instructionConfirmPlacementText = "Adjust your model as desired and press OK.";
-
         bool m_ToolbarsEnabled;
-        NavigationMode? m_CachedNavigationMode;
-        InstructionUI? m_CachedInstructionUI;
+        InstructionUIState? m_CachedInstructionUI;
         bool? m_CachedOperationCancelled;
+        bool? m_CachedPlacementGesturesEnabled;
+        bool? m_CachedAREnabled;
 
-        MARSCamera m_MARSCamera;
+        MARS.MARSCamera m_MARSCamera;
         UniversalAdditionalCameraData m_CameraData;
+        float m_InitialScaleSize;
+        ArchitectureScale? m_CachedModelScale;
+        bool m_ScaleActionInProgress;
+        Array m_ScaleValues;
+        IInstructionUI m_CurrentInstructionUI;
+        ARMode? m_ArMode;
+        DialogType m_CurrentActiveDialog = DialogType.None;
 
         void Awake()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
             UIStateManager.arStateChanged += OnARStateDataChanged;
 
-            m_MARSCamera = Camera.main.GetComponent<MARSCamera>();
+            m_MARSCamera = Camera.main.GetComponent<MARS.MARSCamera>();
             m_CameraData = Camera.main.GetComponent<UniversalAdditionalCameraData>();
 
             m_InputActionAsset["Placement Rotate Action"].performed += OnPlacementRotateAction;
+            m_InputActionAsset["Placement Scale Action"].started += OnPlacementScaleActionStarted;
+            m_InputActionAsset["Placement Scale Action"].performed += OnPlacementScaleAction;
+
+            m_ScaleValues = Enum.GetValues(typeof(ArchitectureScale));
+
+            foreach (var obj in InstructionUIList)
+            {
+                var instructionUI = obj as IInstructionUI;
+                instructionUI.Initialize(this);
+            }
+        }
+
+        private void OnPlacementScaleActionStarted(InputAction.CallbackContext context)
+        {
+            if (m_CachedPlacementGesturesEnabled != true)
+                return;
+
+            PinchGestureInteraction interaction = context.interaction as PinchGestureInteraction;
+            if (interaction?.currentGesture != null)
+            {
+                PinchGesture pinchGesture = interaction?.currentGesture as PinchGesture;
+                m_InitialScaleSize = pinchGesture.gap;
+                m_CachedModelScale = UIStateManager.current.stateData.modelScale;
+                m_ScaleActionInProgress = true;
+                pinchGesture.onFinished += OnPlacementScaleActionFinished;
+            }
+        }
+
+        private void OnPlacementScaleActionFinished(PinchGesture context)
+        {
+            m_ScaleActionInProgress = false;
         }
 
         private void OnPlacementRotateAction(InputAction.CallbackContext context)
         {
-            if (m_CachedInstructionUI != InstructionUI.ConfirmPlacement)
+            if (OrphanUIController.isTouchBlockedByUI || m_CachedPlacementGesturesEnabled != true || m_ScaleActionInProgress)
                 return;
 
             if (context.control.IsPressed())
@@ -72,10 +118,42 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        private void Start()
+        private void OnPlacementScaleAction(InputAction.CallbackContext context)
+        {
+            if (m_CachedPlacementGesturesEnabled != true)
+                return;
+
+            PinchGestureInteraction interaction = context.interaction as PinchGestureInteraction;
+            if (interaction?.currentGesture != null)
+            {
+                PinchGesture pinchGesture = interaction?.currentGesture as PinchGesture;
+                var ratio = m_InitialScaleSize / pinchGesture.gap; // inverted because scale size is 1/N
+                var newScale = GetNearestEnumValue((float)m_CachedModelScale * ratio);
+                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, newScale));
+            }
+        }
+
+        private ArchitectureScale GetNearestEnumValue(float value)
+        {
+            ArchitectureScale returnValue = ArchitectureScale.OneToOne;
+            float distance = float.MaxValue;
+            foreach (var enumValue in m_ScaleValues)
+            {
+                var newValue =  Math.Abs(value - Convert.ToSingle(enumValue));
+                if (newValue < distance)
+                {
+                    returnValue = (ArchitectureScale)enumValue;
+                    distance = newValue;
+                }
+            }
+            return returnValue;
+        }
+
+        void Start()
         {
             // since this starts on async scene load, needs to be up to date
             OnStateDataChanged(UIStateManager.current.stateData);
+            OnARStateDataChanged(UIStateManager.current.arStateData);
         }
 
         void OnStateDataChanged(UIStateData stateData)
@@ -85,70 +163,20 @@ namespace Unity.Reflect.Viewer.UI
                 m_ToolbarsEnabled = stateData.toolbarsEnabled;
             }
 
-            if (m_CachedNavigationMode != stateData.navigationState.navigationMode && m_ToolbarsEnabled)
-            {
-                m_CachedNavigationMode = stateData.navigationState.navigationMode;
-                if (m_CachedNavigationMode == NavigationMode.AR)
-                {
-                    StartCoroutine(ResetInstructionUI());
-                }
-                else
-                {
-                    var m_actionMap = m_InputActionAsset.FindActionMap("AR", true);
-                    m_actionMap.Disable();
-
-                    // disable SimulationView
-                    EnableSimulationViewInEditor(false);
-
-                    // enable RootNode
-                    m_MARSCamera.enabled = false;
-                    // return to default Renderer
-                    m_CameraData.SetRenderer((int)UniversalRenderer.DefaultForwardRenderer);
-
-
-                    UIStateManager.current.m_RootNode.SetActive(true);
-
-                    if (UIStateManager.current.SessionReady())
-                    {
-                        // Pause MARSSession
-                        UIStateManager.current.StopDetectingPlanes();
-                        UIStateManager.current.StopDetectingPoints();
-                        UIStateManager.current.PauseSession();
-                    }
-                }
-            }
-
             if (m_CachedOperationCancelled != stateData.operationCancelled && m_ToolbarsEnabled)
             {
                 m_CachedOperationCancelled = stateData.operationCancelled;
                 if (m_CachedOperationCancelled == true)
                 {
-                    switch (m_CachedInstructionUI)
-                    {
-                        case InstructionUI.ConfirmPlacement:
-                        case InstructionUI.AimToPlaceBoundingBox:
-                        {
-                            m_Raycaster.ResetTransformation();
-                            break;
-                        }
-                    }
-
-                    StartCoroutine(AcknowledgeCancel());
+                    m_CurrentInstructionUI.Cancel();
                 }
             }
-        }
 
-        private IEnumerator AcknowledgeCancel()
-        {
-            yield return new WaitForSeconds(0);
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Cancel, false));
-        }
-
-        private IEnumerator ResetInstructionUI()
-        {
-            yield return new WaitForSeconds(0);
-            m_CachedInstructionUI = null;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUI, InstructionUI.Init));
+            if (m_CurrentActiveDialog != stateData.activeDialog)
+            {
+                m_CurrentActiveDialog = stateData.activeDialog;
+                m_InstructionUI.SetActive(m_CurrentActiveDialog == DialogType.None);
+            }
         }
 
         private void EnableSimulationViewInEditor(bool enable)
@@ -156,127 +184,156 @@ namespace Unity.Reflect.Viewer.UI
 #if UNITY_EDITOR
             SimulationSettings.instance.ShowSimulatedEnvironment = enable;
             SimulationSettings.instance.ShowSimulatedData = enable;
+
+            if (enable)
+            {
+                MARSEnvironmentManager.instance.EnvironmentChanged += InitSimulationCameraPosition;
+            }
+            else
+            {
+                MARSEnvironmentManager.instance.EnvironmentChanged -= InitSimulationCameraPosition;
+            }
 #endif
         }
 
         void OnARStateDataChanged(UIARStateData arStateData)
         {
-            if (m_CachedInstructionUI != arStateData.instructionUI && m_CachedNavigationMode == NavigationMode.AR)
+            if (m_CachedAREnabled != arStateData.arEnabled)
             {
-                m_CachedInstructionUI = arStateData.instructionUI;
-                switch (m_CachedInstructionUI)
+                if (arStateData.arEnabled)
                 {
-                    case InstructionUI.Init:
+                    EnableARMode();
+                }
+                else
+                {
+                    DisableARMode();
+                }
+                m_CachedAREnabled = arStateData.arEnabled;
+            }
+
+            if (m_ArMode != arStateData.arMode)
+            {
+                m_ArMode = arStateData.arMode;
+                if (m_ArMode == null)
+                    return;
+
+                m_CurrentInstructionUI = null;
+                foreach (var obj in InstructionUIList)
+                {
+                    var instructionUI = obj as IInstructionUI;
+                    if (instructionUI.arMode == arStateData.arMode)
                     {
-                        var m_actionMap = m_InputActionAsset.FindActionMap("AR", true);
-                        m_actionMap.Enable();
-
-                        // enable SimulationView
-                        EnableSimulationViewInEditor(true);
-
-                        // disable RootNode
-                        UIStateManager.current.m_RootNode.SetActive(false);
-                        UIStateManager.current.m_BoundingBoxRootNode.SetActive(false);
-                        // Set AR Renderer
-                        m_CameraData.SetRenderer((int)UniversalRenderer.ARRenderer);
-                        m_MARSCamera.enabled = true;
-
-                        // un-Pause MARSSession
-                        UIStateManager.current.StartDetectingPlanes();
-                        UIStateManager.current.StartDetectingPoints();
-                        UIStateManager.current.ResumeSession();
-
-                        // move next InstructionUI
-                        StartCoroutine(MoveNext());
-                        break;
-                    }
-
-                    case InstructionUI.CrossPlatformFindAPlane:
-                    {
-                        StartCoroutine(InstructionFindAPlaneCoroutine());
-                        break;
-                    }
-
-                    case InstructionUI.AimToPlaceBoundingBox:
-                    {
-                        StartCoroutine(InstructionAimToPlaceBoundingBox());
-                        break;
-                    }
-                    case InstructionUI.ConfirmPlacement:
-                    {
-                        StartCoroutine(InstructionConfirmPlacement());
-                        break;
-                    }
-                    case InstructionUI.OnBoardingComplete:
-                    {
-                        StartCoroutine(InstructionOnBoardingComplete());
+                        m_CurrentInstructionUI = instructionUI;
                         break;
                     }
                 }
+
+                if (m_CurrentInstructionUI == null)
+                {
+                    Debug.LogError("AR Instruction UI is null");
+                    return;
+                }
+                m_CurrentInstructionUI.Restart();
+            }
+
+            if (m_CachedInstructionUI != arStateData.instructionUIState)
+            {
+                m_CachedInstructionUI = arStateData.instructionUIState;
+                if (m_CachedInstructionUI == InstructionUIState.Init)
+                {
+                    StartCoroutine(StartInstrucitonAR());
+                }
+            }
+
+            if (m_CachedPlacementGesturesEnabled != arStateData.placementGesturesEnabled)
+            {
+                m_CachedPlacementGesturesEnabled = arStateData.placementGesturesEnabled;
             }
         }
 
-        IEnumerator MoveNext()
+        void EnableARMode()
         {
-            var next = UIStateManager.current.arStateData.instructionUI + 1;
+            var m_actionMap = m_InputActionAsset.FindActionMap("AR", true);
+            m_actionMap.Enable();
 
-            yield return new WaitForSeconds(0);
+            // enable SimulationView
+            EnableSimulationViewInEditor(true);
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUI, next));
+            // disable RootNode
+            UIStateManager.current.m_RootNode.SetActive(false);
+            UIStateManager.current.m_BoundingBoxRootNode.SetActive(false);
+            // Set AR Renderer
+            m_CameraData.SetRenderer((int) UniversalRenderer.ARRenderer);
+            m_MARSCamera.enabled = true;
+
+            // un-Pause MARSSession
+            UIStateManager.current.StartDetectingPlanes();
+            UIStateManager.current.StartDetectingPoints();
+            UIStateManager.current.ResumeSession();
+
+            // Enable all the culling mask layer to allow Mars to be able to render the simulation view
+            m_MARSCamera.GetComponent<Camera>().cullingMask = -1;
+
+            InitSimulationCameraPosition();
         }
 
-        IEnumerator InstructionAimToPlaceBoundingBox()
+        void DisableARMode()
         {
-            UIStateManager.current.m_PlacementRules.SetActive(true);
+            var m_actionMap = m_InputActionAsset.FindActionMap("AR", true);
+            m_actionMap.Disable();
 
-            yield return new WaitForSeconds(0);
+            // disable SimulationView
+            EnableSimulationViewInEditor(false);
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowBoundingBoxModel, false));
+            // enable RootNode
+            m_MARSCamera.enabled = false;
+            // return to default Renderer
+            m_CameraData.SetRenderer((int) UniversalRenderer.DefaultForwardRenderer);
 
-            m_InstructionUICanvas.enabled = false;
+
+            UIStateManager.current.m_RootNode.SetActive(true);
+
+            if (UIStateManager.current.SessionReady())
+            {
+                // Pause MARSSession
+                UIStateManager.current.StopDetectingPlanes();
+                UIStateManager.current.StopDetectingPoints();
+                UIStateManager.current.PauseSession();
+            }
+
+            // Disable the gizmo layer when we are not in AR.
+            m_MARSCamera.GetComponent<Camera>().cullingMask &= ~(1 << LayerMask.NameToLayer("Gizmo"));
         }
 
-        IEnumerator InstructionConfirmPlacement()
+        void InitSimulationCameraPosition()
         {
-            UIStateManager.current.m_PlacementRules.SetActive(false);
+#if UNITY_EDITOR
+            // Set camera height position
+            Vector3 camPos = Camera.main.transform.position;
+            camPos.y = m_DefaultSimulationCameraHeight;
+            Camera.main.transform.position = camPos;
 
-            m_Raycaster.SetObjectToPlace(UIStateManager.current.m_BoundingBoxRootNode.gameObject);
-            m_Raycaster.PlaceObject();
+            // Set environement Prefab to keep the same hight the next time the scene is launch
+            MARSEnvironmentSettings marsEnvironmentSettings = SimulationSettings.instance.EnvironmentPrefab.GetComponent<MARSEnvironmentSettings>();
+            Pose DefaultCameraWorldPose = MARSEnvironmentManager.instance.DeviceStartingPose;
+            DefaultCameraWorldPose.position.y = m_DefaultSimulationCameraHeight;
 
-            yield return new WaitForSeconds(0);
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowBoundingBoxModel, true));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithLevel,
-                new StatusMessageData() { text=instructionConfirmPlacementText, level=StatusMessageLevel.Instruction }));
+            // Set MARS provider which drive the initial camera position.
+            marsEnvironmentSettings.SetSimulationStartingPose(DefaultCameraWorldPose, true);
+            var simCameraPoseProvider = FindObjectOfType<SimulatedCameraPoseProvider>();
+            if (simCameraPoseProvider != null)
+                simCameraPoseProvider.transform.localPosition = DefaultCameraWorldPose.position;
+#endif
         }
 
-        IEnumerator InstructionFindAPlaneCoroutine()
+        IEnumerator StartInstrucitonAR()
         {
             yield return new WaitForSeconds(0);
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetPlacementRules, null));
-
-            // default scale 1:100
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, ArchitectureScale.OneToOneHundred));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar,
-                ToolbarType.ARInstructionSidebar));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusLevel,
-                StatusMessageLevel.Instruction));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithLevel,
-                new StatusMessageData() { text=instructionFindAPlaneText, level=StatusMessageLevel.Instruction }));
-
-            m_Raycaster.Reset();
-            m_InstructionUICanvas.enabled = true;
-            m_Raycaster.SetObjectToPlace(UIStateManager.current.m_BoundingBoxRootNode.gameObject);
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUIState, InstructionUIState.Started));
         }
 
-        private void OnDisable()
+        void OnDestroy()
         {
             StopAllCoroutines();
 
@@ -285,30 +342,58 @@ namespace Unity.Reflect.Viewer.UI
 
             DestroyImmediate(UIStateManager.current.m_PlacementRules);
             UIStateManager.current.m_PlacementRules = null;
+
             UIStateManager.current.ResetSession();
             UIStateManager.current.PauseSession();
 
-            m_CachedNavigationMode = null;
             m_CachedInstructionUI = null;
             m_CachedOperationCancelled = null;
 
             // remove input system hooks
             m_InputActionAsset["Placement Rotate Action"].performed -= OnPlacementRotateAction;
+            m_InputActionAsset["Placement Scale Action"].started -= OnPlacementScaleActionStarted;
+            m_InputActionAsset["Placement Scale Action"].performed -= OnPlacementScaleAction;
             UIStateManager.stateChanged -= OnStateDataChanged;
             UIStateManager.arStateChanged -= OnARStateDataChanged;
         }
 
-        IEnumerator InstructionOnBoardingComplete()
+        public void SetReferenceValue(PropertyName id, Object value)
         {
-            yield return new WaitForSeconds(0);
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusLevel, StatusMessageLevel.Info));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
-
-            m_Raycaster.SwapModel(UIStateManager.current.m_BoundingBoxRootNode, UIStateManager.current.m_RootNode);
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARSidebar));
+            int index = m_PropertyNameList.IndexOf(id);
+            if (index != -1)
+            {
+                m_ReferenceList[index] = value;
+            }
+            else
+            {
+                m_PropertyNameList.Add(id);
+                m_ReferenceList.Add(value);
+            }
         }
+
+        public Object GetReferenceValue(PropertyName id, out bool idValid)
+        {
+            int index = m_PropertyNameList.IndexOf(id);
+            if (index != -1)
+            {
+                idValid = true;
+                return m_ReferenceList[index];
+            }
+            idValid = false;
+            return null;
+        }
+
+        public void ClearReferenceValue(PropertyName id)
+        {
+            int index = m_PropertyNameList.IndexOf(id);
+            if (index != -1)
+            {
+                m_ReferenceList.RemoveAt(index);
+                m_PropertyNameList.RemoveAt(index);
+            }
+        }
+
+        // TODO: add OnValidate to cleanup stale ExposedReferences
+        // TODO: user serialized dictionary
     }
 }

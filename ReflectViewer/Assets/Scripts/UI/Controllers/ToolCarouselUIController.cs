@@ -8,7 +8,7 @@ using UnityEngine.UI;
 namespace Unity.Reflect.Viewer.UI
 {
     /// <summary>
-    /// Controller responsible for managing the selection of the type of orbit tool 
+    /// Controller responsible for managing the selection of the type of orbit tool
     /// </summary>
     [RequireComponent(typeof(DialogWindow))]
     public class ToolCarouselUIController : MonoBehaviour
@@ -43,11 +43,12 @@ namespace Unity.Reflect.Viewer.UI
         private void OnCarouselValueChanged(int carouselIndex)
         {
             // NOTE: this assumes carouselIndex is in the exact order as NavigationMode enum!
-            var navigationMode = (NavigationMode)carouselIndex;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationMode, navigationMode));
+            var navigationState = UIStateManager.current.stateData.navigationState;
+            navigationState.navigationMode = (NavigationMode)carouselIndex;
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
 
             // NOTE: this assumes carouselIndex is in the exact order as ToolbarType enum!
-            var toolbarType = (ToolbarType)carouselIndex; 
+            var toolbarType = (ToolbarType)carouselIndex;
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, toolbarType));
 
         }

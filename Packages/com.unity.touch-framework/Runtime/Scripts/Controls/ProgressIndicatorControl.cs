@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,6 +13,12 @@ namespace Unity.TouchFramework
 
         [SerializeField]
         Image m_ProgressImage;
+
+        [SerializeField]
+        RectTransform m_LeftCorner;
+
+        [SerializeField]
+        RectTransform  m_RightCorner;
 
         [SerializeField]
         float m_LoopingDuration = 2.0f;
@@ -43,7 +49,7 @@ namespace Unity.TouchFramework
             };
             m_LoopingTween.AddOnChangedCallback(OnLoopingTweenChanged);
 
-
+            UpdateCorners();
             m_TweenRunner = new TweenRunner<FloatTween>();
             m_TweenRunner.Init(this);
         }
@@ -51,12 +57,14 @@ namespace Unity.TouchFramework
         void OnLoopingTweenChanged(float rotation)
         {
             m_ProgressBgImage.transform.localRotation = Quaternion.Euler(0, 0, rotation);
+            UpdateCorners();
         }
 
         void OnProgressTweenChanged(float progress)
         {
             m_CurrentProgress = progress;
             m_ProgressImage.fillAmount = progress;
+            UpdateCorners();
         }
 
         public void StopLooping()
@@ -66,7 +74,7 @@ namespace Unity.TouchFramework
 
         public void StartLooping()
         {
-            m_ProgressImage.fillAmount = 0.75f;
+            m_ProgressImage.fillAmount = 0.25f;
             m_TweenRunner.StartTween(m_LoopingTween, EaseType.Linear, true, TweenLoopType.Loop);
         }
 
@@ -76,6 +84,7 @@ namespace Unity.TouchFramework
             if (instant)
             {
                 m_CurrentProgress = m_ProgressImage.fillAmount = progress;
+                UpdateCorners();
             }
             else
             {
@@ -83,6 +92,45 @@ namespace Unity.TouchFramework
                 m_ProgressTween.targetValue = progress;
                 m_TweenRunner.StartTween(m_ProgressTween);
             }
+        }
+
+        void UpdateCorners()
+        {
+            var fillVector = Vector3.zero;
+            float leftCornerAngle = 180.0f + 90.0f * m_ProgressImage.fillOrigin;
+            switch (m_ProgressImage.fillOrigin)
+            {
+                //bottom
+                case 0:
+                    fillVector = Vector3.down;
+                    break;
+                //right
+                case 1:
+                    fillVector = Vector3.right;
+                    break;
+                //top
+                case 2:
+                    fillVector = Vector3.up;
+                    break;
+                //left
+                case 3:
+                    fillVector = Vector3.left;
+                    break;
+            }
+
+            var cornerSize = m_LeftCorner.rect.size;
+            var barSize = m_ProgressImage.rectTransform.rect.size;
+            var barRotation = m_ProgressImage.rectTransform.localRotation;
+
+            m_LeftCorner.localPosition = barRotation * fillVector * 0.5f * (barSize.x - cornerSize.x);
+            m_LeftCorner.localRotation = barRotation * Quaternion.Euler(0.0f, 0.0f, leftCornerAngle);
+
+            var fillRotation = Quaternion.AngleAxis(m_ProgressImage.fillAmount * 360.0f, Vector3.forward);
+            var leftToRght = m_ProgressImage.fillClockwise ? Quaternion.Inverse(fillRotation) : fillRotation;
+
+            m_RightCorner.localPosition = leftToRght * m_LeftCorner.localPosition;
+            m_RightCorner.localRotation = leftToRght * m_LeftCorner.localRotation;
+
         }
     }
 }

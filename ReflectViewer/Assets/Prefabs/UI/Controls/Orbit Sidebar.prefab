@@ -256,6 +256,7 @@ GameObject:
   - component: {fileID: 7585072520868539053}
   - component: {fileID: 1064189753665916800}
   - component: {fileID: -486820466049924746}
+  - component: {fileID: 4844646983541490649}
   m_Layer: 5
   m_Name: Orbit Sidebar
   m_TagString: Untagged
@@ -270,7 +271,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7585072520868539054}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
@@ -356,6 +357,20 @@ MonoBehaviour:
   m_Device: 2
   m_Alignment: 1
   m_PositionOffset: {x: 0, y: 0, z: 0}
+--- !u!114 &4844646983541490649
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7585072520868539054}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59233eb489a75ca499435f935aecdc90, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Backgrounds:
+  - {fileID: 7585072520073218123}
 --- !u!1001 &2388281493432800869
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -850,7 +865,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: 9ca5668b6e42d2a46b5501b888a900ae,
+      objectReference: {fileID: 21300000, guid: d427124b3f5e8134284bc7964a07c794,
         type: 3}
     - target: {fileID: 9023183463385480652, guid: 7d3d9cf44aef948e084413f168e6e757,
         type: 3}

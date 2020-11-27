@@ -25,52 +25,43 @@ namespace Unity.Reflect.Viewer.UI
         int m_CurrentLayer;
         bool m_SelectMode;
         bool m_Pressed;
-        bool m_IsBimInfoOpen;
-        bool m_IsMetadataFilterActive;
+        ToolState? m_CachedToolState;
+        NavigationState? m_CachedNavigationState;
 
         ISpatialPicker<Tuple<GameObject, RaycastHit>> m_ObjectPicker;
         Camera m_Camera;
 
-        void Start()
+        void Awake()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
             UIStateManager.projectStateChanged += OnProjectStateDataChanged;
-        }
 
-        void Update()
-        {
-            if (!m_SelectMode)
-                return;
-
-            if (!m_Pressed && IsTouchStart())
-            {
-                m_Pressed = true;
-            }
-
-            if(m_Pressed)
-            {
-                var touchEndPosition = IsTouchEnd();
-                if (touchEndPosition != Vector2.zero)
-                {
-                    TapScreen(touchEndPosition);
-                    m_Pressed = false;
-                }
-            }
+            OrphanUIController.onPointerClick += OnPointerClick;
         }
 
         void OnStateDataChanged(UIStateData data)
         {
-            m_SelectMode = data.toolState.activeTool == ToolType.SelectTool;
-            m_IsBimInfoOpen = data.activeSubDialog == DialogType.BimInfo;
+            bool somethingChanged = false;
 
-            UpdateSelectedObjectHighlight();
+            if (m_CachedNavigationState != data.navigationState)
+            {
+                m_CachedNavigationState = data.navigationState;
+                somethingChanged = true;
+            }
+            if (m_CachedToolState != data.toolState)
+            {
+                m_SelectMode = data.toolState.activeTool == ToolType.SelectTool;
+                m_CachedToolState = data.toolState;
+                somethingChanged = true;
+            }
+
+            if (somethingChanged)
+                UpdateSelectedObjectHighlight();
         }
 
         void OnProjectStateDataChanged(UIProjectStateData data)
         {
             m_ObjectPicker = data.objectPicker;
-            m_IsMetadataFilterActive = !string.IsNullOrEmpty(data.highlightFilter.filterKey) || !string.IsNullOrEmpty(data.highlightFilter.groupKey);
-
             if (data.objectSelectionInfo != m_CurrentObjectSelectionInfo)
             {
                 ResetSelectedObjectHighlight();
@@ -143,7 +134,12 @@ namespace Unity.Reflect.Viewer.UI
 
         bool ShouldDisplaySelection()
         {
-            return m_IsMetadataFilterActive || m_IsBimInfoOpen;
+            if (m_CachedNavigationState != null)
+            {
+                return m_CachedNavigationState.Value.selectionUsageCount != 0;
+            }
+
+            return false;
         }
 
         static void SetLayer(GameObject obj, string layerName)
@@ -156,8 +152,13 @@ namespace Unity.Reflect.Viewer.UI
             obj.SetLayerRecursively(layer);
         }
 
-        void TapScreen(Vector2 screenPoint)
+        void OnPointerClick(BaseEventData data)
         {
+            if (!m_SelectMode)
+                return;
+
+            var screenPoint = data.currentInputModule.input.mousePosition;
+
             var info = new ObjectSelectionInfo();
 
             if (m_PreviousScreenPoint.HasValue && (screenPoint - m_PreviousScreenPoint.Value).magnitude <= m_Tolerance)
@@ -188,49 +189,6 @@ namespace Unity.Reflect.Viewer.UI
 
             m_PreviousScreenPoint = screenPoint;
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SelectObjects, info));
-        }
-
-        static bool IsTouchStart()
-        {
-            var id = -1;
-            var pressed = false;
-
-
-            if (Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Began)
-            {
-                id = Input.GetTouch(0).fingerId;
-                pressed = true;
-            }
-
-            if (!pressed)
-            {
-                pressed = Input.GetMouseButtonDown(0);
-            }
-
-            if (pressed)
-            {
-                pressed = !EventSystem.current.IsPointerOverGameObject(id);
-            }
-
-            return pressed;
-        }
-
-        static Vector2 IsTouchEnd()
-        {
-            var touchEnd = Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Ended;
-
-            if (touchEnd)
-            {
-                return Input.GetTouch(0).position;
-            }
-
-            touchEnd = Input.GetMouseButtonUp(0);
-            if (touchEnd)
-            {
-                return Input.mousePosition;
-            }
-
-            return Vector2.zero;
         }
     }
 }

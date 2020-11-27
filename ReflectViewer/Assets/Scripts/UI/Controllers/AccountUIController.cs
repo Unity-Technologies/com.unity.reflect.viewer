@@ -20,6 +20,8 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         Button m_LogoutButton;
         [SerializeField]
+        Button m_BIM360Button;
+        [SerializeField]
         TextMeshProUGUI m_UserNameText;
 #pragma warning restore CS0649
 
@@ -30,6 +32,8 @@ namespace Unity.Reflect.Viewer.UI
 
         TextMeshProUGUI m_ProfileButtonText;
 
+        const string k_Bim360Link = "https://dashboard.reflect.unity3d.com/";
+
         void Awake()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
@@ -39,6 +43,9 @@ namespace Unity.Reflect.Viewer.UI
             m_ProfileButtonImage = m_DialogButton.GetComponent<Image>();
             m_ProfileButtonIcon = m_DialogButton.transform.GetChild(0).GetComponent<Image>();
             m_ProfileButtonText = m_DialogButton.transform.GetChild(1).GetComponent<TextMeshProUGUI>();
+#if UNITY_EDITOR
+            m_LogoutButton.interactable = false;
+#endif
         }
 
         void OnStateDataChanged(UIStateData stateData)
@@ -89,6 +96,12 @@ namespace Unity.Reflect.Viewer.UI
         {
             m_DialogButton.onClick.AddListener(OnDialogButtonClick);
             m_LogoutButton.onClick.AddListener(OnLogoutButtonClick);
+            m_BIM360Button.onClick.AddListener(OnBIM360ButtonClick);
+        }
+
+        void OnBIM360ButtonClick()
+        {
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenURL, k_Bim360Link));
         }
 
         void OnLogoutButtonClick()
@@ -104,10 +117,8 @@ namespace Unity.Reflect.Viewer.UI
             switch (session.sessionState.loggedState)
             {
                 case LoginState.LoggedIn:
-#if !UNITY_EDITOR
                     var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.Account;
                     UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, dialogType));
-#endif
                     break;
                 case LoginState.LoggingIn:
                 case LoginState.LoggedOut:

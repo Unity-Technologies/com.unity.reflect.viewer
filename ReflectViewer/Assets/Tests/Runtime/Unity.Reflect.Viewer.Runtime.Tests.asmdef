@@ -1,0 +1,23 @@
+{
+    "name": "Unity.Reflect.Viewer.Runtime.Tests",
+    "references": [
+        "GUID:27619889b8ba8c24980f49ee34dbb44a",
+        "GUID:0acc523941302664db1f4e527237feb3",
+        "GUID:74d2eea16291e475bbc857905e4d8f8e",
+        "GUID:ef7f6b716a264b049993a584d963484c",
+        "GUID:b9a30ca79885842dfb9a603455a835cc"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

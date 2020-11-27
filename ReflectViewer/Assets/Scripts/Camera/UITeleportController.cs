@@ -34,7 +34,7 @@ namespace UnityEngine.Reflect.Viewer
         GameObject m_IndicatorInstance;
         Vector3 m_IndicatorScale = new Vector3(1f, 0f, 1f);
 
-        ISpatialPicker<Tuple<GameObject, RaycastHit>> m_ObjectPicker;
+        ISpatialPicker<Tuple<GameObject, RaycastHit>> m_TeleportPicker;
         readonly List<Tuple<GameObject, RaycastHit>> m_Results = new List<Tuple<GameObject, RaycastHit>>();
 
         Vector3? m_PreviousTarget;
@@ -82,7 +82,7 @@ namespace UnityEngine.Reflect.Viewer
 
         void OnProjectStateDataChanged(UIProjectStateData data)
         {
-            m_ObjectPicker = data.objectPicker;
+            m_TeleportPicker = data.teleportPicker;
 
             if (m_PreviousTarget == data.teleportTarget)
                 return;
@@ -117,7 +117,7 @@ namespace UnityEngine.Reflect.Viewer
             if (m_IsTeleporting)
                 return;
 
-            m_ObjectPicker.Pick(m_Camera.ScreenPointToRay(position), m_Results);
+            m_TeleportPicker.Pick(m_Camera.ScreenPointToRay(position), m_Results);
             if (m_Results.Count == 0)
                 return;
 

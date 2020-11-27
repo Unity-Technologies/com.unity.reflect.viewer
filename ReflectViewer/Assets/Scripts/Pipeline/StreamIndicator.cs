@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using Unity.Reflect;
 using UnityEngine.Events;
 using UnityEngine.Reflect.Pipeline;
 
@@ -82,7 +83,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         [HideInInspector]
         public StreamIndicatorSettings settings;
 
-        protected override StreamIndicator Create(ISyncModelProvider provider, IExposedPropertyTable resolver)
+        protected override StreamIndicator Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
             var node = new StreamIndicator(settings);
 

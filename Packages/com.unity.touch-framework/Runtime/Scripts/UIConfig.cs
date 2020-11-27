@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace Unity.TouchFramework
 {
@@ -51,6 +51,11 @@ namespace Unity.TouchFramework
         /// The duration in seconds of a dialog fading in and out when being opened or closed
         /// </summary>
         public static float dialogFadeTime { get; } = 0.1f;
+
+        /// <summary>
+        /// The duration in seconds of a widget folding and unfolding
+        /// </summary>
+        public static float widgetsFoldTime { get; } = 0.5f;
 
         /// <summary>
         /// The duration in seconds of a button press before triggering a long press event

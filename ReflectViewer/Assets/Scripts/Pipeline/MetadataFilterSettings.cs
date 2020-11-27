@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -10,6 +10,11 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
     [Serializable]
     public class MetadataFilterSettings
     {
+        [System.Serializable]
+        public class MetadataGroupsChangedEvent : UnityEvent<IEnumerable<string>> { }
+        [System.Serializable]
+        public class MetadataCategoriesChangedEvent : UnityEvent<string, IEnumerable<string>> { }
+
         [SerializeField]
         public string[] m_Safelist =
         {
@@ -21,6 +26,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         public List<ForwardRendererData> forwardRendererDatas;
 
         [HideInInspector]
-        public UnityEvent filtersUpdated;
+        public MetadataGroupsChangedEvent groupsChanged;
+
+        [HideInInspector]
+        public MetadataCategoriesChangedEvent categoriesChanged;
     }
 }

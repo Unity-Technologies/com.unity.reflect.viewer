@@ -96,7 +96,7 @@ MonoBehaviour:
   m_HandleOnColor: {r: 0.89411765, g: 0.89411765, b: 0.89411765, a: 1}
   m_BackgroundAreaImage: {fileID: 7807713988146448300}
   m_BackgroundOffColor: {r: 0.18039216, g: 0.18039216, b: 0.18039216, a: 1}
-  m_BackgroundOnColor: {r: 0.23921569, g: 0.23921569, b: 0.23921569, a: 1}
+  m_BackgroundOnColor: {r: 0.1254902, g: 0.5882353, b: 0.9529412, a: 1}
 --- !u!114 &2718811607525333352
 MonoBehaviour:
   m_ObjectHideFlags: 0

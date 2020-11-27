@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: PrimitivesOutlineObjectPBR
+  m_Shader: {fileID: -6465566751694194690, guid: f1259e4d9b417fd4eb4a4ec91d5bd12e,
+    type: 3}
+  m_ShaderKeywords: 
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Floats:
+    - Vector1_103B76E8: 0
+    - Vector1_9C8C92D9: 5
+    - Vector1_EC2A524: 1.34
+    m_Colors:
+    - Color_981ED793: {r: 0, g: 0, b: 0, a: 1}
+    - Color_EF575B08: {r: 0.6320754, g: 0.6320754, b: 0.6320754, a: 1}

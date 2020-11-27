@@ -1,7 +1,7 @@
 ﻿using System;
 using SharpFlux;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.Reflect.Viewer;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -20,15 +20,19 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         ToolButton m_TargetButton;
 
+        [SerializeField]
+        GameObject m_ScaleRadial;
 #pragma warning restore CS0649
 
         bool m_ToolbarsEnabled;
         ToolType? m_CurrentActiveTool;
-        NavigationMode? m_CurrentNavigationMode;
-        InstructionUI? m_CurrentInstructionUI;
+        InstructionUIState? m_CurrentInstructionUI;
         ToolState? m_CurrentToolState;
+        ARToolStateData? m_CachedARToolStateData;
 
-        void Start()
+        SpatialSelector m_ObjectSelector;
+
+        void Awake()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
             UIStateManager.arStateChanged += OnARStateDataChanged;
@@ -37,6 +41,10 @@ namespace Unity.Reflect.Viewer.UI
             m_SelectButton.buttonClicked += OnSelectButtonClicked;
             m_ScaleButton.buttonClicked += OnScaleButtonClicked;
             m_TargetButton.buttonClicked += OnTargetButtonClicked;
+
+            OnStateDataChanged(UIStateManager.current.stateData);
+            OnARStateDataChanged(UIStateManager.current.arStateData);
+            m_ObjectSelector = new SpatialSelector();
         }
 
         void OnStateDataChanged(UIStateData data)
@@ -44,12 +52,6 @@ namespace Unity.Reflect.Viewer.UI
             if (m_ToolbarsEnabled != data.toolbarsEnabled)
             {
                 m_ToolbarsEnabled = data.toolbarsEnabled;
-                OnARStateDataChanged(UIStateManager.current.arStateData);
-            }
-
-            if (m_CurrentNavigationMode != data.navigationState.navigationMode)
-            {
-                m_CurrentNavigationMode = data.navigationState.navigationMode;
                 OnARStateDataChanged(UIStateManager.current.arStateData);
             }
 
@@ -65,31 +67,14 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        void OnARStateDataChanged(UIARStateData stateData)
+        void OnARStateDataChanged(UIARStateData arData)
         {
-            if (m_CurrentNavigationMode !=  NavigationMode.AR)
+            if (m_CachedARToolStateData != arData.arToolStateData)
             {
-                m_BackButton.selected = false;
-                m_SelectButton.selected = false;
-                m_ScaleButton.selected = false;
-                m_TargetButton.selected = false;
-            }
-
-            if (m_CurrentInstructionUI != stateData.instructionUI)
-            {
-                m_CurrentInstructionUI = stateData.instructionUI;
-                if (m_CurrentInstructionUI == InstructionUI.OnBoardingComplete)
-                {
-                    m_BackButton.button.interactable = true;
-                    m_SelectButton.button.interactable = true;
-                    m_ScaleButton.button.interactable = true;
-                }
-                else
-                {
-                    m_BackButton.button.interactable = false;
-                    m_SelectButton.button.interactable = false;
-                    m_ScaleButton.button.interactable = false;
-                }
+                m_SelectButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.selectionEnabled;
+                m_ScaleButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.scaleEnabled;
+                m_BackButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.previousStepEnabled;
+                m_CachedARToolStateData = arData.arToolStateData;
             }
         }
 
@@ -101,6 +86,10 @@ namespace Unity.Reflect.Viewer.UI
         {
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARScaleDial));
             ARScaleRadialUIController.m_previousToolbar = ToolbarType.ARSidebar;
+
+            var radialPosition = m_ScaleRadial.transform.position;
+            radialPosition.y = m_ScaleButton.transform.position.y;
+            m_ScaleRadial.transform.position = radialPosition;
         }
 
         void OnSelectButtonClicked()
@@ -110,15 +99,14 @@ namespace Unity.Reflect.Viewer.UI
 
             var dialogType = m_SelectButton.selected ? DialogType.None : DialogType.BimInfo;
 
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetObjectPicker, m_ObjectSelector));
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, dialogType));
         }
 
         void OnBackButtonClicked()
         {
-            // Back into Instruction Mode
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARInstructionSidebar));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUI, InstructionUI.ConfirmPlacement));
+            UIStateManager.current.arStateData.currentInstructionUI.Back();
         }
     }
 }

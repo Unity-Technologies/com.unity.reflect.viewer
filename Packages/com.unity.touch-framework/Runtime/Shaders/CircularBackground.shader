@@ -19,6 +19,11 @@
             "RenderType"="Transparent"
             "PreviewType"="Plane"
         }
+
+        Cull Off
+        Lighting Off
+        ZWrite Off
+        ZTest [unity_GUIZTestMode]
         Blend SrcAlpha OneMinusSrcAlpha
 
         Pass

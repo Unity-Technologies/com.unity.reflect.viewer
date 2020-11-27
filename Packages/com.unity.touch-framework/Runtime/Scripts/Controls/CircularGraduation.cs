@@ -24,12 +24,18 @@ namespace Unity.TouchFramework
     {
         public float ValueToAngle(float minVal, float maxVal, float angularRange, float value)
         {
+            if (Mathf.Approximately(maxVal, minVal))
+                return 0;
+
             var normalizedValue = (maxVal - value) / (maxVal - minVal);
             return Mathf.Lerp(-angularRange, angularRange, normalizedValue);
         }
 
         public float AngleToValue(float minVal, float maxVal, float angularRange, float angle)
         {
+            if (Mathf.Approximately(maxVal, minVal))
+                return 0;
+
             var normalizedAngle = (angularRange - angle) / (angularRange * 2);
             return Mathf.Lerp(minVal, maxVal, normalizedAngle);
         }
@@ -116,7 +122,10 @@ namespace Unity.TouchFramework
                 }
             }
 
-            RenderScale(s_ScalePixels, parms, scaler, range, parms.lineWidth, 0.5f);
+            if (Math.Abs(parms.scaleDensityHint) > Mathf.Epsilon)
+            {
+                RenderScale(s_ScalePixels, parms, scaler, range, 0.5f);
+            }
 
             m_ScaleTexture.LoadRawTextureData(s_ScalePixels);
             m_ScaleTexture.Apply();
@@ -124,7 +133,7 @@ namespace Unity.TouchFramework
             return m_ScaleMaterial;
         }
 
-        static void RenderScale(byte[] target, Parameters parms, IScaler scaler, Vector2 range, float pxWidth, float intensity)
+        static void RenderScale(byte[] target, Parameters parms, IScaler scaler, Vector2 range, float intensity)
         {
             var delta = Math.Abs(range.y - range.x) / Mathf.Max(1, parms.scaleDensityHint); // value delta between two points.
 
@@ -140,7 +149,7 @@ namespace Unity.TouchFramework
             {
                 var angle = scaler.ValueToAngle(range.x, range.y, parms.angularRange, pos);
                 var normalized = (parms.angularRange - angle) / (parms.angularRange * 2);
-                RenderPoint(target, normalized, pxWidth, intensity);
+                RenderPoint(target, normalized, parms.lineWidth, intensity);
                 pos += gradDelta;
             }
             while (pos < range.y);

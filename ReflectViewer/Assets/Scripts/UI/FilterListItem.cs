@@ -21,6 +21,9 @@ namespace Unity.Reflect.Viewer.UI
 
         [SerializeField]
         Image m_ItemBgImage;
+
+        [SerializeField]
+        Image m_ItemSelectImage;
 #pragma warning restore CS0649
 
         string m_GroupKey;
@@ -33,8 +36,9 @@ namespace Unity.Reflect.Viewer.UI
 
         public string filterKey => m_FilterKey;
 
-        static Color itemSelectedColor { get; } = new Color32(61, 61, 61, 255);
+        static Color itemSelectedColor { get; } = new Color32(41, 41, 41, 127);
         static Color itemColor { get; } = new Color32(24, 24, 24, 255);
+        static Color selectItemIndicatorColor { get; } = new Color32(32, 150, 243, 255);
 
         void Awake()
         {
@@ -60,6 +64,7 @@ namespace Unity.Reflect.Viewer.UI
             m_Text.color = highlight ? UIConfig.propertyTextSelectedColor : UIConfig.propertyTextBaseColor;
             m_Text.fontStyle = highlight ? FontStyles.Bold : FontStyles.Normal;
             m_ItemBgImage.color = highlight ? itemSelectedColor : itemColor;
+            m_ItemSelectImage.color = highlight ? selectItemIndicatorColor : itemColor;
         }
 
         void OnItemButtonClicked()

@@ -16,6 +16,20 @@ MonoBehaviour:
   m_Device: 1
   m_Alignment: 2
   m_PositionOffset: {x: 0, y: 0, z: 0}
+--- !u!114 &7475360943946210179
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8795599405284741593}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59233eb489a75ca499435f935aecdc90, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Backgrounds:
+  - {fileID: 8795599405540111164}
 --- !u!1001 &2103908434750333894
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -117,3 +131,15 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 2103908434750333894}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &8795599405540111164 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7431689930241675514, guid: 473baf46eceace940a99828b642f8ef7,
+    type: 3}
+  m_PrefabInstance: {fileID: 2103908434750333894}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

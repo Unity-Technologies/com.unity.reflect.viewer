@@ -1,15 +1,17 @@
 using System;
 using SharpFlux;
+using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    [ExecuteAlways]
     class OrphanUIController : MonoBehaviour
     {
 #pragma warning disable CS0649
+        [SerializeField]
+        RectTransform m_TapDetectorRect;
         [SerializeField]
         Button m_SyncButton;
         [SerializeField]
@@ -18,87 +20,103 @@ namespace Unity.Reflect.Viewer.UI
         Sprite m_SyncDisabledSprite;
 #pragma warning restore CS0649
 
-        void Awake()
+        public delegate void BaseEventDataHandler(BaseEventData evt);
+        public static event BaseEventDataHandler onPointerClick;
+        public static event BaseEventDataHandler onPointerDown;
+        public static event BaseEventDataHandler onPointerUp;
+        public static event BaseEventDataHandler onDrag;
+        public static event BaseEventDataHandler onBeginDrag;
+        public static event BaseEventDataHandler onEndDrag;
+
+        static bool s_IsPressed;
+        static bool s_IsPointed;
+
+        public static bool isPointBlockedByUI => !s_IsPointed;
+        public static bool isTouchBlockedByUI => !s_IsPressed;
+
+        bool? m_CachedSyndEnabled;
+
+        void Start()
         {
-            UIStateManager.stateChanged += UIStateManagerOnStateChanged;
+            // SetupInterceptorsIfNeeded();
+            EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnPointerEnter, EventTriggerType.PointerEnter);
+            EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnPointerExit, EventTriggerType.PointerExit);
+
+            EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnPointerClick, EventTriggerType.PointerClick);
+            EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnPointerDown, EventTriggerType.PointerDown);
+            EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnPointerUp, EventTriggerType.PointerUp);
+            EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnDrag, EventTriggerType.Drag);
+            EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnBeginDrag, EventTriggerType.BeginDrag);
+            EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnEndDrag, EventTriggerType.EndDrag);
+
+
+            UIStateManager.stateChanged += OnStateDataChanged;
             m_SyncButton.onClick.AddListener(OnSyncButtonClick);
         }
 
-        bool m_Pressed;
-        DateTime m_Time;
-        void Update()
+
+        void OnPointerEnter(BaseEventData eventData)
         {
-            if (!m_Pressed && IsTouchStart())
-            {
-                m_Pressed = true;
-                m_Time = DateTime.Now;
-            }
-
-            if (m_Pressed)
-            {
-                if ((DateTime.Now - m_Time).TotalSeconds > 0.2f)
-                {
-                    m_Pressed = false;
-                }
-                else if (IsTouchEnd())
-                {
-                    m_Pressed = false;
-
-                    // we don't close any dialog with tapping the screen anymore.
-                    // UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
-                }
-            }
+            s_IsPointed = true;
         }
 
-        void UIStateManagerOnStateChanged(UIStateData data)
+
+        void OnPointerExit(BaseEventData eventData)
+        {
+            s_IsPointed = false;
+        }
+
+        void OnPointerClick(BaseEventData eventData)
+        {
+            onPointerClick?.Invoke(eventData);
+        }
+
+        void OnPointerDown(BaseEventData eventData)
+        {
+            s_IsPressed = true;
+            onPointerDown?.Invoke(eventData);
+        }
+
+        void OnPointerUp(BaseEventData eventData)
+        {
+            s_IsPressed = false;
+            onPointerUp?.Invoke(eventData);
+        }
+
+        void OnDrag(BaseEventData eventData)
+        {
+            onDrag?.Invoke(eventData);
+        }
+
+        void OnBeginDrag(BaseEventData eventData)
+        {
+            onBeginDrag?.Invoke(eventData);
+
+        }
+
+        void OnEndDrag(BaseEventData eventData)
+        {
+            onEndDrag?.Invoke(eventData);
+        }
+
+        void OnStateDataChanged(UIStateData data)
         {
             m_SyncButton.interactable = data.toolbarsEnabled;
 
-            var syncButtonSprite = data.syncEnabled ? m_SyncEnabledSprite : m_SyncDisabledSprite;
-            m_SyncButton.image.sprite = syncButtonSprite;
+            if (m_CachedSyndEnabled != data.syncEnabled)
+            {
+                m_SyncButton.image.sprite = data.syncEnabled ? m_SyncEnabledSprite : m_SyncDisabledSprite;
+                m_CachedSyndEnabled = data.syncEnabled;
+            }
         }
 
         void OnSyncButtonClick()
         {
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.Sync)) return;
+
             var enabled = !UIStateManager.current.stateData.syncEnabled;
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSync, enabled));
         }
-
-        bool IsTouchStart()
-        {
-            var id = -1;
-            var pressed = false;
-
-
-            if (Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Began)
-            {
-                id = Input.GetTouch(0).fingerId;
-                pressed = true;
-            }
-
-            if (!pressed)
-            {
-                pressed = Input.GetMouseButtonDown(0);
-            }
-
-            if (pressed)
-            {
-                pressed = !EventSystem.current.IsPointerOverGameObject(id);
-            }
-
-            return pressed;
-        }
-
-        bool IsTouchEnd()
-        {
-            var touchEnd = Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Ended;
-
-            if (!touchEnd)
-            {
-                touchEnd = Input.GetMouseButtonUp(0);
-            }
-            return touchEnd;
-        }
-
     }
 }

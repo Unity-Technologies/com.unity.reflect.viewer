@@ -20,10 +20,10 @@ TagManager:
   - Selection
   - BimFilterSelect
   - BimFilterOthers
-  - 
-  - 
-  - 
-  - 
+  - Gizmo
+  - PlaneSelection
+  - BaseBeam
+  - Beam
   - 
   - 
   - 

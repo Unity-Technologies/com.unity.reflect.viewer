@@ -16,6 +16,7 @@ using UnityEngine.Reflect.Viewer;
 using UnityEngine.Reflect.Viewer.Pipeline;
 using UnityEngine.SceneManagement;
 using Bounds = UnityEngine.Bounds;
+using Unity.TouchFramework;
 #if UNITY_EDITOR
 using UnityEditor.MARS.Simulation;
 #endif
@@ -25,22 +26,31 @@ namespace Unity.Reflect.Viewer.UI
     /// <summary>
     /// Component that hold the state of the UI.
     /// </summary>
-    public class UIStateManager : MonoBehaviour, IStore<UIStateData>, IStore<UISessionStateData>, IStore<UIProjectStateData>, IUsesSessionControl, IUsesPointCloud, IUsesPlaneFinding
+    public class UIStateManager : MonoBehaviour,
+        IStore<UIStateData>, IStore<UISessionStateData>, IStore<UIProjectStateData>, IStore<UIARStateData>, IStore<UIDebugStateData>, IStore<ApplicationStateData>,
+        IUsesSessionControl, IUsesPointCloud, IUsesPlaneFinding
     {
-        private readonly object syncRoot = new object();
-        private static UIStateManager s_Current;
+        readonly object syncRoot = new object();
+        static UIStateManager s_Current;
 
 #pragma warning disable CS0649
         [SerializeField]
         ViewerReflectPipeline m_ReflectPipeline;
+        [SerializeField]
+        PopUpManager m_PopUpManager;
+        [SerializeField]
+        float m_WaitingDelayToCloseStreamIndicator = 1f;
 #pragma warning restore CS0649
 
-        private OrbitModeUIController m_OrbitModeUIController;
+        OrbitModeUIController m_OrbitModeUIController;
+        ThumbnailController m_ThumbnailController;
         const float k_Timeout = 0.5f;
+        Coroutine m_WaitStreamIndicatorCoroutine;
+        WaitForSeconds m_WaitDelay;
 
         public static UIStateManager current => s_Current;
 
-        private  IDispatcher dispatcher = null;
+        IDispatcher dispatcher;
         public IDispatcher Dispatcher => dispatcher ?? (dispatcher = new Dispatcher());
 
         /// <summary>
@@ -63,13 +73,20 @@ namespace Unity.Reflect.Viewer.UI
         /// </summary>
         public static event Action<UIARStateData> arStateChanged = delegate {};
 
+        public static event Action<UIDebugStateData> debugStateChanged = delegate {};
+
+        /// <summary>
+        /// Event signaled when the state of the Application has changed
+        /// </summary>
+        public static event Action<ApplicationStateData> applicationStateChanged = delegate { };
+
         [SerializeField, Tooltip("Reflect Session Manager")]
         public LoginManager m_LoginManager;
         public SunStudy.SunStudy m_SunStudy;
         public GameObject m_RootNode;
         public GameObject m_BoundingBoxRootNode;
         public GameObject m_PlacementRoot;
-        public GameObject m_PlacementRulesPrefab;
+        public List<GameObject> m_PlacementRulesPrefabs;
         [SerializeField, Tooltip("State of the UI")]
         UIStateData m_UIStateData;
         [SerializeField, Tooltip("State of the Session")]
@@ -78,9 +95,14 @@ namespace Unity.Reflect.Viewer.UI
         UIProjectStateData m_UIProjectStateData;
         [SerializeField, Tooltip("State of the AR Simulation")]
         UIARStateData m_ARStateData;
+        [SerializeField, Tooltip("State of the Debug Data")]
+        UIDebugStateData m_UIDebugStateData;
+        [SerializeField, Tooltip("State of the Application Data")]
+        ApplicationStateData m_ApplicationStateData;
         [SerializeField]
         bool m_VerboseLogging;
 
+        public PopUpManager popUpManager => m_PopUpManager;
         /// <summary>
         /// State of the UI
         /// </summary>
@@ -101,6 +123,14 @@ namespace Unity.Reflect.Viewer.UI
         /// </summary>
         public UIARStateData arStateData { get => m_ARStateData; }
 
+        public UIDebugStateData debugStateData { get => m_UIDebugStateData; }
+
+        /// <summary>
+        /// State of the Application
+        /// </summary>
+        public ApplicationStateData applicationStateData { get => m_ApplicationStateData; }
+
+
         public GameObject m_PlacementRules;
         MetadataFilterNode m_MetadataFilter;
         LightFilterNode m_LightFilterNode;
@@ -112,6 +142,8 @@ namespace Unity.Reflect.Viewer.UI
             // set Project.Empty for the NonSerialized value
             m_UIStateData.selectedProjectOption = Project.Empty;
             m_UIProjectStateData.activeProject = Project.Empty;
+            m_UIProjectStateData.activeProjectThumbnail = null;
+            m_ApplicationStateData.qualityStateData = QualityState.defaultData;
 
             m_LoginManager.userLoggedIn.AddListener(OnUserLoggedIn);
             m_LoginManager.userLoggedOut.AddListener(OnUserLoggedOut);
@@ -124,18 +156,17 @@ namespace Unity.Reflect.Viewer.UI
             DispatchToken = Subscribe();
 
             m_OrbitModeUIController = GetComponent<OrbitModeUIController>();
+            m_ThumbnailController = GetComponent<ThumbnailController>();
 
-            // AR events
-            this.SubscribePlaneAdded(OnARPlaneAdded);
-            this.SubscribePlaneRemoved(OnARPlaneRemoved);
 
+            m_WaitDelay = new WaitForSeconds(m_WaitingDelayToCloseStreamIndicator);
 #if UNITY_EDITOR
             SimulationSettings.instance.ShowSimulatedEnvironment = false;
             SimulationSettings.instance.ShowSimulatedData = false;
 #endif
         }
 
-        private void DetectCapabilities()
+        void DetectCapabilities()
         {
             m_UIStateData.deviceCapability = DeviceCapability.None;
 #if UNITY_EDITOR
@@ -225,24 +256,6 @@ namespace Unity.Reflect.Viewer.UI
             sessionStateChanged?.Invoke(sessionStateData);
         }
 
-        void OnARPlaneAdded(MRPlane obj)
-        {
-            var planes = new List<MRPlane>();
-            this.GetPlanes(planes);
-            // we are only interested in horizontal planes for now
-            m_ARStateData.numPlanesAdded = planes.Count(x => x.alignment == MarsPlaneAlignment.HorizontalUp);
-            arStateChanged?.Invoke(m_ARStateData);
-        }
-
-        void OnARPlaneRemoved(MRPlane obj)
-        {
-            var planes = new List<MRPlane>();
-            this.GetPlanes(planes);
-            // we are only interested in horizontal planes for now
-            m_ARStateData.numPlanesAdded = planes.Count(x => x.alignment == MarsPlaneAlignment.HorizontalUp);
-            arStateChanged?.Invoke(m_ARStateData);
-        }
-
         void ConnectPipelineFactoryEvents()
         {
             // listing projects events
@@ -272,7 +285,8 @@ namespace Unity.Reflect.Viewer.UI
 
             if (m_ReflectPipeline.TryGetNode<MetadataFilterNode>(out var metadataFilterNode))
             {
-                metadataFilterNode.settings.filtersUpdated.AddListener(OnFiltersUpdated);
+                metadataFilterNode.settings.groupsChanged.AddListener(OnMetadataGroupsChanged);
+                metadataFilterNode.settings.categoriesChanged.AddListener(OnMetadataCategoriesChanged);
             }
 
             if (m_ReflectPipeline.TryGetNode<StreamIndicatorNode>(out var streamIndicatorNode))
@@ -288,23 +302,22 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-
         void OnAssetCountModified(StreamCountData streamCountData)
         {
-            m_UIStateData.statsInfoData.assetsCountData = streamCountData;
-            stateChanged?.Invoke(m_UIStateData);
+            m_UIDebugStateData.statsInfoData.assetsCountData = streamCountData;
+            debugStateChanged?.Invoke(m_UIDebugStateData);
         }
 
         void OnInstanceCountModified(StreamCountData streamCountData)
         {
-            m_UIStateData.statsInfoData.instancesCountData = streamCountData;
-            stateChanged?.Invoke(m_UIStateData);
+            m_UIDebugStateData.statsInfoData.instancesCountData = streamCountData;
+            debugStateChanged?.Invoke(m_UIDebugStateData);
         }
 
         void OnGameObjectCountModified(StreamCountData streamCountData)
         {
-            m_UIStateData.statsInfoData.gameObjectsCountData = streamCountData;
-            stateChanged?.Invoke(m_UIStateData);
+            m_UIDebugStateData.statsInfoData.gameObjectsCountData = streamCountData;
+            debugStateChanged?.Invoke(m_UIDebugStateData);
         }
 
         bool m_InstanceStreamEnd;
@@ -313,22 +326,37 @@ namespace Unity.Reflect.Viewer.UI
         {
             if (m_InstanceStreamEnd)
             {
-                if (currentCount >= totalCount)
+                m_UIStateData.progressData.progressState = ProgressData.ProgressState.PendingDeterminate;
+                m_UIStateData.progressData.currentProgress = Math.Min(currentCount, totalCount);
+                m_UIStateData.progressData.totalCount = totalCount;
+                m_UIStateData.progressData.message = "Streaming...";
+                m_UIStateData.LogStatusMessage($"Streaming... {currentCount}/{totalCount}");
+                stateChanged?.Invoke(m_UIStateData);
+
+                if (m_WaitStreamIndicatorCoroutine != null)
                 {
-                    m_UIStateData.progressData.progressState = ProgressData.ProgressState.NoPendingRequest;
-                    m_UIStateData.LogStatusMessage(String.Empty);
-                    stateChanged?.Invoke(m_UIStateData);
+                    StopCoroutine(m_WaitStreamIndicatorCoroutine);
                 }
-                else
-                {
-                    m_UIStateData.progressData.progressState = ProgressData.ProgressState.PendingDeterminate;
-                    m_UIStateData.progressData.currentProgress = currentCount;
-                    m_UIStateData.progressData.totalCount = totalCount;
-                    m_UIStateData.progressData.message = "Streaming...";
-                    m_UIStateData.LogStatusMessage($"Streaming... {currentCount}/{totalCount}");
-                    stateChanged?.Invoke(m_UIStateData);
-                }
+
+                m_WaitStreamIndicatorCoroutine = StartCoroutine(WaitCloseStreamIndicator());
             }
+        }
+
+        IEnumerator WaitCloseStreamIndicator()
+        {
+            yield return m_WaitDelay;
+
+            if(!m_ARStateData.arEnabled || m_ARStateData.instructionUIState == InstructionUIState.Completed)
+            {
+                m_UIProjectStateData.activeProjectThumbnail = m_ThumbnailController.CaptureActiveProjectThumbnail(current.projectStateData);
+                projectStateChanged?.Invoke(m_UIProjectStateData);
+            }
+
+            m_UIStateData.progressData.progressState = ProgressData.ProgressState.NoPendingRequest;
+            m_UIStateData.LogStatusMessage(String.Empty);
+            stateChanged?.Invoke(m_UIStateData);
+
+            m_WaitStreamIndicatorCoroutine = null;
         }
 
         void OnInstanceStreamEnd()
@@ -345,9 +373,6 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnGameObjectStreamEnd()
         {
-            m_UIStateData.progressData.progressState = ProgressData.ProgressState.NoPendingRequest;
-            m_UIStateData.LogStatusMessage(String.Empty);
-            stateChanged?.Invoke(m_UIStateData);
         }
 
         void OnBoundsChanged(Bounds bb)
@@ -356,14 +381,42 @@ namespace Unity.Reflect.Viewer.UI
             projectStateChanged?.Invoke(projectStateData);
         }
 
-        void OnFiltersUpdated()
+        void OnMetadataGroupsChanged(IEnumerable<string> groups)
         {
-            m_UIProjectStateData.filterGroupList = m_MetadataFilter.processor.filterGroupList.ToList();
-            projectStateChanged?.Invoke(m_UIProjectStateData);
+            if(!EnumerableExtension.SafeSequenceEquals(groups, m_UIProjectStateData.filterGroupList))
+            {
+                m_UIProjectStateData.filterGroupList = new List<string>(groups);
+                projectStateChanged?.Invoke(m_UIProjectStateData);
+            }
         }
 
-        private int m_maxObjectLeft = -1;
-        private int m_lastObjectCount = -1;
+        void OnMetadataCategoriesChanged(string group, IEnumerable<string> categories)
+        {
+            if(m_UIStateData.filterGroup == group)
+            {
+                m_UIProjectStateData.filterItemInfos = new List<FilterItemInfo>(GetFilterItemInfos(m_UIStateData.filterGroup));
+                projectStateChanged?.Invoke(m_UIProjectStateData);
+            }
+        }
+
+        IEnumerable<FilterItemInfo> GetFilterItemInfos(string groupKey)
+        {
+            var filterKeys = m_MetadataFilter.processor.GetFilterKeys(m_UIStateData.filterGroup);
+            var filterItemInfo = new FilterItemInfo
+            {
+                groupKey = groupKey
+            };
+            foreach (var filterKey in filterKeys)
+            {
+                filterItemInfo.filterKey = filterKey;
+                filterItemInfo.visible = m_MetadataFilter.processor.IsVisible(groupKey, filterKey);
+                filterItemInfo.highlight = m_MetadataFilter.processor.IsHighlighted(groupKey, filterKey);
+                yield return filterItemInfo;
+            }
+        }
+
+        int m_maxObjectLeft = -1;
+        int m_lastObjectCount = -1;
         void OnProgressChanged(int objectsLeft)
         {
             int ol = objectsLeft;
@@ -407,6 +460,20 @@ namespace Unity.Reflect.Viewer.UI
 
             m_UISessionStateData.sessionState.projects = projects.ToArray();
             ForceSendSessionStateChangedEvent();
+
+            // TODO move to new deepLink data state
+            if (m_LoginManager.deepLinkRoute.Equals(DeepLinkRoute.openprojectrequest) && m_LoginManager.deepLinkArgs.Count >= 4)
+            {
+                var openProjectRequested = projects.Select(x => x).Where(x => x.host.ServerId.Equals(m_LoginManager.deepLinkArgs[1]) && x.projectId.Equals(m_LoginManager.deepLinkArgs[3])).FirstOrDefault();
+                // Re-initialise deepLink state
+                m_LoginManager.deepLinkRoute = DeepLinkRoute.none;
+                m_LoginManager.deepLinkArgs.Clear();
+
+                if (openProjectRequested != null)
+                {
+                    OpenProject(openProjectRequested);
+                }
+            }
         }
 
         void OnProjectLocalDataDeleted(Project project)
@@ -475,21 +542,6 @@ namespace Unity.Reflect.Viewer.UI
             arStateChanged.Invoke(m_ARStateData);
         }
 
-        public void InvokeUIEvent()
-        {
-            stateChanged?.Invoke(stateData);
-        }
-
-        public void InvokeSessionEvent()
-        {
-            sessionStateChanged?.Invoke(sessionStateData);
-        }
-
-        public void InvokeProjectEvent()
-        {
-            projectStateChanged?.Invoke(projectStateData);
-        }
-
         IEnumerator LoadAsyncScene(string scenePath)
         {
             AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(scenePath, LoadSceneMode.Additive);
@@ -499,6 +551,9 @@ namespace Unity.Reflect.Viewer.UI
             {
                 yield return null;
             }
+
+            stateChanged.Invoke(m_UIStateData);
+            projectStateChanged.Invoke(m_UIProjectStateData);
         }
 
         IEnumerator UnloadAsyncScene(string scenePath)
@@ -512,12 +567,92 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        void OnDisable()
+        void CloseProject()
         {
-            // Remove all handlers
-            this.UnsubscribePlaneAdded(OnARPlaneAdded);
-            this.UnsubscribePlaneUpdated(OnARPlaneRemoved);
+            if (m_UIProjectStateData.activeProject != Project.Empty)
+            {
+                m_UIStateData.statusMessage = $"Closing {m_UIProjectStateData.activeProject.name}...";
+
+                m_ReflectPipeline?.CloseProject();
+                m_UIStateData.toolbarsEnabled = false;
+                m_UIStateData.navigationState.EnableAllNavigation(false);
+                stateChanged?.Invoke(m_UIStateData);
+                m_UIProjectStateData.activeProject = Project.Empty;
+                m_UIProjectStateData.activeProjectThumbnail = null;
+                m_UIProjectStateData.objectSelectionInfo = default;
+                projectStateChanged?.Invoke(projectStateData);
+            }
         }
+
+        void CloseAllDialogs()
+        {
+            m_UIStateData.activeDialog = DialogType.None;
+            m_UIStateData.activeOptionDialog = OptionDialogType.None;
+            m_UIStateData.activeSubDialog = DialogType.None;
+            stateChanged?.Invoke(m_UIStateData);
+        }
+
+        void OpenProject(Project project)
+        {
+            CloseProject();
+
+            CloseAllDialogs();
+
+            m_UIProjectStateData.activeProject = project;
+
+            m_UIStateData.statusMessage = $"Opening {m_UIProjectStateData.activeProject.name}...";
+            stateChanged?.Invoke(m_UIStateData);
+
+            m_UIProjectStateData.activeProjectThumbnail = ThumbnailController.LoadThumbnailForProject(m_UIProjectStateData.activeProject);
+            projectStateChanged?.Invoke(projectStateData);
+
+            if (m_ReflectPipeline != null)
+            {
+                m_ReflectPipeline.OpenProject(projectStateData.activeProject);
+                m_ReflectPipeline.TryGetNode(out m_MetadataFilter);
+                m_ReflectPipeline.TryGetNode(out m_LightFilterNode);
+            }
+
+            m_ReflectPipeline.TryGetNode(out m_SpatialFilter);
+
+            // set enable texture and light
+            if (m_UIStateData.sceneOptionData.enableTexture)
+                Shader.SetGlobalFloat(k_UseTexture, 1);
+            else
+                Shader.SetGlobalFloat(k_UseTexture, 0);
+
+            if (m_LightFilterNode != null)
+            {
+                m_UIStateData.sceneOptionData.enableLightData = m_LightFilterNode.settings.enableLights;
+            }
+
+            m_BoundingBoxRootNode.SetActive(true);
+            if (m_ReflectPipeline.TryGetNode<SpatialFilterNode>(out var spatialFilterNode))
+            {
+                spatialFilterNode.settings.displayOnlyBoundingBoxes = false;
+                m_UIProjectStateData.teleportPicker = new SpatialSelector
+                {
+                    SpatialPicker = m_SpatialFilter.SpatialPicker,
+                    WorldRoot = m_RootNode.transform
+                };
+            }
+
+            // reset the toolbars
+            m_UIStateData.toolbarsEnabled = true;
+            m_UIStateData.toolState.activeTool = ToolType.OrbitTool;
+            m_UIStateData.toolState.orbitType = OrbitType.OrbitAtPoint;
+            m_UIStateData.navigationState.EnableAllNavigation(true);
+
+            m_UIStateData.settingsToolStateData = new SettingsToolStateData
+            {
+                bimFilterEnabled = true,
+                sceneOptionEnabled = true,
+                sunStudyEnabled = true
+            };
+
+            stateChanged?.Invoke(m_UIStateData);
+        }
+
 
         UIStateData IStore<UIStateData>.Data => m_UIStateData;
 
@@ -525,11 +660,18 @@ namespace Unity.Reflect.Viewer.UI
 
         UIProjectStateData IStore<UIProjectStateData>.Data => m_UIProjectStateData;
 
+        UIARStateData IStore<UIARStateData>.Data => m_ARStateData;
+
+        UIDebugStateData IStore<UIDebugStateData>.Data => m_UIDebugStateData;
+
+        ApplicationStateData IStore<ApplicationStateData>.Data => m_ApplicationStateData;
+
         public string DispatchToken { get; private set; }
 
         //Returns whether the store has changed during the most recent dispatch
-        private bool hasChanged;
+        bool hasChanged;
         static readonly int k_UseTexture = Shader.PropertyToID("_UseTexture");
+        SpatialFilterNode m_SpatialFilter;
 
         public bool HasChanged {
             get { return hasChanged; }
@@ -569,6 +711,13 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
+        IEnumerator TakeDelayedThumbnail()
+        {
+            yield return new WaitForSeconds(1.0f);
+            m_UIProjectStateData.activeProjectThumbnail = m_ThumbnailController.CaptureActiveProjectThumbnail(current.projectStateData);
+            projectStateChanged?.Invoke(m_UIProjectStateData);
+        }
+
         void OnDispatch(Payload<ActionTypes> payload)
         {
             switch (payload.ActionType)
@@ -585,6 +734,11 @@ namespace Unity.Reflect.Viewer.UI
                     m_UISessionStateData.sessionState.loggedState = LoginState.LoggingOut;
                     m_LoginManager.Logout();
                     sessionStateChanged?.Invoke(sessionStateData);
+                    break;
+                }
+                case ActionTypes.OpenURL:
+                {
+                    Application.OpenURL((string) payload.Data);
                     break;
                 }
                 case ActionTypes.SetToolState:
@@ -637,6 +791,13 @@ namespace Unity.Reflect.Viewer.UI
                     stateChanged?.Invoke(m_UIStateData);
                     break;
                 }
+                case ActionTypes.SetProjectSortMethod:
+                {
+                    var sortMethod = (ProjectSortMethod) payload.Data;
+                    m_UIProjectStateData.projectSortMethod = sortMethod;
+                    projectStateChanged?.Invoke(m_UIProjectStateData);
+                    break;
+                }
                 case ActionTypes.SetOptionProject:
                 {
                     var project = (Project) payload.Data;
@@ -647,9 +808,20 @@ namespace Unity.Reflect.Viewer.UI
                 }
                 case ActionTypes.CloseAllDialogs:
                 {
-                    m_UIStateData.activeDialog = DialogType.None;
-                    m_UIStateData.activeOptionDialog = OptionDialogType.None;
-                    m_UIStateData.activeSubDialog = DialogType.None;
+                    CloseAllDialogs();
+                    break;
+                }
+                case ActionTypes.SetDialogMode:
+                {
+                    var dialogMode = (DialogMode)payload.Data;
+                    m_UIStateData.dialogMode = dialogMode;
+                    stateChanged?.Invoke(m_UIStateData);
+                    break;
+                }
+                case ActionTypes.SetHelpModeID:
+                {
+                    var activeEntry = (HelpModeEntryID)payload.Data;
+                    m_UIStateData.helpModeEntryId = activeEntry;
                     stateChanged?.Invoke(m_UIStateData);
                     break;
                 }
@@ -679,55 +851,24 @@ namespace Unity.Reflect.Viewer.UI
                     stateChanged?.Invoke(m_UIStateData);
                     break;
                 }
+                case ActionTypes.SetObjectPicker:
+                {
+                    SpatialSelector picker = (SpatialSelector)payload.Data;
+                    picker.SpatialPicker = m_SpatialFilter.SpatialPicker;
+                    picker.WorldRoot = m_RootNode.transform;
+                    m_UIProjectStateData.objectPicker = picker;
+                    projectStateChanged?.Invoke(m_UIProjectStateData);
+                    break;
+                }
                 case ActionTypes.OpenProject:
                 {
                     UIProjectStateData projectData = (UIProjectStateData)payload.Data;
-                    m_UIProjectStateData.activeProject = projectData.activeProject;
-                    projectStateChanged?.Invoke(projectStateData);
-
-                    if (m_ReflectPipeline != null)
-                    {
-                        m_ReflectPipeline.OpenProject(projectStateData.activeProject);
-                        m_ReflectPipeline.TryGetNode(out m_MetadataFilter);
-                        m_ReflectPipeline.TryGetNode(out m_LightFilterNode);
-                    }
-
-                    if (m_ReflectPipeline.TryGetNode<SpatialFilterNode>(out var spatialFilter))
-                    {
-                        m_UIProjectStateData.objectPicker = new SpatialSelector { SpatialPicker = spatialFilter.SpatialPicker };
-                        projectStateChanged?.Invoke(m_UIProjectStateData);
-                    }
-                    else
-                    {
-                        // TODO default ISpatialPicker<Tuple<GameObject, RaycastHit>> with colliders in case of no SpatialFilter?
-                    }
-
-                    // set enable texture and light
-                    if (m_UIStateData.sceneOptionData.enableTexture)
-                        Shader.SetGlobalFloat(k_UseTexture, 1);
-                    else
-                        Shader.SetGlobalFloat(k_UseTexture, 0);
-
-                    if (m_LightFilterNode != null)
-                    {
-                        m_UIStateData.sceneOptionData.enableLightData = m_LightFilterNode.settings.enableLights;
-                    }
-
-                    // reset the toolbars
-                    m_UIStateData.toolbarsEnabled = true;
-                    m_UIStateData.toolState.activeTool = ToolType.OrbitTool;
-                    m_UIStateData.toolState.orbitType = OrbitType.OrbitAtPoint;
-
-                    stateChanged?.Invoke(m_UIStateData);
+                    OpenProject(projectData.activeProject);
                     break;
             }
                 case ActionTypes.CloseProject:
                 {
-                    m_ReflectPipeline?.CloseProject();
-                    m_UIStateData.toolbarsEnabled = false;
-                    stateChanged?.Invoke(m_UIStateData);
-                    m_UIProjectStateData.activeProject = Project.Empty;
-                    projectStateChanged?.Invoke(projectStateData);
+                    CloseProject();
                     break;
                 }
                 case ActionTypes.DownloadProject:
@@ -783,22 +924,10 @@ namespace Unity.Reflect.Viewer.UI
                 }
                 case ActionTypes.SetFilterGroup:
                 {
-                    var groupKey = (string) payload.Data;
-                    var filterKeys = m_MetadataFilter.processor.GetFilterKeys(groupKey);
-                    List<FilterItemInfo> filterItemInfos = new List<FilterItemInfo>();
+                    m_UIStateData.filterGroup = (string) payload.Data;
+                    stateChanged?.Invoke(m_UIStateData);
 
-                    var filterItemInfo = new FilterItemInfo
-                    {
-                        groupKey = groupKey
-                    };
-                    foreach (var filterKey in filterKeys)
-                    {
-                        filterItemInfo.filterKey = filterKey;
-                        filterItemInfo.visible = m_MetadataFilter.processor.IsVisible(groupKey, filterKey);
-                        filterItemInfo.highlight = m_MetadataFilter.processor.IsHighlighted(groupKey, filterKey);
-                        filterItemInfos.Add(filterItemInfo);
-                    }
-                    m_UIProjectStateData.filterItemInfos = filterItemInfos;
+                    m_UIProjectStateData.filterItemInfos = new List<FilterItemInfo>(GetFilterItemInfos(m_UIStateData.filterGroup));
                     projectStateChanged?.Invoke(m_UIProjectStateData);
                     break;
                 }
@@ -877,6 +1006,9 @@ namespace Unity.Reflect.Viewer.UI
                     if (m_UIStateData.cameraOptionData.cameraViewType != cameraOptionData.cameraViewType)
                     {
                         // set camera view Type
+                        m_UIStateData.cameraOptionData.cameraViewType = cameraOptionData.cameraViewType;
+                        stateChanged?.Invoke(m_UIStateData);
+                        break;
                     }
 
                     m_UIStateData.cameraOptionData = cameraOptionData;
@@ -905,19 +1037,27 @@ namespace Unity.Reflect.Viewer.UI
                     // cameraOptionData.navigationSpeed;
                     break;
                 }
-                case ActionTypes.SetNavigationMode:
+                case ActionTypes.SetNavigationState:
                 {
-                    var navigationMode = (NavigationMode)payload.Data;
-                    m_UIStateData.navigationState.navigationMode = navigationMode;
-                    // Reset scale for most mode except AR
-                    if (navigationMode != NavigationMode.AR)
+                    var navigationState = (NavigationState)payload.Data;
+
+                    if (navigationState.navigationMode != m_UIStateData.navigationState.navigationMode && navigationState.navigationMode == NavigationMode.AR)
                     {
+                        // Reset instruction UI Step when start AR mode
+                        m_ARStateData.instructionUIStep = 0;
+                    }
+                    else if(navigationState.navigationMode != NavigationMode.AR)
+                    {
+                        // TODO: Move this as part of switching ot Orbit mode.
+                        // Reset scale for most mode except AR
                         m_UIStateData.modelScale = ArchitectureScale.OneToOne;
                         float scalef = (float)m_UIStateData.modelScale;
                         // always scale these two the same
                         m_RootNode.gameObject.transform.localScale = new Vector3(1.0f / scalef, 1.0f / scalef, 1.0f / scalef);
                         m_BoundingBoxRootNode.gameObject.transform.localScale = new Vector3(1.0f / scalef, 1.0f / scalef, 1.0f / scalef);
                     }
+
+                    m_UIStateData.navigationState = navigationState;
                     stateChanged?.Invoke(m_UIStateData);
                     break;
                 }
@@ -962,22 +1102,29 @@ namespace Unity.Reflect.Viewer.UI
                     }
                     break;
                 }
-                case ActionTypes.SetScreenOrientation:
+                case ActionTypes.SetInstructionUIState:
                 {
-                    var screenOrientation = (ScreenOrientation)payload.Data;
-                    m_UIStateData.screenOrientation = screenOrientation;
-                    stateChanged?.Invoke(m_UIStateData);
+                    m_ARStateData.instructionUIState = (InstructionUIState) payload.Data;
+                    arStateChanged?.Invoke(m_ARStateData);
+
+                    if(m_ARStateData.instructionUIState == InstructionUIState.Completed && m_UIStateData.progressData.progressState == ProgressData.ProgressState.NoPendingRequest)
+                    {
+                        // This has to be delayed because the renderers are
+                        // not activated instantly after the instruction is complete
+                        StartCoroutine(TakeDelayedThumbnail());
+                    }
                     break;
                 }
                 case ActionTypes.SetInstructionUI:
                 {
-                    m_ARStateData.instructionUI = (InstructionUI) payload.Data;
+                    m_ARStateData.currentInstructionUI = (IInstructionUI) payload.Data;
                     arStateChanged?.Invoke(m_ARStateData);
                     break;
                 }
                 case ActionTypes.ResetHomeView:
                 {
                     m_UIProjectStateData.cameraTransformInfo = m_OrbitModeUIController.ResetCamera();
+                    m_UIStateData.cameraOptionData.cameraViewType = CameraViewType.Default;
                     m_RootNode.transform.position = Vector3.zero;
                     m_RootNode.transform.rotation = Quaternion.identity;
                     // Reset scale also
@@ -998,14 +1145,30 @@ namespace Unity.Reflect.Viewer.UI
                 case ActionTypes.SetStatsInfo:
                 {
                     var statsInfoData = (StatsInfoData)payload.Data;
-                    m_UIStateData.statsInfoData = statsInfoData;
-                    stateChanged?.Invoke(m_UIStateData);
+                    m_UIDebugStateData.statsInfoData = statsInfoData;
+                    debugStateChanged?.Invoke(m_UIDebugStateData);
                     break;
                 }
-               case ActionTypes.ShowModel:
+                case ActionTypes.SetQuality:
+                {
+                    var qualityData = (QualityState)payload.Data;
+                    m_ApplicationStateData.qualityStateData = qualityData;
+                    applicationStateChanged?.Invoke(m_ApplicationStateData);
+                    break;
+                }
+                case ActionTypes.ShowModel:
                 {
                     var active = (bool)payload.Data;
                     m_RootNode.SetActive(active);
+
+                    if (active)
+                    {
+                        if (m_ReflectPipeline.TryGetNode<SpatialFilterNode>(out var spatialFilterNode))
+                        {
+                            spatialFilterNode.settings.displayOnlyBoundingBoxes = false;
+                        }
+                    }
+
                     break;
                 }
                 case ActionTypes.ShowBoundingBoxModel:
@@ -1049,14 +1212,34 @@ namespace Unity.Reflect.Viewer.UI
                 }
                 case ActionTypes.SetPlacementRules:
                 {
+                    var value = (PlacementRule)payload.Data;
+
+                    if (m_PlacementRules != null && value == m_ARStateData.placementStateData.placementRule)
+                    {
+                        if (value != PlacementRule.None)
+                        {
+                            m_PlacementRules.SetActive(true);
+                        }
+                        return;
+                    }
+
+                    m_ARStateData.placementStateData.placementRule = value;
+
                     if (m_PlacementRules != null)
                     {
-                        DestroyImmediate(m_PlacementRules);
+                        Destroy(m_PlacementRules);
+                        m_PlacementRules = null;
                     }
-                    m_PlacementRules = Instantiate(m_PlacementRulesPrefab, m_BoundingBoxRootNode.transform);
-                    ModuleLoaderCore.instance.GetModule<FunctionalityInjectionModule>().activeIsland.InjectFunctionalitySingle(m_PlacementRules.gameObject.GetComponent<Replicator>());
-                    m_PlacementRules.transform.parent = null;
-                    m_PlacementRules.SetActive(true);
+
+                    if (value != PlacementRule.None)
+                    {
+                        m_PlacementRules = Instantiate(m_PlacementRulesPrefabs[(int)value - 1], m_BoundingBoxRootNode.transform);
+                        ModuleLoaderCore.instance.GetModule<FunctionalityInjectionModule>().activeIsland.InjectFunctionalitySingle(m_PlacementRules.gameObject.GetComponent<Replicator>());
+                        m_PlacementRules.transform.parent = null;
+                        m_PlacementRules.transform.localScale = Vector3.one;
+                        m_PlacementRules.SetActive(true);
+                    }
+                    arStateChanged?.Invoke(m_ARStateData);
                     break;
                 }
                 case ActionTypes.Cancel:
@@ -1064,6 +1247,62 @@ namespace Unity.Reflect.Viewer.UI
                     var value = (bool) payload.Data;
                     m_UIStateData.operationCancelled = value;
                     stateChanged?.Invoke(m_UIStateData);
+                    break;
+                }
+                case ActionTypes.EnablePlacement:
+                {
+                    var value = (bool) payload.Data;
+                    m_ARStateData.placementGesturesEnabled = value;
+                    arStateChanged?.Invoke(m_ARStateData);
+                    break;
+                }
+                case ActionTypes.SetTheme:
+                {
+                    var value = (string) payload.Data;
+                    m_UIStateData.themeName = value;
+                    stateChanged?.Invoke(m_UIStateData);
+                    break;
+                }
+                case ActionTypes.EnableAR:
+                {
+                    var value = (bool) payload.Data;
+                    m_ARStateData.arEnabled = value;
+                    arStateChanged?.Invoke(m_ARStateData);
+                    break;
+                }
+                case ActionTypes.SetARToolState:
+                {
+                    var value = (ARToolStateData) payload.Data;
+                    m_ARStateData.arToolStateData = value;
+                    arStateChanged?.Invoke(m_ARStateData);
+                    break;
+                }
+                case ActionTypes.SetPlacementState:
+                {
+                    var value = (ARPlacementStateData)payload.Data;
+                    m_ARStateData.placementStateData = value;
+                    arStateChanged?.Invoke(m_ARStateData);
+                    break;
+                }
+                case ActionTypes.SetARMode:
+                {
+                    var value = (ARMode)payload.Data;
+                    m_ARStateData.arMode = value;
+                    arStateChanged?.Invoke(m_ARStateData);
+                    break;
+                }
+                case ActionTypes.SetSettingsToolState:
+                {
+                    var value = (SettingsToolStateData)payload.Data;
+                    m_UIStateData.settingsToolStateData = value;
+                    stateChanged?.Invoke(m_UIStateData);
+                    break;
+                }
+                case ActionTypes.SetDebugOptions:
+                {
+                    var value = (DebugOptionsData)payload.Data;
+                    m_UIDebugStateData.debugOptionsData = value;
+                    debugStateChanged?.Invoke(m_UIDebugStateData);
                     break;
                 }
             }

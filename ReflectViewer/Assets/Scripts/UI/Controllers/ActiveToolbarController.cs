@@ -23,6 +23,9 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField, Tooltip("Reference to the AR Sidebar")]
         GameObject m_ARSidebar;
 
+        [SerializeField, Tooltip("Reference to the AR Model Align View Sidebar")]
+        GameObject m_ARModelAlignViewSidebar;
+
         [SerializeField, Tooltip("Reference to the AR Instruction Sidebar")]
         GameObject m_ARInstructionSidebar;
 
@@ -54,6 +57,7 @@ namespace Unity.Reflect.Viewer.UI
             m_FlySidebar.SetActive(false);
             m_WalkSidebar.SetActive(false);
             m_ARSidebar.SetActive(false);
+            m_ARModelAlignViewSidebar.SetActive(false);
             m_ARInstructionSidebar.SetActive(false);
             m_TimeOfDayYearRadial.Close();
             m_AltitudeAzimuthRadial.Close();
@@ -69,6 +73,9 @@ namespace Unity.Reflect.Viewer.UI
                     break;
                 case ToolbarType.ARSidebar:
                     m_ARSidebar.SetActive(true);
+                    break;
+                case ToolbarType.ARModelAlignSidebar:
+                    m_ARModelAlignViewSidebar.SetActive(true);
                     break;
                 case ToolbarType.ARInstructionSidebar:
                     m_ARInstructionSidebar.SetActive(true);

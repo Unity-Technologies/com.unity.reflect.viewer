@@ -11,12 +11,10 @@ namespace Unity.TouchFramework
 #pragma warning disable CS0649
         [SerializeField]
         protected GameObject m_Container;
-        [SerializeField]
-        protected float m_DefaultDisplayDuration;
-        [SerializeField]
-        protected float m_DefaultFadeDuration;
 #pragma warning restore CS0649
 
+        protected float m_DefaultDisplayDuration = 4f;
+        protected float m_DefaultFadeDuration = UIConfig.dialogFadeTime;
         protected TextMeshProUGUI m_TextField;
         protected RectTransform m_PopUpRect;
         protected Rect m_WorldSpaceScreenRect;

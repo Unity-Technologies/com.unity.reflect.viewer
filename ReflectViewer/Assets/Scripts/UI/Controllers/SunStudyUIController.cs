@@ -202,13 +202,16 @@ namespace Unity.Reflect.Viewer.UI
             var toolbarType = m_DialogWindow.open ? TimeRadialUIController.m_previousToolbar : ToolbarType.TimeOfDayYearDial;
             var toolState = UIStateManager.current.stateData.toolState;
             toolState.activeTool = m_DialogWindow.open ? ToolType.None : ToolType.SunstudyTool;
+
             if (m_DialogWindow.open)
                 UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, ""));
             else UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatus, TimeRadialUIController.GetTimeStatusMessage(UIStateManager.current.stateData.sunStudyData)));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
-            // don't use dial in VR
-            if (UIStateManager.current.stateData.navigationState.navigationMode != NavigationMode.VR)
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
+
+            // don't use dial in VR or Help Mode
+            var data = UIStateManager.current.stateData;
+            if (data.navigationState.navigationMode != NavigationMode.VR && data.dialogMode != DialogMode.Help)
             {
                 UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, toolbarType));
                 UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
@@ -220,14 +223,6 @@ namespace Unity.Reflect.Viewer.UI
         void OnStateDataChanged(UIStateData data)
         {
             m_DialogButtonImage.enabled = data.activeDialog == DialogType.SunStudy;
-            if (data.navigationState.navigationMode == NavigationMode.AR)
-            {
-                m_DialogButton.interactable = false;
-            }
-            else
-            {
-                m_DialogButton.interactable = data.toolbarsEnabled;
-            }
 
             if (m_CurrentSunStudyData == data.sunStudyData)
             {

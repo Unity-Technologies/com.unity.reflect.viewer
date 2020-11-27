@@ -1,7 +1,6 @@
 ﻿using System;
 using SharpFlux;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -12,29 +11,36 @@ namespace Unity.Reflect.Viewer.UI
         ToolButton m_BackButton;
 
         [SerializeField]
-        ToolButton m_CheckButton;
+        ToolButton m_OkButton;
 
         [SerializeField]
         ToolButton m_CancelButton;
 
         [SerializeField]
         ToolButton m_ScaleButton;
+
+        [SerializeField]
+        GameObject m_ScaleRadial;
 #pragma warning restore CS0649
 
         bool m_ToolbarsEnabled;
         ToolType? m_CurrentActiveTool;
         NavigationMode? m_CurrentNavigationMode;
-        InstructionUI? m_CurrentInstructionUI;
+        InstructionUIState? m_CurrentInstructionUI;
+        bool? m_CachedPlacementGesturesEnabled;
+        ARToolStateData? m_CachedARToolStateData;
 
-        void Start()
+        void Awake()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
             UIStateManager.arStateChanged += OnARStateDataChanged;
 
             m_BackButton.buttonClicked += OnBackButtonClicked;
-            m_CheckButton.buttonClicked += OnCheckButtonClicked;
+            m_OkButton.buttonClicked += OnOkButtonClicked;
             m_CancelButton.buttonClicked += OnCancelButtonClicked;
             m_ScaleButton.buttonClicked += OnScaleButtonClicked;
+
+            OnStateDataChanged(UIStateManager.current.stateData);
         }
 
         void OnStateDataChanged(UIStateData data)
@@ -52,52 +58,27 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        void OnARStateDataChanged(UIARStateData stateData)
+        void OnARStateDataChanged(UIARStateData arData)
         {
-            if (m_CurrentNavigationMode ==  NavigationMode.AR && m_ToolbarsEnabled)
+            if (m_CachedARToolStateData != arData.arToolStateData)
             {
-                if (m_CurrentInstructionUI != stateData.instructionUI)
-                {
-                    m_CurrentInstructionUI = stateData.instructionUI;
-                    switch(m_CurrentInstructionUI)
-                    {
-                        case InstructionUI.Init:
-                        {
-                            m_BackButton.button.interactable = false;
-                            m_CheckButton.button.interactable = false;
-                            m_CancelButton.button.interactable = false;
-                            m_ScaleButton.button.interactable = false;
-                            break;
-                        }
+                m_BackButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.previousStepEnabled;
+                m_OkButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.okEnabled;
+                m_OkButton.selected = m_OkButton.button.interactable;
+                m_CancelButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.cancelEnabled;
+                m_ScaleButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.scaleEnabled;
 
-                        case InstructionUI.CrossPlatformFindAPlane:
-                        {
-                            m_BackButton.button.interactable = false;
-                            m_CheckButton.button.interactable = false;
-                            m_CancelButton.button.interactable = false;
-                            m_ScaleButton.button.interactable = false;
-                            break;
-                        }
+                m_CachedARToolStateData = arData.arToolStateData;
+            }
+            CheckButtonValidations();
+        }
 
-                        case InstructionUI.AimToPlaceBoundingBox:
-                        {
-                            m_BackButton.button.interactable = true;
-                            m_CheckButton.button.interactable = true;
-                            m_CancelButton.button.interactable = false;
-                            m_ScaleButton.button.interactable = false;
-                            break;
-                        }
-
-                        case InstructionUI.ConfirmPlacement:
-                        {
-                            m_BackButton.button.interactable = true;
-                            m_CheckButton.button.interactable = true;
-                            m_CancelButton.button.interactable = true;
-                            m_ScaleButton.button.interactable = true;
-                            break;
-                        }
-                    }
-                }
+        void CheckButtonValidations()
+        {
+            if (UIStateManager.current.arStateData.arToolStateData.okButtonValidator != null)
+            {
+                m_OkButton.button.interactable = m_ToolbarsEnabled && UIStateManager.current.arStateData.arToolStateData.okButtonValidator.ButtonValidate();
+                m_OkButton.selected = m_OkButton.button.interactable;
             }
         }
 
@@ -106,22 +87,24 @@ namespace Unity.Reflect.Viewer.UI
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Cancel, true ));
         }
 
-        void OnCheckButtonClicked()
+        void OnOkButtonClicked()
         {
-            InstructionUI next = UIStateManager.current.arStateData.instructionUI + 1;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUI, next));
+            UIStateManager.current.arStateData.currentInstructionUI.Next();
         }
 
         void OnBackButtonClicked()
         {
-            InstructionUI previous = UIStateManager.current.arStateData.instructionUI - 1;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUI, previous));
+            UIStateManager.current.arStateData.currentInstructionUI.Back();
         }
 
         void OnScaleButtonClicked()
         {
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARScaleDial));
             ARScaleRadialUIController.m_previousToolbar = ToolbarType.ARInstructionSidebar;
+
+            var radialPosition = m_ScaleRadial.transform.position;
+            radialPosition.y = m_ScaleButton.transform.position.y;
+            m_ScaleRadial.transform.position = radialPosition;
         }
     }
 }

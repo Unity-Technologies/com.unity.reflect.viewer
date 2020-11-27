@@ -533,6 +533,7 @@ MonoBehaviour:
   m_OptionButton: {fileID: 6027128136363245160}
   m_ConnectedImage: {fileID: 765330432273783327}
   m_DisconnectedImage: {fileID: 5076041299131583945}
+  m_ThumbnailImage: {fileID: 2846524615993868796}
 --- !u!1001 &3164571717707257240
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -1,6 +1,9 @@
-﻿using System;
+using System;
+using System.Collections;
+using System.IO;
 using System.Text;
 using TMPro;
+using Unity.Reflect.IO;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.Reflect;
@@ -27,15 +30,27 @@ namespace Unity.Reflect.Viewer.UI
         Image m_ConnectedImage;
         [SerializeField]
         Image m_DisconnectedImage;
+        [SerializeField]
+        Image m_ThumbnailImage;
 
 #pragma warning restore CS0649
 
+        string m_ThumbnailPath;
         Project m_project;
 
         ProjectServerType m_ProjectServerType = ProjectServerType.None;
 
 
         public Project project => m_project;
+        public Sprite projectThumbnail
+        {
+            get => m_ThumbnailImage.sprite;
+            set
+            {
+                if(value != null)
+                    m_ThumbnailImage.sprite = value;
+            }
+        }
 
         public ProjectServerType projectServerType => m_ProjectServerType;
 
@@ -48,11 +63,11 @@ namespace Unity.Reflect.Viewer.UI
             m_OptionButton.onClick.AddListener(OnOptionButtonClicked);
         }
 
-        public void InitProjectItem(Project project)
+        public void InitProjectItem(Project project, Sprite thumbnail)
         {
             m_project = project;
-
             m_TitleText.text = project.name;
+            projectThumbnail = thumbnail;
 
             m_DescriptionText.text = project.description;
             if (project.description == "Local")
