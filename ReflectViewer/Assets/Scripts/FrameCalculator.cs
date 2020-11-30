@@ -1,6 +1,8 @@
-﻿using SharpFlux;
+using SharpFlux;
+using System;
 using Unity.Reflect.Viewer.UI;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace UnityEngine.Reflect
 {
@@ -11,11 +13,14 @@ namespace UnityEngine.Reflect
         float[] m_FrameCounts;
         int m_CurrentIndex;
         int m_CurrentValidFrameCount;
-        float m_CurrentFrameRate;
         float m_TotalFrameRate;
+
+        float m_CurrentFrameRate;
         float m_MinFrameRate;
         float m_MaxFrameRate;
-        float m_FrameRateRatio;
+        bool m_DispatchEnabled;
+
+        public event Action<float> fpsChanged;
 
         void Start()
         {
@@ -30,7 +35,7 @@ namespace UnityEngine.Reflect
 
         void OnStateDataChanged(UIStateData data)
         {
-            this.enabled = data.activeDialog == DialogType.StatsInfo;
+            m_DispatchEnabled = data.activeDialog == DialogType.StatsInfo;
         }
 
         void Update()
@@ -40,7 +45,8 @@ namespace UnityEngine.Reflect
             m_CurrentIndex %= m_FrameCounts.Length;
 
             Calculate();
-            DispatchStatsInfoData();
+            if(m_DispatchEnabled)
+                DispatchStatsInfoData();
         }
 
         void Calculate()
@@ -63,12 +69,15 @@ namespace UnityEngine.Reflect
             }
 
             if (m_CurrentValidFrameCount > 0)
+            {
                 m_CurrentFrameRate = m_TotalFrameRate / m_CurrentValidFrameCount;
+                fpsChanged?.Invoke(m_CurrentFrameRate);
+            }
         }
 
         void DispatchStatsInfoData()
         {
-            var statsInfoData = UIStateManager.current.stateData.statsInfoData;
+            var statsInfoData = UIStateManager.current.debugStateData.statsInfoData;
             statsInfoData.fpsAvg = Mathf.Clamp((int) m_CurrentFrameRate, 0, 99);
             statsInfoData.fpsMax = Mathf.Clamp((int) m_MaxFrameRate, 0, 99);
             statsInfoData.fpsMin = Mathf.Clamp((int) m_MinFrameRate, 0, 99);

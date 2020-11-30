@@ -45,14 +45,9 @@ namespace Unity.Reflect.Viewer.UI
         Image m_DialogButtonImage;
         SceneOptionData m_CurrentsSceneOptionData;
 
-        InstructionUI? m_CurrentInstructionUI;
-        bool m_ToolbarsEnabled;
-        NavigationMode? m_CurrentNavigationMode;
-
         void Awake()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.arStateChanged += OnARStateDataChanged;
 
             m_DialogButtonImage = m_DialogButton.GetComponent<Image>();
             m_DialogWindow = GetComponent<DialogWindow>();
@@ -67,80 +62,48 @@ namespace Unity.Reflect.Viewer.UI
             m_SkyboxDropdown.onValueChanged.AddListener(OnSkyboxChanged);
             m_SimulationToggle.onValueChanged.AddListener(OnSimulationToggleChanged);
             m_WeatherDropdown.onValueChanged.AddListener(OnWeatherChanged);
-            
+
             m_TemperatureControl.onFloatValueChanged.AddListener(OnTemperatureControlChanged);
         }
 
         void OnStateDataChanged(UIStateData data)
         {
             m_DialogButtonImage.enabled = data.activeDialog == DialogType.SceneOptions;
-            if (m_ToolbarsEnabled != data.toolbarsEnabled)
-            {
-                m_ToolbarsEnabled = data.toolbarsEnabled;
-                OnARStateDataChanged(UIStateManager.current.arStateData);
-            }
-            if (m_CurrentNavigationMode != data.navigationState.navigationMode)
-            {
-                m_CurrentNavigationMode = data.navigationState.navigationMode;
-                OnARStateDataChanged(UIStateManager.current.arStateData);
-            }
 
             if (m_CurrentsSceneOptionData == data.sceneOptionData)
                 return;
-            
+
             if (m_CurrentsSceneOptionData.enableTexture != data.sceneOptionData.enableTexture)
                 m_TextureToggle.on = data.sceneOptionData.enableTexture;
-            
+
             if (m_CurrentsSceneOptionData.enableLightData != data.sceneOptionData.enableLightData)
                 m_LightDataToggle.on = data.sceneOptionData.enableLightData;
-            
+
             if (m_CurrentsSceneOptionData.skyboxData != data.sceneOptionData.skyboxData)
             {
                 if (data.sceneOptionData.skyboxData.skyboxType == SkyboxType.Light)
-                    m_SkyboxDropdown.SetValueWithoutNotify(0);                    
+                    m_SkyboxDropdown.SetValueWithoutNotify(0);
                 else if (data.sceneOptionData.skyboxData.skyboxType == SkyboxType.Dark)
                     m_SkyboxDropdown.SetValueWithoutNotify(1);
                 else
                     m_SkyboxDropdown.SetValueWithoutNotify(2);
             }
-            
-            
+
+
             if (m_CurrentsSceneOptionData.enableClimateSimulation != data.sceneOptionData.enableClimateSimulation)
                 m_SimulationToggle.on = data.sceneOptionData.enableClimateSimulation;
-            
+
             if (m_CurrentsSceneOptionData.weatherType != data.sceneOptionData.weatherType)
             {
                 if (data.sceneOptionData.weatherType == WeatherType.HeavyRain)
-                    m_WeatherDropdown.SetValueWithoutNotify(0);                    
+                    m_WeatherDropdown.SetValueWithoutNotify(0);
                 else if (data.sceneOptionData.weatherType == WeatherType.Sunny)
                     m_WeatherDropdown.SetValueWithoutNotify(1);
             }
 
             m_TemperatureControl.SetValue(data.sceneOptionData.temperature);
-            
+
             m_CurrentsSceneOptionData = data.sceneOptionData;
-        }
-        void OnARStateDataChanged(UIARStateData stateData)
-        {
-            if (m_CurrentNavigationMode != NavigationMode.AR)
-            {
-                m_DialogButton.interactable = m_ToolbarsEnabled;
-            }
-            else
-            {
-                if (m_CurrentInstructionUI != stateData.instructionUI)
-                {
-                    m_CurrentInstructionUI = stateData.instructionUI;
-                    if (m_CurrentInstructionUI == InstructionUI.OnBoardingComplete)
-                    {
-                        m_DialogButton.interactable = m_ToolbarsEnabled;
-                    }
-                    else
-                    {
-                        m_DialogButton.interactable = false;
-                    }
-                }
-            }
         }
 
         void OnTextureToggleChanged(bool on)

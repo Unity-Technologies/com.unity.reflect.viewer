@@ -1,6 +1,6 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Unity.TouchFramework
@@ -8,7 +8,6 @@ namespace Unity.TouchFramework
     [DisallowMultipleComponent]
     public class MinMaxPropertyControl : NumericInputFieldPropertyControl, IPointerDownHandler, IPointerUpHandler
     {
-        const float k_SliderSizeTransitionDuration = 0.15f;
         const float k_SliderColorTransitionDuration = 0.2f;
 
 #pragma warning disable 649
@@ -122,6 +121,31 @@ namespace Unity.TouchFramework
 
         void IPointerDownHandler.OnPointerDown(PointerEventData eventData)
         {
+            // If the slider is close to zero users may not be able to see that it can be dragged, in that case, set
+            // it to where they tap the slider
+            if (Math.Abs(m_Slider.fillAmount) < 0.01f)
+            {
+                var pointerPos = eventData.LocalPosition(m_ContainerRect);
+                var rect = m_ContainerRect.rect;
+                var factor = (pointerPos.x + rect.width / 2f) / rect.width;
+                if (m_NumberType == NumberType.Float)
+                {
+                    var value = Mathf.Lerp(m_MinFloat, m_MaxFloat, factor);
+                    var newFloat = ProcessNumber(value);
+                    text = newFloat.ToString(m_FloatFieldFormatString);
+
+                    onFloatValueChanged.Invoke(newFloat);
+                }
+                else
+                {
+                    var value = Mathf.Lerp(m_MinInt, m_MaxInt, factor);
+                    var newInt = ProcessNumber(Mathf.RoundToInt(value));
+                    text = newInt.ToString(k_IntFieldFormatString);
+
+                    onIntValueChanged.Invoke(newInt);
+                }
+            }
+
             m_SliderColorTween.startColor = m_Slider.color;
             m_SliderColorTween.targetColor = UIConfig.propertySelectedColor;
             m_SliderColorTweenRunner.StartTween(m_SliderColorTween, EaseType.EaseOutCubic);

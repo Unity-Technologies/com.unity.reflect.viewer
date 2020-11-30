@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using Unity.Reflect.Viewer.UI;
-using UnityEngine.Reflect.Pipeline;
+using UnityEngine.SceneManagement;
 using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.UI;
@@ -14,15 +14,13 @@ namespace UnityEngine.Reflect.Viewer
         [SerializeField] float m_UiCanvasSize = 0.0008f;
         [SerializeField] int m_UiCanvasWidthOverride = 850;
         [SerializeField] XRRig m_XrRig;
-        [SerializeField] XRController m_XrUiController;
-
-        [SerializeField] List<VRAnchor.DeviceAlignmentAnchor> m_Anchors;
         #pragma warning restore 0649
 
         Transform m_ReflectTransform;
         Canvas m_RootCanvas;
         Transform m_OriginalRootCanvasParent;
         List<TrackedDeviceGraphicRaycaster> m_TrackedDeviceGraphicRaycasters;
+        List<VRAnchor.DeviceAlignmentAnchor> m_Anchors;
         List<VRAnchor> m_VrAnchors;
 
         bool m_WasPressed;
@@ -39,24 +37,7 @@ namespace UnityEngine.Reflect.Viewer
             m_OriginalRootCanvasParent = m_RootCanvas.transform.parent;
             m_TrackedDeviceGraphicRaycasters = new List<TrackedDeviceGraphicRaycaster>();
             m_VrAnchors = new List<VRAnchor>();
-        }
-
-        void Update()
-        {
-            if (!m_XrUiController.inputDevice.TryGetFeatureValue(CommonUsages.secondaryButton, out var isButtonPressed))
-                return;
-
-            if (m_WasPressed == isButtonPressed)
-                return;
-
-            m_WasPressed = isButtonPressed;
-
-            if (!isButtonPressed)
-                return;
-
-            m_RootCanvas.gameObject.SetActive(!m_RootCanvas.gameObject.activeSelf);
-            foreach (var anchor in m_Anchors)
-                anchor.transform.gameObject.SetActive(anchor.transform.gameObject.activeSelf);
+            m_Anchors = new List<VRAnchor.DeviceAlignmentAnchor>();
         }
 
         public void Load()
@@ -87,6 +68,12 @@ namespace UnityEngine.Reflect.Viewer
             rootTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, m_UiCanvasWidthOverride);
 
             // reparent anchors
+            m_Anchors.Clear();
+            var controllers = m_XrRig.GetComponentsInChildren<VRControllerWidget>(true);
+            foreach (var controller in controllers)
+            {
+                m_Anchors.AddRange(controller.Anchors);
+            }
             m_RootCanvas.GetComponentsInChildren(true, m_VrAnchors);
             foreach (var anchor in m_VrAnchors)
                 anchor.Attach(m_Anchors);
@@ -103,7 +90,7 @@ namespace UnityEngine.Reflect.Viewer
             // set parent to current scene root object first in case original parent is null
             // this ensures the canvas won't stay in the VR scene (and therefore destroyed)
             if (m_OriginalRootCanvasParent == null)
-                m_RootCanvas.transform.SetParent(SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects()[0].transform, true);
+                m_RootCanvas.transform.SetParent(SceneManager.GetActiveScene().GetRootGameObjects()[0].transform, true);
             m_RootCanvas.transform.SetParent(m_OriginalRootCanvasParent, false);
 
             // remove tracked device graphic raycasters

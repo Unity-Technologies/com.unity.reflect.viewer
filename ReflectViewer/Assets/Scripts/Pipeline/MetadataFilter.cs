@@ -1,6 +1,6 @@
-﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Reflect;
 using Unity.Reflect.Model;
 using UnityEngine.Reflect.Pipeline;
 using UnityEngine.Rendering.Universal;
@@ -14,7 +14,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         public MetadataFilterSettings settings;
 
-        protected override MetadataFilter Create(ISyncModelProvider provider, IExposedPropertyTable resolver)
+        protected override MetadataFilter Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
             var p = new MetadataFilter(settings);
 
@@ -54,8 +54,6 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         Dictionary<string, Dictionary<string, FilterData>> m_FilterGroups =
             new Dictionary<string, Dictionary<string, FilterData>>();
 
-        public IEnumerable<string> filterGroupList => m_FilterGroups.Keys.OrderBy(e => e);
-
         public IEnumerable<string> GetFilterKeys(string groupKey)
         {
             if (m_FilterGroups.TryGetValue(groupKey, out var dicFilterData))
@@ -85,24 +83,27 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 if (syncMetadata.Parameters.TryGetValue(key, out SyncParameter category))
                 {
                     if (!m_FilterGroups.ContainsKey(key))
+                    {
                         m_FilterGroups[key] = new Dictionary<string, FilterData>();
+                        m_Settings.groupsChanged?.Invoke(m_FilterGroups.Keys.OrderBy(e => e));
+                    }
 
                     var dicFilterData = m_FilterGroups[key];
                     if (!dicFilterData.ContainsKey(category.Value))
+                    {
                         dicFilterData[category.Value] = new FilterData();
+                        m_Settings.categoriesChanged?.Invoke(key, dicFilterData.Keys.OrderBy(e => e));
+                    }
                 }
             }
         }
 
         public void OnStreamInstanceEnd()
         {
-            // call it's done.
-            m_Settings.filtersUpdated?.Invoke();
         }
 
         public void OnGameObjectEnd()
         {
-            m_Settings.filtersUpdated?.Invoke();
         }
 
         public void OnGameObjectAdded(SyncedData<GameObject> gameObject, StreamEvent streamEvent)
@@ -265,7 +266,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             m_GameObjects.Clear();
             m_FilterGroups.Clear();
             m_HighlightedFilterData = null;
-            m_Settings.filtersUpdated?.Invoke();
+            m_Settings.groupsChanged?.Invoke(Enumerable.Empty<string>());
         }
     }
 }

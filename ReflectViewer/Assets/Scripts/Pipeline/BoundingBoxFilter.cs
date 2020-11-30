@@ -1,3 +1,4 @@
+using Unity.Reflect;
 using UnityEngine.Reflect.Pipeline;
 
 namespace UnityEngine.Reflect.Viewer.Pipeline
@@ -8,7 +9,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         public StreamAssetInput input = new StreamAssetInput();
         public BoundingBoxFilterSettings settings = new BoundingBoxFilterSettings();
 
-        protected override BoundingBoxFilter Create(ISyncModelProvider provider, IExposedPropertyTable resolver)
+        protected override BoundingBoxFilter Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
             var node = new BoundingBoxFilter(settings);
             input.streamEvent = node.OnStreamEvent;

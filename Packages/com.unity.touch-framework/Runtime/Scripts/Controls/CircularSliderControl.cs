@@ -46,7 +46,6 @@ namespace Unity.TouchFramework
         int m_GraduationSteps;
         [SerializeField]
         float m_ScaleDensityHint;
-        Material m_ScaleMaterial;
 #pragma warning restore CS0649
 
         static DefaultScaler s_DefaultScaler = new DefaultScaler();
@@ -134,7 +133,6 @@ namespace Unity.TouchFramework
         void OnDestroy()
         {
             Destroy(m_SliderMaterial);
-            Destroy(m_ScaleMaterial);
             m_CircularGraduation.Dispose();
             m_Entries.Clear();
         }

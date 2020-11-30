@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -91,7 +91,9 @@ namespace Unity.Reflect.Viewer.UI
 
         public GameObject CurrentSelectedObject()
         {
-            return selectedObjects.Count > currentIndex ? selectedObjects[currentIndex] : null;
+            if (selectedObjects != null && selectedObjects.Count > currentIndex)
+                return selectedObjects[currentIndex];
+            return null;
         }
 
         public override bool Equals(object obj)
@@ -165,11 +167,20 @@ namespace Unity.Reflect.Viewer.UI
         }
     }
 
+    public enum ProjectSortMethod
+    {
+        SortByDate = 0,
+        SortByName = 1,
+    }
+
     [Serializable]
     public struct UIProjectStateData : IEquatable<UIProjectStateData>
     {
         [NonSerialized]
         public Project activeProject;
+        [NonSerialized]
+        public Sprite activeProjectThumbnail;
+        public ProjectSortMethod projectSortMethod;
 
         public Bounds rootBounds;
         public List<string> filterGroupList;
@@ -178,6 +189,7 @@ namespace Unity.Reflect.Viewer.UI
         public FilterItemInfo lastChangedFilterItem;
         public ObjectSelectionInfo objectSelectionInfo;
         public ISpatialPicker<Tuple<GameObject, RaycastHit>> objectPicker;
+        public ISpatialPicker<Tuple<GameObject, RaycastHit>> teleportPicker;
         public Vector3? teleportTarget;
         public CameraTransformInfo cameraTransformInfo;
 
@@ -203,6 +215,7 @@ namespace Unity.Reflect.Viewer.UI
         public bool Equals(UIProjectStateData other)
         {
             return Equals(activeProject, other.activeProject) &&
+                projectSortMethod.Equals(other.projectSortMethod) &&
                 rootBounds.Equals(other.rootBounds) &&
                 Equals(filterGroupList, other.filterGroupList) &&
                 highlightFilter.Equals(other.highlightFilter) &&
@@ -210,6 +223,7 @@ namespace Unity.Reflect.Viewer.UI
                 lastChangedFilterItem.Equals(other.lastChangedFilterItem) &&
                 objectSelectionInfo.Equals(other.objectSelectionInfo) &&
                 objectPicker == other.objectPicker &&
+                teleportPicker == other.teleportPicker &&
                 teleportTarget == other.teleportTarget &&
                 cameraTransformInfo == other.cameraTransformInfo;
         }
@@ -229,6 +243,7 @@ namespace Unity.Reflect.Viewer.UI
             unchecked
             {
                 var hashCode = (activeProject != null ? activeProject.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ projectSortMethod.GetHashCode();
                 hashCode = (hashCode * 397) ^ rootBounds.GetHashCode();
                 hashCode = (hashCode * 397) ^ (filterGroupList != null ? filterGroupList.GetHashCode() : 0);
                 hashCode = (hashCode * 397) ^ highlightFilter.GetHashCode();
@@ -236,6 +251,7 @@ namespace Unity.Reflect.Viewer.UI
                 hashCode = (hashCode * 397) ^ lastChangedFilterItem.GetHashCode();
                 hashCode = (hashCode * 397) ^ objectSelectionInfo.GetHashCode();
                 hashCode = (hashCode * 397) ^ (objectPicker != null ? objectPicker.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ (teleportPicker != null ? teleportPicker.GetHashCode() : 0);
                 hashCode = (hashCode * 397) ^ (teleportTarget.HasValue ? teleportTarget.Value.GetHashCode() : 0);
                 hashCode = (hashCode * 397) ^ cameraTransformInfo.GetHashCode();
                 return hashCode;

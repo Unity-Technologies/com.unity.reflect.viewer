@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 267943c3a4c14601a69f725ade47d3e0, type: 3}
+  m_Name: Help Dialog Data
+  m_EditorClassIdentifier: 
+  m_Entries:
+  - dialogTypeId: 1
+    helpModeEntryId: 0
+    title: Account Dialog
+    content: Log in to your Unity account or visit the BIM360 Dashboard
+  - dialogTypeId: 13
+    helpModeEntryId: 0
+    title: Projects (Landing Screen)
+    content: See all the projects linked to your account
+  - dialogTypeId: 0
+    helpModeEntryId: 1
+    title: Sync
+    content: When enabled, syncs model from original source file
+  - dialogTypeId: 3
+    helpModeEntryId: 0
+    title: Filters Dialog
+    content: Filter models by selecting, enabling or disabling objects based on BIM
+      information
+  - dialogTypeId: 8
+    helpModeEntryId: 0
+    title: Scene Options Dialog
+    content: Adjust scene options like backgrounds and cameras
+  - dialogTypeId: 11
+    helpModeEntryId: 0
+    title: Sun Study Dialog
+    content: Adjust sun's location and time of day settings
+  - dialogTypeId: 15
+    helpModeEntryId: 0
+    title: Stats Info
+    content: View the statistics and processing information
+  - dialogTypeId: 17
+    helpModeEntryId: 2
+    title: Navigation Cube
+    content: Tap to view different camera angles or reset your position
+  - dialogTypeId: 14
+    helpModeEntryId: 0
+    title: Navigation Mode
+    content: Switch between different viewing modes
+  - dialogTypeId: 6
+    helpModeEntryId: 3
+    title: Orbit Select
+    content: Switch between orbit, pan, and zoom for easier navigation on touch screens.
+      Long press to change option
+  - dialogTypeId: 0
+    helpModeEntryId: 4
+    title: Look Around
+    content: On Desktop use WASD controls to navigate your scene, left click to rotate
+      and scroll wheel to zoom. On touch screens use one finger swipe to rotate camera,
+      two finger pinch to zoom, double tap to teleport
+  - dialogTypeId: 12
+    helpModeEntryId: 0
+    title: Bim Info
+    content: View and filter detailed BIM information
+  - dialogTypeId: 0
+    helpModeEntryId: 5
+    title: Sun Study Dial
+    content: Adjust the position of the sun relative to the scene environment

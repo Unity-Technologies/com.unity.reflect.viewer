@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using Unity.Reflect;
 using UnityEngine.Events;
 using UnityEngine.Reflect.Pipeline;
 
@@ -39,7 +40,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         public StreamCounterSettings settings = new StreamCounterSettings();
 
-        protected override StreamCounter Create(ISyncModelProvider provider, IExposedPropertyTable resolver)
+        protected override StreamCounter Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
             var node = new StreamCounter(settings);
 

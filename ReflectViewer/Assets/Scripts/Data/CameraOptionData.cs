@@ -36,11 +36,14 @@ namespace Unity.Reflect.Viewer.UI
         public bool enableAutoNavigationSpeed;
         public int navigationSpeed;
 
+        public int numberOfCLick;
+
         public bool Equals(CameraOptionData other)
         {
             return cameraProjectionType == other.cameraProjectionType && cameraViewType == other.cameraViewType &&
                 enableJoysticks == other.enableJoysticks && joystickPreference == other.joystickPreference &&
-                enableAutoNavigationSpeed == other.enableAutoNavigationSpeed && navigationSpeed == other.navigationSpeed;
+                enableAutoNavigationSpeed == other.enableAutoNavigationSpeed && navigationSpeed == other.navigationSpeed
+                && numberOfCLick == other.numberOfCLick;
         }
 
         public override bool Equals(object obj)
@@ -58,6 +61,7 @@ namespace Unity.Reflect.Viewer.UI
                 hashCode = (hashCode * 397) ^ (int) joystickPreference;
                 hashCode = (hashCode * 397) ^ enableAutoNavigationSpeed.GetHashCode();
                 hashCode = (hashCode * 397) ^ navigationSpeed;
+                hashCode = (hashCode * 397) ^ numberOfCLick;
                 return hashCode;
             }
         }

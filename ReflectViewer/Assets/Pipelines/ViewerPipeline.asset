@@ -219,6 +219,10 @@ MonoBehaviour:
             type: 3}
           m_URPTransparentShader: {fileID: -6465566751694194690, guid: 49b6e7398c5be4d7c8d277c3a94080e7,
             type: 3}
+          m_URPDoubleOpaqueShader: {fileID: -6465566751694194690, guid: c2be3388174bfaf4a8726658f7237ee3,
+            type: 3}
+          m_URPDoubleTransparentShader: {fileID: -6465566751694194690, guid: 0d34f976414495b40a6f273e743848f4,
+            type: 3}
         textureCacheParam:
           value:
             id: 7
@@ -271,8 +275,10 @@ MonoBehaviour:
           - Phase Demolished
           - Layer
           forwardRendererDatas:
-          - {fileID: 11400000, guid: 4a8e21d5c33334b11b34a596161b9360, type: 2}
-          - {fileID: 11400000, guid: 46c5d612cfd30054f90ef51e4d3d3fd3, type: 2}
+          - {fileID: 11400000, guid: 2031fc59f1d4f1b4fb97f943a0d54d10, type: 2}
+          - {fileID: 11400000, guid: e8b25ecb1ec138b4887ce801215cf974, type: 2}
+          - {fileID: 11400000, guid: 504442571853e8c4bbb6bcd76f450922, type: 2}
+          - {fileID: 11400000, guid: 465aeb993fe084f58a967dff6eb5864f, type: 2}
           - {fileID: 11400000, guid: 465aeb993fe084f58a967dff6eb5864f, type: 2}
           filtersUpdated:
             m_PersistentCalls:

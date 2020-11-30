@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using SharpFlux;
 using Unity.TouchFramework;
 using UnityEngine;
@@ -62,7 +62,7 @@ namespace Unity.Reflect.Viewer.UI
             {
                 var listItem = Instantiate(m_ProjectListItemPrefab, m_ScrollViewContent.transform);
                 listItem.gameObject.SetActive(true);
-                listItem.InitProjectItem(project);
+                listItem.InitProjectItem(project, ThumbnailController.LoadThumbnailForProject(project));
 
                 listItem.projectItemClicked += OnProjectSelectButtonClick;
                 listItem.optionButtonClicked += OnProjectOptionButtonClick;
@@ -83,14 +83,6 @@ namespace Unity.Reflect.Viewer.UI
             var projectData = UIStateManager.current.projectStateData;
             projectData.activeProject = project;
 
-            if (UIStateManager.current.projectStateData.activeProject != Project.Empty)
-            {
-                // first close current Project if open
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatus, "Closing {UIStateManager.current.projectStateData.activeProject.name}..."));
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseProject, UIStateManager.current.projectStateData.activeProject));
-            }
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatus, $"Opening {projectData.activeProject.name}..."));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenProject, projectData));
         }
 

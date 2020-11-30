@@ -1410,6 +1410,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1a5f9ddf75d014e4b87dd9f81edb7ff7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_HideInVr: 0
   m_Device: 1
   m_Alignment: 3
   m_PositionOffset: {x: 100, y: 0, z: 0}

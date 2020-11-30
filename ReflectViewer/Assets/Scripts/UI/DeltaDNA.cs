@@ -1,32 +1,71 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Net.Mime;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 using SharpFlux;
 using SharpFlux.Middleware;
 using UnityEngine;
 
 namespace Unity.Reflect.Viewer.UI
 {
+    //EventData strange structure is cause by JsonUtility.ToJson that don't handle inheritance
+    [Serializable]
+    public class EventData
+    {
+        public string eventName;
+        public string userID;
+        public string sessionID;
+    }
+
+    [Serializable]
+    public class EventDataWithEmptyParams : EventData
+    {
+        public EventParam eventParams;
+    }
+
+    [Serializable]
+    public class EventDataWithProjectID : EventData
+    {
+        public EventParamProjectID eventParams;
+    }
+
+    [Serializable]
+    public class EventDataWithEnabled : EventData
+    {
+        public EventParamEnabled eventParams;
+    }
+
+    [Serializable]
+    public class EventParam
+    {
+    }
+
+    [Serializable]
+    public class EventParamProjectID
+    {
+        public string projectID;
+    }
+
+    [Serializable]
+    public class EventParamEnabled
+    {
+        public bool isEnabled;
+    }
+
     public class DeltaDNA : MonoBehaviour, IMiddleware<Payload<ActionTypes>>
     {
-        string userId;
+        private static readonly HttpClient httpClient = new HttpClient();
+        private static string ddnaUrl;
 #pragma warning disable CS0649
-        [SerializeField]
-        private string url;
+        [SerializeField] private string url;
 #pragma warning restore CS0649
-        static readonly HttpClient httpClient = new HttpClient();
-        static string ddnaUrl;
+        private string userId;
 
-        void Start()
+        private void Start()
         {
             var assemblyVersion = Assembly.GetEntryAssembly()?.GetName().Version.ToString();
-            
+
             ddnaUrl = url;
 
             if (url != string.Empty && Uri.IsWellFormedUriString(ddnaUrl, UriKind.Absolute))
@@ -36,86 +75,26 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        private void OnSessionStateDataChanged(UISessionStateData obj)
-        {
-            var uid = obj.sessionState.user?.UserId;
-            if (obj.sessionState.loggedState == LoginState.LoggedIn && uid != userId)
-            {
-                TrackViewerLoaded(uid);
-                userId = uid;
-            }
-        }
-
-        static async void SendEvent(object body)
-        {
-            var json = JsonUtility.ToJson(body);
-            using (var content = new StringContent(json, Encoding.UTF8, "application/json"))
-            {
-                var res = await httpClient.PostAsync(ddnaUrl, content).ConfigureAwait(false);
-                if (res.StatusCode != HttpStatusCode.NoContent)
-                {
-                    Debug.Log($"Failed to send event to DeltaDNA. Reason: {res.ReasonPhrase}");
-                }
-            }
-        }
-
-        public static void TrackViewerLoaded(string userId, string sessionId = "")
-        {
-            var payload = new
-            {
-                eventName = "reflectViewerLoaded",
-                userID = userId,
-                sessionID = sessionId
-            };
-
-            SendEvent(payload);
-        }
-
-        public static void TrackViewerOpenProject(string userId, string projectId, string sessionId = "")
-        {
-            var payload = new
-            {
-                eventName = "reflectViewerOpenProject",
-                userID = userId,
-                sessionID = sessionId,
-                eventParams = new
-                {
-                    projectId
-                }
-            };
-
-            SendEvent(payload);
-        }
-
-        public static void TrackViewerSyncEnabled(string userId, string projectId, string sessionId = "")
-        {
-            var payload = new
-            {
-                eventName = "reflectViewerSyncEnabled",
-                userID = userId,
-                sessionID = sessionId,
-                eventParams = new
-                {
-                    projectId
-                }
-            };
-
-            SendEvent(payload);
-        }
-
         public bool Apply(ref Payload<ActionTypes> payload)
         {
-            bool proceedToInvocation = true;
+            var proceedToInvocation = true;
 
             switch (payload.ActionType)
             {
                 case ActionTypes.OpenProject:
                 {
-                    UIProjectStateData projectData = (UIProjectStateData)payload.Data;
+                    var projectData = (UIProjectStateData) payload.Data;
                     TrackViewerOpenProject(UIStateManager.current.sessionStateData.sessionState.user?.UserId,
                         projectData.activeProject.projectId);
                     break;
-                 }
+                }
+                case ActionTypes.SetSync:
+                {
+                    var projectData = (bool) payload.Data;
+                    TrackViewerSyncEnabled(UIStateManager.current.sessionStateData.sessionState.user?.UserId,
+                        projectData);
+                    break;
+                }
                 case ActionTypes.Login:
                 case ActionTypes.Logout:
                 case ActionTypes.SetToolState:
@@ -128,6 +107,99 @@ namespace Unity.Reflect.Viewer.UI
             }
 
             return proceedToInvocation;
+        }
+
+        private void OnSessionStateDataChanged(UISessionStateData obj)
+        {
+            var uid = obj.sessionState.user?.UserId;
+            if (obj.sessionState.loggedState == LoginState.LoggedIn && uid != userId)
+            {
+                TrackViewerLoaded(uid);
+                userId = uid;
+            }
+        }
+
+        private static void SendEvent(EventData body)
+        {
+            var json = JsonUtility.ToJson(body);
+
+            SendEvent(json);
+        }
+
+        private static void SendEvent(EventDataWithEmptyParams body)
+        {
+            var json = JsonUtility.ToJson(body);
+
+            SendEvent(json);
+        }
+
+        private static void SendEvent(EventDataWithProjectID body)
+        {
+            var json = JsonUtility.ToJson(body);
+
+            SendEvent(json);
+        }
+
+        private static void SendEvent(EventDataWithEnabled body)
+        {
+            var json = JsonUtility.ToJson(body);
+
+            SendEvent(json);
+        }
+
+        private static async void SendEvent(string json)
+        {
+            Debug.Log(json);
+            using (var content = new StringContent(json, Encoding.UTF8, "application/json"))
+            {
+                var res = await httpClient.PostAsync(ddnaUrl, content).ConfigureAwait(false);
+                if (res.StatusCode != HttpStatusCode.NoContent)
+                    Debug.Log($"Failed to send event to DeltaDNA. Reason: {res.ReasonPhrase}");
+            }
+        }
+
+        public static void TrackViewerLoaded(string userId, string sessionId = "")
+        {
+            var payload = new EventDataWithEmptyParams
+            {
+                eventName = "reflectViewerLoaded",
+                userID = userId,
+                sessionID = sessionId
+            };
+
+            SendEvent(payload);
+        }
+
+        public static void TrackViewerOpenProject(string userId, string projectId, string sessionId = "")
+        {
+            var payload = new EventDataWithProjectID
+            {
+                eventName = "reflectViewerOpenProject",
+                userID = userId,
+                sessionID = sessionId,
+                eventParams = new EventParamProjectID
+                {
+                    projectID = projectId
+                }
+            };
+
+            SendEvent(payload);
+        }
+
+        public static void TrackViewerSyncEnabled(string userId, bool isEnabled, string sessionId = "")
+        {
+            var payload = new EventDataWithEnabled
+            {
+                eventName = "reflectViewerSyncEnabled",
+                userID = userId,
+                sessionID = sessionId,
+                eventParams = new EventParamEnabled
+                {
+                    isEnabled = isEnabled
+                }
+            };
+
+            SendEvent(payload);
         }
     }
 }

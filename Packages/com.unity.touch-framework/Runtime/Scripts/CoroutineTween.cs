@@ -47,6 +47,80 @@ namespace Unity.TouchFramework
         bool ValidOnChangedTarget();
     }
 
+    internal struct RectTween : ITweenValue
+    {
+        public class RectTweenCallback : UnityEvent<Rect> { }
+
+        private RectTweenCallback m_Target;
+        private Rect m_StartValue;
+        private Rect m_TargetValue;
+        UnityEvent m_OnCompleteTarget;
+
+        private float m_Duration;
+        private bool m_IgnoreTimeScale;
+
+        public Rect startValue
+        {
+            get { return m_StartValue; }
+            set { m_StartValue = value; }
+        }
+
+        public Rect targetValue
+        {
+            get { return m_TargetValue; }
+            set { m_TargetValue = value; }
+        }
+
+        public float duration
+        {
+            get { return m_Duration; }
+            set { m_Duration = value; }
+        }
+
+        public bool ignoreTimeScale
+        {
+            get { return m_IgnoreTimeScale; }
+            set { m_IgnoreTimeScale = value; }
+        }
+
+        public void TweenValue(float floatPercentage)
+        {
+            if (!ValidOnChangedTarget())
+                return;
+
+            var newPositionValue = Vector2.Lerp(m_StartValue.position, m_TargetValue.position, floatPercentage);
+            var newSizevalue = Vector2.Lerp(m_StartValue.size, m_TargetValue.size, floatPercentage);
+
+            m_Target.Invoke(new Rect(newPositionValue, newSizevalue));
+
+            if (m_OnCompleteTarget != null && Math.Abs(floatPercentage - 1f) < Mathf.Epsilon)
+            {
+                m_OnCompleteTarget.Invoke();
+            }
+        }
+
+        public void AddOnChangedCallback(UnityAction<Rect> callback)
+        {
+            if (m_Target == null)
+                m_Target = new RectTweenCallback();
+
+            m_Target.AddListener(callback);
+        }
+
+        public void AddOnCompleteCallback(UnityAction callback)
+        {
+            if (m_OnCompleteTarget == null)
+                m_OnCompleteTarget = new UnityEvent();
+
+            m_OnCompleteTarget.AddListener(callback);
+        }
+
+        public bool ValidOnChangedTarget()
+        {
+            return m_Target != null;
+        }
+    }
+
     // Float tween class, receives the
     // TweenValue callback and then sets
     // the value on the target.

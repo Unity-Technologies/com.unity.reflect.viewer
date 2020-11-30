@@ -68,6 +68,38 @@
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": ""
+                },
+                {
+                    "name": "Zoom Gesture Action",
+                    "type": "Value",
+                    "id": "5abb034b-37a0-438c-a3f4-92c940b19530",
+                    "expectedControlType": "Touch",
+                    "processors": "",
+                    "interactions": ""
+                },
+                {
+                    "name": "Pan Gesture Action",
+                    "type": "Value",
+                    "id": "f34cabbd-226e-4760-8670-a2c7b9bf7416",
+                    "expectedControlType": "Touch",
+                    "processors": "",
+                    "interactions": ""
+                },
+                {
+                    "name": "Focus Action",
+                    "type": "Button",
+                    "id": "cdc24460-f4a5-411d-be7f-43d830fa6493",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": ""
+                },
+                {
+                    "name": "TouchTeleport Action",
+                    "type": "Button",
+                    "id": "765b757f-96e0-41c4-aeae-7190587b132d",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": ""
                 }
             ],
             "bindings": [
@@ -402,6 +434,83 @@
                     "isPartOfComposite": true
                 },
                 {
+                    "name": "Vector 3",
+                    "id": "6a5e6b9b-11d5-4ccb-8e89-b02d23c42522",
+                    "path": "Vector3",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "up",
+                    "id": "d0c7d176-8f74-4bab-a1e0-b6cf24a2c99d",
+                    "path": "<Keyboard>/pageUp",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "down",
+                    "id": "3689940c-add3-4854-abdd-47982e23b61e",
+                    "path": "<Keyboard>/pageDown",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "left",
+                    "id": "ada9d1ad-e873-4e6d-a447-57c490f69a7e",
+                    "path": "<Keyboard>/leftArrow",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "right",
+                    "id": "82c397d0-bd05-4d10-8ddf-8c51d4b25ccb",
+                    "path": "<Keyboard>/rightArrow",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "forward",
+                    "id": "64ae49d3-9dc3-4cf1-8d9a-d6b13ff7b572",
+                    "path": "<Keyboard>/upArrow",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "backward",
+                    "id": "a45222e9-bea0-4358-bd15-7d92033656fd",
+                    "path": "<Keyboard>/downArrow",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Moving Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
                     "name": "",
                     "id": "944495cd-e954-46be-9192-6a99d0c93fcb",
                     "path": "<Mouse>/press",
@@ -420,6 +529,94 @@
                     "processors": "ScaleVector2(y=0.01)",
                     "groups": "",
                     "action": "Zoom Action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Two Finger/Distance",
+                    "id": "b61d4fef-b374-49f3-9aba-3fd1902576c0",
+                    "path": "TwoFinger/Distance",
+                    "interactions": "PinchGesture",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Zoom Gesture Action",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Finger1",
+                    "id": "886adf93-8155-4631-bcb5-0e734f8267a2",
+                    "path": "<Touchscreen>/touch0",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Zoom Gesture Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Finger2",
+                    "id": "fd90eac5-9bed-4bc9-ae84-3b7cd7c00b3f",
+                    "path": "<Touchscreen>/touch1",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Zoom Gesture Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Two Finger/Median",
+                    "id": "9609a1a5-159f-4a46-8467-815b04489e39",
+                    "path": "TwoFinger/Median",
+                    "interactions": "TwoFingerDragGesture",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pan Gesture Action",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Finger1",
+                    "id": "b28ab49a-fba5-4a50-9649-190886d98bf1",
+                    "path": "<Touchscreen>/touch0",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pan Gesture Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Finger2",
+                    "id": "87ea47d7-6dfd-45aa-a3c6-5b2430536c25",
+                    "path": "<Touchscreen>/touch1",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pan Gesture Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "b2f41dab-c37f-4e15-aa53-3cc16e331570",
+                    "path": "<Keyboard>/f",
+                    "interactions": "Press(behavior=2)",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Focus Action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "a85010ff-9768-4fbf-a644-a3bf4a09a195",
+                    "path": "<Touchscreen>/press",
+                    "interactions": "MultiTap",
+                    "processors": "",
+                    "groups": "",
+                    "action": "TouchTeleport Action",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
@@ -482,6 +679,14 @@
                     "expectedControlType": "Vector2",
                     "processors": "",
                     "interactions": "MouseDrag"
+                },
+                {
+                    "name": "Placement Scale Action",
+                    "type": "Value",
+                    "id": "74435782-150c-4f14-8762-7217c1090833",
+                    "expectedControlType": "Touch",
+                    "processors": "",
+                    "interactions": ""
                 }
             ],
             "bindings": [
@@ -537,6 +742,104 @@
                     "processors": "ScaleVector2(x=0.1,y=0.1)",
                     "groups": "",
                     "action": "Placement Rotate Action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Two Finger/Distance",
+                    "id": "b98930e9-ea00-4f7a-8d60-06c30f64c77a",
+                    "path": "TwoFinger/Distance",
+                    "interactions": "PinchGesture",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Placement Scale Action",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "Finger1",
+                    "id": "96c60856-3489-48d9-aa74-c9d43827253a",
+                    "path": "<Touchscreen>/touch0",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Placement Scale Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Finger2",
+                    "id": "a5803129-7da5-41d5-9255-68e642907e5b",
+                    "path": "<Touchscreen>/touch1",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Placement Scale Action",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                }
+            ]
+        },
+        {
+            "name": "VR",
+            "id": "64f8ba47-18c3-461f-b338-695dcc1bb44e",
+            "actions": [
+                {
+                    "name": "Teleport",
+                    "type": "Value",
+                    "id": "3f491455-9fcb-4056-9419-a44fc127cd9e",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "Hold"
+                },
+                {
+                    "name": "Fly",
+                    "type": "Value",
+                    "id": "1c4ecf77-4bd8-48e8-8519-d087624ecd10",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "Hold"
+                },
+                {
+                    "name": "Select",
+                    "type": "Value",
+                    "id": "64349d3c-1364-4ea5-b365-cb971fdcc813",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": ""
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "e3bbcff7-3438-4985-a012-852f447e04b4",
+                    "path": "<XRController>{RightHand}/primaryButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Teleport",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "173ed4a5-7129-4ccf-8183-906aa95399a7",
+                    "path": "<XRController>{LeftHand}/primaryButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Fly",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "417651cf-d4d0-4c43-aeea-49b6941319c6",
+                    "path": "<XRController>{RightHand}/triggerPressed",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Select",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

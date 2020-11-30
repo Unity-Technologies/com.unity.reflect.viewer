@@ -1,9 +1,8 @@
 ﻿using System.Collections;
-using Unity.MARS;
+using Unity.MARS.MARSUtils;
 using SharpFlux;
 using Unity.Reflect.Viewer.UI;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace Unity.Reflect.Viewer
 {
@@ -43,25 +42,35 @@ namespace Unity.Reflect.Viewer
         [SerializeField]
         [Tooltip("If the cursor should align to the raycast surface normal.")]
         bool m_AlignToTargetNormal;
+
+        [SerializeField]
+        [Tooltip("If the target is not valid, show this instruction UI canvas.")]
+        Canvas m_InstructionUICanvas;
 #pragma warning restore CS0649
 
-        private const string instructionAimToPlaceText = "Aim at desired spot and tap on surface or press OK...";
-
         Vector3 m_ScreenPoint = new Vector3(0.5f, 0.5f, 0.0f);
-        public Vector3 m_ObjectToPlaceOffset;
 
         Camera m_Camera;
 
         Transform m_CursorTransform;
         Transform m_CameraTransform;
 
-        bool m_ValidTarget = false;
+        bool m_ValidTarget;
+        bool? m_CachedValidTarget;
+
+        public bool ValidTarget
+        {
+            get => m_ValidTarget;
+        }
 
         PlacementTarget m_LastTarget;
+        public PlacementTarget LastTarget { get => m_LastTarget; }
+
+        public bool ActiveScanning { get; set; }
 
         void Start()
         {
-            m_Camera = MARS.MARSUtils.MarsRuntimeUtils.GetActiveCamera(true);
+            m_Camera = MarsRuntimeUtils.GetActiveCamera(true);
             m_CameraTransform = m_Camera.transform;
             m_ScreenPoint = new Vector3( 0.5f, 0.5f, 0.0f);
 
@@ -77,9 +86,13 @@ namespace Unity.Reflect.Viewer
 
         void Update()
         {
-            if (m_ObjectToPlace == null)
+            if (m_ViewBasedMode && m_ViewBasedPlaceMode)
             {
-                DisableCursor();
+                AlignViewModelWithARView(UIStateManager.current.m_PlacementRoot.transform);
+            }
+
+            if (!ActiveScanning)
+            {
                 return;
             }
 
@@ -115,16 +128,12 @@ namespace Unity.Reflect.Viewer
             if (rayHits <= 0)
             {
                 DisableCursor();
+                UpdateTargetUI(false);
                 return;
             }
-            else
-            {
-                m_Cursor.SetActive(true);
-                if (m_ValidTarget == false)
-                    StartCoroutine(InstructionAimToPlace());
-            }
 
-            m_ValidTarget = true;
+            m_Cursor.SetActive(true);
+            UpdateTargetUI(true);
 
             // Find the closest target and align the cursor to that target
             var closestHit = 0;
@@ -161,31 +170,48 @@ namespace Unity.Reflect.Viewer
             var pressed = Input.GetMouseButtonDown(0);
             if (pressed)
             {
-                pressed = !EventSystem.current.IsPointerOverGameObject();
+                pressed = !OrphanUIController.isTouchBlockedByUI;
             }
 
             if (pressed)
             {
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUI, InstructionUI.ConfirmPlacement));
+                StartCoroutine(MoveNext());
             }
         }
 
-        IEnumerator InstructionAimToPlace()
+        void UpdateTargetUI(bool valid)
         {
-            yield return new WaitForSeconds(0);
+            m_ValidTarget = valid;
+            m_InstructionUICanvas.enabled = !valid;
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUI,
-                InstructionUI.AimToPlaceBoundingBox));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithLevel,
-                new StatusMessageData() { text=instructionAimToPlaceText, level=StatusMessageLevel.Instruction }));
+            if (m_CachedValidTarget != m_ValidTarget)
+            {
+                StartCoroutine(UpdateValidTarget());
+                m_CachedValidTarget = m_ValidTarget;
+            }
         }
 
-        void DisableCursor()
+        IEnumerator UpdateValidTarget()
         {
-            m_ValidTarget = false;
+            // TODO: find a better way to update UI
+            yield return new WaitForSeconds(0);
+            var placementData = UIStateManager.current.arStateData.placementStateData;
+            placementData.validTarget = m_ValidTarget;
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetPlacementState, placementData));
+        }
+
+        IEnumerator MoveNext()
+        {
+            // TODO: move to new input system so we don't need this
+            yield return new WaitForSeconds(0);
+            UIStateManager.current.arStateData.currentInstructionUI.Next();
+        }
+
+        public void DisableCursor()
+        {
             m_ScreenPoint = new Vector3(0.5f, 0.5f, 0.0f);
             m_Cursor.SetActive(false);
+            m_InstructionUICanvas.enabled = false;
         }
 
         /// <summary>
@@ -200,29 +226,26 @@ namespace Unity.Reflect.Viewer
             if (!m_ValidTarget && placementRootTransform.position == Vector3.zero)
                 return;
 
-            // No cursor needed after the object is placed
             DisableCursor();
-
-            // Can't place an object we do not have!
-            if (m_ObjectToPlace == null)
-                return;
 
             placementRootTransform.parent = null;
             placementRootTransform.position = m_CursorTransform.position;
             placementRootTransform.rotation = Quaternion.identity;
 
-            var objectTransform = m_ObjectToPlace.transform;
-
-            objectTransform.parent = null;
-            // center BoundingBox root
-            var offset  = Vector3.Scale( new Vector3(UIStateManager.current.projectStateData.rootBounds.center.x, UIStateManager.current.projectStateData.rootBounds.min.y, UIStateManager.current.projectStateData.rootBounds.center.z), objectTransform.localScale);
-            objectTransform.position = m_CursorTransform.position - offset;
-            objectTransform.rotation = Quaternion.identity;
-
             m_ObjectToPlace.transform.SetParent(UIStateManager.current.m_PlacementRoot.transform, true);
             m_ObjectToPlace.SetActive(true);
 
-            m_ObjectToPlace = null;
+            if (m_ViewBasedMode)
+            {
+                m_ObjectToPlace.transform.localPosition = Vector3.zero;
+                m_ObjectToPlace.transform.localRotation = Quaternion.identity;
+                AlignViewModelWithARView(placementRootTransform);
+            }
+            else
+            {
+                CenterBoundingBoxRoot(m_ObjectToPlace.transform);
+            }
+
         }
 
         /// <summary>
@@ -259,33 +282,44 @@ namespace Unity.Reflect.Viewer
 
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowBoundingBoxModel, false));
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUI, InstructionUI.OnBoardingComplete));
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUIState, InstructionUIState.Completed));
+        }
+
+
+        public void SwapModelToBox(GameObject model, GameObject boundingBoxes)
+        {
+            var modelTransform = model.transform;
+            var bbTransform = boundingBoxes.transform;
+            bbTransform.position = modelTransform.position;
+            bbTransform.rotation = modelTransform.rotation;
+            bbTransform.localScale = Vector3.one / (float) UIStateManager.current.stateData.modelScale;
+
+            boundingBoxes.transform.SetParent(UIStateManager.current.m_PlacementRoot.transform, true);
         }
 
         public void RestoreModel(GameObject boundingBoxes, GameObject model)
         {
-            var boundingBoxesTransform = boundingBoxes.transform;
-
             var modelTransform = model.transform;
             modelTransform.parent = null;
             modelTransform.position = Vector3.zero;
             modelTransform.rotation = Quaternion.identity;
             modelTransform.localScale = Vector3.one;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowModel, false));
 
             var bbTransform = boundingBoxes.transform;
             bbTransform.parent = null;
             bbTransform.position = Vector3.zero;
             bbTransform.rotation = Quaternion.identity;
             bbTransform.localScale = Vector3.one / (float) UIStateManager.current.stateData.modelScale;
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowBoundingBoxModel, true));
         }
 
         public void Reset()
         {
             DisableCursor();
             m_ObjectToPlace = null;
+            m_ValidTarget = false;
+            m_CachedValidTarget = null;
+            m_ViewBasedMode = false;
+            m_ViewBasedPlaceMode = false;
         }
 
         public void ResetTransformation()
@@ -303,6 +337,62 @@ namespace Unity.Reflect.Viewer
             yield return new WaitForSeconds(0);
 
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, ArchitectureScale.OneToOneHundred));
+        }
+
+        bool m_ViewBasedMode;
+        bool m_ViewBasedPlaceMode;
+        Vector3 m_InversePosition;
+        Quaternion m_InverseRotation;
+        public void SetViewBaseARMode(Transform cameraTransform)
+        {
+            m_ViewBasedMode = true;
+            m_InversePosition = cameraTransform.InverseTransformDirection( - cameraTransform.position);
+            m_InverseRotation = Quaternion.Inverse(cameraTransform.rotation);
+        }
+
+        public void SetViewBasedPlaceMode(bool value)
+        {
+            m_ViewBasedPlaceMode = value;
+        }
+
+        void AlignViewModelWithARView(Transform objectTransform)
+        {
+            var transformRotation = m_CameraTransform.rotation;
+            m_CameraTransform.rotation = Quaternion.Euler(0, transformRotation.eulerAngles.y, 0);
+
+            var transformPoint = m_CameraTransform.TransformPoint(m_InversePosition);
+            transformPoint.y = m_CursorTransform.position.y + 0.01f;
+            objectTransform.position = transformPoint;
+
+            Quaternion cameraTransformRotation = m_CameraTransform.rotation * m_InverseRotation;
+            objectTransform.rotation = Quaternion.Euler(0, cameraTransformRotation.eulerAngles.y, 0);
+
+            m_CameraTransform.rotation = transformRotation;
+        }
+
+        void CenterBoundingBoxRoot(Transform objectTransform)
+        {
+            var offset = Vector3.Scale(
+                new Vector3(UIStateManager.current.projectStateData.rootBounds.center.x,
+                    UIStateManager.current.projectStateData.rootBounds.min.y,
+                    UIStateManager.current.projectStateData.rootBounds.center.z), objectTransform.localScale);
+            objectTransform.position = m_CursorTransform.position - offset;
+            objectTransform.rotation = Quaternion.identity;
+        }
+
+        public void AlignModelWithAnchor(GameObject model, Vector3 modelPlaneNormal, Vector3 arPlaneNormal, Vector3 modelAnchor, Vector3 arAnchor)
+        {
+            var distance = modelAnchor - model.transform.position;
+            model.transform.position = arAnchor - distance;
+
+            // orient model with first plane
+            float differenceAngle = Vector3.SignedAngle(modelPlaneNormal, arPlaneNormal, Vector3.up);
+            model.transform.RotateAround(arAnchor, Vector3.up, differenceAngle);
+            if (UIStateManager.current.debugStateData.debugOptionsData.ARAxisTrackingEnabled)
+            {
+                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithLevel,
+                    new StatusMessageData() { text=$"the AR Alignment angle is {differenceAngle}", level=StatusMessageLevel.Instruction }));
+            }
         }
     }
 }

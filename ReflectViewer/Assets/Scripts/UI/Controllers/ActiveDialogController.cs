@@ -12,6 +12,9 @@ namespace Unity.Reflect.Viewer.UI
     {
 #pragma warning disable CS0649
         [SerializeField]
+        HelpDialogController m_HelpDialogController;
+
+        [SerializeField]
         DialogWindow m_LandingScreenDialog;
 
         [SerializeField, Tooltip("Reference to the ClippingTool Dialog")]
@@ -50,12 +53,24 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         DialogWindow m_StatsInfoDialog;
 
+        [SerializeField]
+        DialogWindow m_InfoSelectDialog;
+
+        [SerializeField]
+        DialogWindow m_DebugOptionsDialog;
+
         [SerializeField, Tooltip("Reference to the Navigation Mode FanOut")]
         FanOutWindow m_NavigationModeFanOut;
 
-
         [SerializeField]
         DialogWindow m_OrbitSelectDialog;
+
+        [SerializeField, Tooltip("Reference to the Gizmo Navigation Mode FanOut")]
+        FanOutWindow m_NavigationGizmoModeFanOut;
+
+        [SerializeField]
+        DialogWindow m_ARCardSelectionDialog;
+
 #pragma warning restore CS0649
 
         DialogType m_CurrentActiveDialog = DialogType.None;
@@ -72,6 +87,8 @@ namespace Unity.Reflect.Viewer.UI
         {
             if (m_CurrentActiveDialog != stateData.activeDialog)
             {
+                m_CurrentActiveDialog = stateData.activeDialog;
+
                 m_FiltersDialog.Close();
                 m_OrbitSelectDialog.Close();
                 m_ClippingToolDialog.Close();
@@ -82,7 +99,17 @@ namespace Unity.Reflect.Viewer.UI
                 m_SequenceDialog.Close();
                 m_LandingScreenDialog.Close();
                 m_NavigationModeFanOut.Close();
+                m_NavigationGizmoModeFanOut.Close();
                 m_StatsInfoDialog.Close();
+                m_InfoSelectDialog.Close();
+                m_DebugOptionsDialog.Close();
+                m_ARCardSelectionDialog.Close();
+
+                if (stateData.dialogMode == DialogMode.Help)
+                {
+                    m_HelpDialogController.Display(m_CurrentActiveDialog);
+                    return;
+                }
 
                 switch (stateData.activeDialog)
                 {
@@ -125,21 +152,40 @@ namespace Unity.Reflect.Viewer.UI
                     case DialogType.NavigationMode:
                         m_NavigationModeFanOut.Open();
                         break;
+                    case DialogType.GizmoMode:
+                        m_NavigationGizmoModeFanOut.Open();
+                        break;
                     case DialogType.StatsInfo:
                         m_StatsInfoDialog.Open();
+                        break;
+                    case DialogType.InfoSelect:
+                        m_InfoSelectDialog.Open();
+                        break;
+                    case DialogType.DebugOptions:
+                        m_DebugOptionsDialog.Open();
+                        break;
+                    case DialogType.ARCardSelection:
+                        m_ARCardSelectionDialog.Open();
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
-
-                m_CurrentActiveDialog = stateData.activeDialog;
             }
 
             if (m_CurrentSubDialog != stateData.activeSubDialog)
             {
+                m_CurrentSubDialog = stateData.activeSubDialog;
+
                 m_NavigationModeFanOut.Close();
                 m_BimDialog.Close();
                 m_AccountDialog.Close();
+
+                if (stateData.dialogMode == DialogMode.Help)
+                {
+                    m_HelpDialogController.Display(m_CurrentSubDialog);
+                    return;
+                }
+
                 switch (stateData.activeSubDialog)
                 {
                     case DialogType.BimInfo:
@@ -149,8 +195,6 @@ namespace Unity.Reflect.Viewer.UI
                         m_AccountDialog.Open();
                         break;
                 }
-
-                m_CurrentSubDialog = stateData.activeSubDialog;
             }
 
             if (m_CurrentActiveOptionDialog != stateData.activeOptionDialog)
@@ -180,7 +224,7 @@ namespace Unity.Reflect.Viewer.UI
             {
                 if (stateData.progressData.progressState == ProgressData.ProgressState.NoPendingRequest)
                 {
-                    m_ProgressIndicatorDialog.Close();
+                    m_ProgressIndicatorDialog.Close(true);
                 }
                 else
                 {

@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using SharpFlux;
 using TMPro;
 using Unity.TouchFramework;
+using Unity.XRTools.Utils;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Reflect;
@@ -22,6 +23,8 @@ namespace Unity.Reflect.Viewer.UI
         GameObject m_WelcomePanel;
         [SerializeField]
         GameObject m_NoProjectPanel;
+        [SerializeField]
+        GameObject m_FetchingProjectsPanel;
 
         [SerializeField]
         Button m_DialogButton;
@@ -40,6 +43,9 @@ namespace Unity.Reflect.Viewer.UI
         GameObject m_TapDetector;
 
         [SerializeField]
+        TMP_Dropdown m_SortDropdown;
+
+        [SerializeField]
         TMP_InputField m_SearchInput;
 
         [SerializeField]
@@ -55,6 +61,7 @@ namespace Unity.Reflect.Viewer.UI
 
         List<ProjectListItem> m_ProjectListItems = new List<ProjectListItem>();
         ProjectListItem m_LastHighlightedItem;
+        ProjectListItem m_ActiveProjectListItem;
 
         RectTransform m_OptionPopupRectTransform;
         RectTransform m_ScrollRectTransform;
@@ -64,6 +71,8 @@ namespace Unity.Reflect.Viewer.UI
 
         LoginState? m_LoginState;
         Project[] m_Projects;
+
+        ProjectSortMethod m_CurrentProjectSortMethod = ProjectSortMethod.SortByDate;
 
         void Awake()
         {
@@ -92,6 +101,7 @@ namespace Unity.Reflect.Viewer.UI
             m_DialogButton.onClick.AddListener(OnDialogButtonClick);
             m_ProjectTabController.projectTabButtonClicked += OnProjectTabButtonClicked;
             m_SearchInput.onValueChanged.AddListener(OnSearchInputTextChanged);
+            m_SortDropdown.onValueChanged.AddListener(OnSortMethodValueChanged);
 
             m_RefreshButton.buttonClicked += OnRefreshButtonClicked;
             SuspendingPopup();
@@ -113,6 +123,23 @@ namespace Unity.Reflect.Viewer.UI
             m_Suspending.SetActive(false);
             yield return new WaitForSeconds(1.0f);
             m_Suspending.SetActive(true);
+        }
+
+        void OnSortMethodValueChanged(int value)
+        {
+            ProjectSortMethod sortMethod = (ProjectSortMethod)value;
+            switch (sortMethod)
+            {
+                case ProjectSortMethod.SortByDate:
+                    UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetProjectSortMethod, ProjectSortMethod.SortByDate));
+                    break;
+                case ProjectSortMethod.SortByName:
+                    UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetProjectSortMethod, ProjectSortMethod.SortByName));
+                    break;
+                default:
+                    UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetProjectSortMethod, ProjectSortMethod.SortByDate));
+                    break;
+            }
         }
 
         Coroutine m_SearchCoroutine;
@@ -219,6 +246,7 @@ namespace Unity.Reflect.Viewer.UI
         {
             bool stringFilter = !string.IsNullOrWhiteSpace(filterData.searchString);
             int visibleCount = 0;
+
             foreach (var projectListItem in m_ProjectListItems)
             {
                 bool visible = filterData.projectServerType.HasFlag(projectListItem.projectServerType);
@@ -244,6 +272,18 @@ namespace Unity.Reflect.Viewer.UI
             {
                 m_DialogButton.interactable = data.activeProject != Project.Empty;
                 m_CurrentActiveProject = data.activeProject;
+                m_ActiveProjectListItem = m_ProjectListItems.FirstOrDefault(item => item.project == m_CurrentActiveProject);
+            }
+
+            if (m_ActiveProjectListItem != null && data.activeProjectThumbnail != m_ActiveProjectListItem.projectThumbnail)
+            {
+                m_ActiveProjectListItem.projectThumbnail = data.activeProjectThumbnail;
+            }
+
+            if (data.projectSortMethod != m_CurrentProjectSortMethod)
+            {
+                m_CurrentProjectSortMethod = data.projectSortMethod;
+                SortProjects();
             }
         }
 
@@ -257,6 +297,8 @@ namespace Unity.Reflect.Viewer.UI
                         UIStateManager.current.Dispatcher.Dispatch(
                             Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.LandingScreen));
                         m_WelcomePanel.SetActive(false);
+                        m_NoProjectPanel.SetActive(false);
+                        m_FetchingProjectsPanel.SetActive(true);
                         m_RefreshButton.gameObject.SetActive(true);
                         break;
                     case LoginState.LoggedOut:
@@ -267,6 +309,7 @@ namespace Unity.Reflect.Viewer.UI
                             UIStateManager.current.projectStateData.activeProject));
                         m_WelcomePanel.SetActive(true);
                         m_NoProjectPanel.SetActive(false);
+                        m_FetchingProjectsPanel.SetActive(false);
                         m_RefreshButton.gameObject.SetActive(false);
                         break;
                     case LoginState.LoggingIn:
@@ -278,11 +321,20 @@ namespace Unity.Reflect.Viewer.UI
                 m_LoginState = data.sessionState.loggedState;
             }
 
-            if (m_Projects != data.sessionState.projects)
+            if(m_LoginState == LoginState.LoggedIn)
             {
-                InstantiateProjectItems(data.sessionState.projects);
-                m_Projects = data.sessionState.projects;
+                if (m_Projects != data.sessionState.projects && !EnumerableExtension.SafeSequenceEquals(m_Projects, data.sessionState.projects))
+                {
+                    InstantiateProjectItems(data.sessionState.projects);
+                    m_Projects = data.sessionState.projects;
+                }
+                else if (UIStateManager.current.stateData.progressData.progressState == ProgressData.ProgressState.NoPendingRequest && data.sessionState.projects.Length == 0)
+                {
+                    m_NoProjectPanel.SetActive(true);
+                    m_FetchingProjectsPanel.SetActive(false);
+                }
             }
+           
         }
 
         void ClearProjectListItem()
@@ -299,14 +351,15 @@ namespace Unity.Reflect.Viewer.UI
             ClearProjectListItem();
             m_ScrollRect.verticalNormalizedPosition = 1;
 
-            m_NoProjectPanel.SetActive(!m_WelcomePanel.activeSelf && projects.Length == 0);
+            if(m_FetchingProjectsPanel.activeSelf)
+                m_FetchingProjectsPanel.SetActive(false);
 
             Array.Sort(projects, (project1, project2) => project2.lastPublished.CompareTo(project1.lastPublished));
             foreach (var project in projects)
             {
                 var listItem = Instantiate(m_ProjectListItemPrefab, m_ScrollViewContent.transform);
                 listItem.gameObject.SetActive(true);
-                listItem.InitProjectItem(project);
+                listItem.InitProjectItem(project, ThumbnailController.LoadThumbnailForProject(project));
 
                 listItem.projectItemClicked += OnProjectOpenButtonClick;
                 listItem.optionButtonClicked += OnProjectOptionButtonClick;
@@ -340,6 +393,7 @@ namespace Unity.Reflect.Viewer.UI
             }
 
             projectData.activeProject = project;
+            projectData.activeProjectThumbnail = ThumbnailController.LoadThumbnailForProject(project);
 
             if (UIStateManager.current.projectStateData.activeProject != Project.Empty)
             {
@@ -379,6 +433,41 @@ namespace Unity.Reflect.Viewer.UI
         {
             m_SearchInput.text = "";
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.RefreshProjectList, null));
+        }
+
+        void SortProjects()
+        {
+            List<ProjectListItem> childrenProjectItems = m_ScrollViewContent.GetComponentsInChildren<ProjectListItem>(true).ToList();
+            foreach (var projectItem in childrenProjectItems.ToList())
+            {
+                if (!projectItem.gameObject.activeInHierarchy)
+                {
+                    childrenProjectItems.Remove(projectItem);
+                }
+            }
+
+            if (childrenProjectItems.Count == 0)
+            {
+                return;
+            }
+
+            switch (m_CurrentProjectSortMethod)
+            {
+                case ProjectSortMethod.SortByDate:
+                    childrenProjectItems.Sort((project1, project2) => project2.project.lastPublished.CompareTo(project1.project.lastPublished));
+                    break;
+                case ProjectSortMethod.SortByName:
+                    childrenProjectItems.Sort((project1, project2) => project1.project.name.CompareTo(project2.project.name));
+                    break;
+                default:
+                    childrenProjectItems.Sort((project1, project2) => project2.project.lastPublished.CompareTo(project1.project.lastPublished));
+                    break;
+            }
+            for (int i = 0; i < childrenProjectItems.Count; i++)
+            {
+                childrenProjectItems[i].gameObject.transform.SetSiblingIndex(i);
+            }
+
         }
     }
 }
