@@ -37,9 +37,9 @@ MonoBehaviour:
     Downsample: 0
     Source: 0
     NormalSamples: 2
-    Intensity: 0.5
+    Intensity: 0.8
     DirectLightingStrength: 0.3
-    Radius: 2.2
+    Radius: 0.2
     SampleCount: 12
 --- !u!114 &11400000
 MonoBehaviour:

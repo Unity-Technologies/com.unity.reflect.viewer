@@ -41,11 +41,11 @@ namespace UnityEngine.Reflect.Pipeline
             var transparent = StandardShaderHelper.IsTransparent(syncMaterial);
             if (syncMaterial.IsDoubleSided)
                 return transparent ? m_URPDoubleTransparentShader : m_URPDoubleOpaqueShader;
-                
+
             return transparent ? m_URPTransparentShader : m_URPOpaqueShader;
         }
 
-        public void SetMaterialProperties(SyncMaterial syncMaterial, Material material, ITextureCache textureCache)
+        public void SetMaterialProperties(SyncedData<SyncMaterial> syncMaterial, Material material, ITextureCache textureCache)
         {
             StandardShaderHelper.ComputeMaterial(syncMaterial, material, textureCache);
         }
@@ -76,9 +76,9 @@ namespace UnityEngine.Reflect.Pipeline
             return p;
         }
 
-        public Material GetMaterial(SyncId id)
+        public Material GetMaterial(StreamKey key)
         {
-            return processor.GetFromCache(id);
+            return processor.GetFromCache(key);
         }
     }
 

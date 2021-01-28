@@ -223,21 +223,6 @@ namespace Unity.Reflect.Viewer.UI
         void OnDialogButtonClicked()
         {
             var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.Filters;
-            bool filterActive = !string.IsNullOrEmpty(UIStateManager.current.projectStateData.highlightFilter.filterKey) ||
-                !string.IsNullOrEmpty(UIStateManager.current.projectStateData.highlightFilter.groupKey);
-
-            // enable selection when BimInfo is open
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            if (filterActive)
-            {
-                navigationState.selectionUsageCount++;
-            }
-            else
-            {
-                navigationState.selectionUsageCount--;
-            }
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
         }
     }

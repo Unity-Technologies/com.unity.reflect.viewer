@@ -317,7 +317,8 @@ namespace Unity.Reflect.Viewer
                     // scaleBias.y = scale
                     // scaleBias.z = bias
                     // scaleBias.w = unused
-                    float flipSign = (renderingData.cameraData.IsCameraProjectionMatrixFlipped()) ? -1.0f : 1.0f;
+                    float flipSign = (SystemInfo.graphicsUVStartsAtTop) ? -1.0f : 1.0f;
+
                     Vector4 scaleBias = (flipSign < 0.0f) ? new Vector4(flipSign, 1.0f, -1.0f, 1.0f) : new Vector4(flipSign, 0.0f, 1.0f, 1.0f);
                     cmd.SetGlobalVector(s_ScaleBiasID, scaleBias);
 
@@ -328,6 +329,10 @@ namespace Unity.Reflect.Viewer
                     RenderAndSetBaseMap(cmd, m_SSAOTexture1Target, m_SSAOTexture2Target, ShaderPasses.BlurHorizontal);
                     RenderAndSetBaseMap(cmd, m_SSAOTexture2Target, m_SSAOTexture3Target, ShaderPasses.BlurVertical);
                     RenderAndSetBaseMap(cmd, m_SSAOTexture3Target, m_SSAOTexture2Target, ShaderPasses.BlurFinal);
+
+                    //Unflip because we render into camera texture and not render texture
+                    scaleBias = new Vector4(1.0f, 0.0f, 1.0f, 1.0f);
+                    cmd.SetGlobalVector(s_ScaleBiasID, scaleBias);
 
                     // blit the result to the framebuffer (Blend multiply)
                     cmd.SetGlobalTexture(s_BaseMapID, source);

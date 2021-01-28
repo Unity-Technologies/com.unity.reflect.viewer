@@ -1,0 +1,30 @@
+{
+	"FilenameValidation":
+	{
+		"Filenames": [
+			{
+				"Filename": "Runtime/Prefabs/Switch.prefab*",
+				"Targets": "+Switch"
+			},
+			{
+				"Filename": "Runtime/Sprites/Icons/Switch*.meta",
+				"Targets": "+Switch"
+			},
+			{
+				"Filename": "Runtime/Sprites/Icons/Switch/Switch*.png*",
+				"Targets": "+Switch"
+			},
+			{
+				"Filename": "Runtime/Sprites/Icons/Switch 1/Switch*.png*",
+				"Targets": "+Switch"
+			}
+		]
+	},
+	"SDKFilesValidation":
+	{
+		"manifestIgnore":
+		[
+			"NintendoSDK/Documents/Licenses/GoogleNotoFonts/license.txt"
+		]
+	}
+}
