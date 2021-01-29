@@ -68,7 +68,6 @@ namespace Unity.Reflect.Viewer.UI
         public static readonly NavigationState defaultData = new NavigationState()
         {
             navigationMode = NavigationMode.Orbit,
-            selectionUsageCount = 0,
             orbitEnabled = true,
             panEnabled = true,
             zoomEnabled = true,
@@ -80,7 +79,6 @@ namespace Unity.Reflect.Viewer.UI
         };
 
         public NavigationMode navigationMode;
-        public int selectionUsageCount;
         public bool freeFlyCameraEnabled;
         public bool orbitEnabled;
         public bool panEnabled;
@@ -94,10 +92,9 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField, Tooltip("List of NavigationModeInfo.")]
         public List<NavigationModeInfo> navigationModeInfos;
 
-        public NavigationState(NavigationMode navigationMode, int selectionUsageCount, bool freeFlyCameraEnabled, bool orbitEnabled, bool panEnabled, bool zoomEnabled, bool moveEnabled,
+        public NavigationState(NavigationMode navigationMode, bool freeFlyCameraEnabled, bool orbitEnabled, bool panEnabled, bool zoomEnabled, bool moveEnabled,
             bool worldOrbitEnabled, bool teleportEnabled, bool gizmoEnabled, bool showScaleReference)
         {
-            this.selectionUsageCount = selectionUsageCount;
             this.freeFlyCameraEnabled = freeFlyCameraEnabled;
             this.navigationMode = navigationMode;
             this.orbitEnabled = orbitEnabled;
@@ -126,7 +123,6 @@ namespace Unity.Reflect.Viewer.UI
         {
             return string.Format(format,
                 (object) navigationMode,
-                (object) selectionUsageCount,
                 (object) freeFlyCameraEnabled,
                 (object) orbitEnabled,
                 (object) panEnabled,
@@ -142,7 +138,6 @@ namespace Unity.Reflect.Viewer.UI
         {
             return
                 navigationMode == other.navigationMode &&
-                selectionUsageCount == other.selectionUsageCount &&
                 freeFlyCameraEnabled == other.freeFlyCameraEnabled &&
                 orbitEnabled == other.orbitEnabled &&
                 panEnabled == other.panEnabled &&
@@ -164,7 +159,6 @@ namespace Unity.Reflect.Viewer.UI
             unchecked
             {
                 var hashCode = (int)navigationMode;
-                hashCode = (hashCode * 397) ^ selectionUsageCount.GetHashCode();
                 hashCode = (hashCode * 397) ^ freeFlyCameraEnabled.GetHashCode();
                 hashCode = (hashCode * 397) ^ orbitEnabled.GetHashCode();
                 hashCode = (hashCode * 397) ^ panEnabled.GetHashCode();

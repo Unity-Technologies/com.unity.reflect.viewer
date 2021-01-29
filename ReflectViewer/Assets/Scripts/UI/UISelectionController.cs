@@ -25,8 +25,10 @@ namespace Unity.Reflect.Viewer.UI
         int m_CurrentLayer;
         bool m_SelectMode;
         bool m_Pressed;
+        bool m_IsBimInfoOpen;
+        bool m_IsMetadataFilterActive;
         ToolState? m_CachedToolState;
-        NavigationState? m_CachedNavigationState;
+        DialogType m_CachedActiveDialog;
 
         ISpatialPicker<Tuple<GameObject, RaycastHit>> m_ObjectPicker;
         Camera m_Camera;
@@ -43,17 +45,20 @@ namespace Unity.Reflect.Viewer.UI
         {
             bool somethingChanged = false;
 
-            if (m_CachedNavigationState != data.navigationState)
-            {
-                m_CachedNavigationState = data.navigationState;
-                somethingChanged = true;
-            }
             if (m_CachedToolState != data.toolState)
             {
                 m_SelectMode = data.toolState.activeTool == ToolType.SelectTool;
                 m_CachedToolState = data.toolState;
                 somethingChanged = true;
             }
+
+            if (m_CachedActiveDialog != data.activeSubDialog)
+            {
+                m_IsBimInfoOpen = data.activeSubDialog == DialogType.BimInfo;
+                somethingChanged = true;
+                m_CachedActiveDialog = data.activeSubDialog;
+            }
+
 
             if (somethingChanged)
                 UpdateSelectedObjectHighlight();
@@ -99,6 +104,7 @@ namespace Unity.Reflect.Viewer.UI
 
             if (data.highlightFilter != m_CurrentHighlightFilter)
             {
+                m_IsMetadataFilterActive = !string.IsNullOrEmpty(data.highlightFilter.filterKey) || !string.IsNullOrEmpty(data.highlightFilter.groupKey);
                 if (m_CurrentSelectedGameObject != null)
                 {
                     m_CurrentLayer = m_CurrentSelectedGameObject.layer;
@@ -134,12 +140,7 @@ namespace Unity.Reflect.Viewer.UI
 
         bool ShouldDisplaySelection()
         {
-            if (m_CachedNavigationState != null)
-            {
-                return m_CachedNavigationState.Value.selectionUsageCount != 0;
-            }
-
-            return false;
+            return m_SelectMode || m_IsBimInfoOpen || m_IsMetadataFilterActive ;
         }
 
         static void SetLayer(GameObject obj, string layerName)

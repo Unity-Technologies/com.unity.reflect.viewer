@@ -172,15 +172,13 @@ namespace Unity.Reflect.Viewer.UI
 
         void AlignModelViewBack()
         {
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            navigationState.selectionUsageCount--;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
             AlignModelView();
         }
 
         void FindModelFloor()
         {
             m_PlaneSelector.Orientation = MarsPlaneAlignment.HorizontalUp;
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SelectObjects, new ObjectSelectionInfo()));
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetObjectPicker, m_PlaneSelector));
             ARToolStateData arToolState = ARToolStateData.defaultData;
             arToolState.navigationEnabled = false;
@@ -191,9 +189,6 @@ namespace Unity.Reflect.Viewer.UI
             var toolState = UIStateManager.current.stateData.toolState;
             toolState.activeTool = ToolType.SelectTool;
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            navigationState.selectionUsageCount++;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithLevel,
                 new StatusMessageData() { text=m_InstructionFindModelFloor, level=StatusMessageLevel.Instruction }));
         }
@@ -216,7 +211,7 @@ namespace Unity.Reflect.Viewer.UI
         }
         void FindFirstWall()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SelectObjects, new  ObjectSelectionInfo()));
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SelectObjects, new ObjectSelectionInfo()));
             m_PlaneSelector.Orientation = MarsPlaneAlignment.Vertical;
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetObjectPicker, m_PlaneSelector));
             ARToolStateData arToolState = ARToolStateData.defaultData;
@@ -259,7 +254,7 @@ namespace Unity.Reflect.Viewer.UI
 
         void FindSecondWall()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SelectObjects, new  ObjectSelectionInfo()));
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SelectObjects, new ObjectSelectionInfo()));
             ARToolStateData arToolState = ARToolStateData.defaultData;
             arToolState.navigationEnabled = false;
             arToolState.selectionEnabled = true;
@@ -279,9 +274,6 @@ namespace Unity.Reflect.Viewer.UI
             ARPlacementStateData placementStateData = UIStateManager.current.arStateData.placementStateData;
             placementStateData.modelPlacementLocation = Vector3.zero;
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetPlacementState, placementStateData));
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            navigationState.selectionUsageCount++;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
             ARToolStateData toolState = ARToolStateData.defaultData;
             toolState.navigationEnabled = false;
             toolState.previousStepEnabled = true;
@@ -313,22 +305,23 @@ namespace Unity.Reflect.Viewer.UI
                 placementStateData.secondSelectedPlane.GetComponent<Renderer>().bounds.size.y);
             // update placement
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetPlacementState, placementStateData));
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            navigationState.selectionUsageCount--;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
             ConfirmAnchorPoint();
         }
 
         void ConfirmAnchorPoint()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SelectObjects, new  ObjectSelectionInfo()));
-            ARToolStateData toolState = ARToolStateData.defaultData;
-            toolState.navigationEnabled = false;
-            toolState.previousStepEnabled = true;
-            toolState.okButtonValidator = this;
-            toolState.wallIndicatorsEnabled = true;
-            toolState.anchorPointsEnabled = true;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetARToolState, toolState));
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SelectObjects, new ObjectSelectionInfo()));
+            var arToolStateData = ARToolStateData.defaultData;
+            arToolStateData.navigationEnabled = false;
+            arToolStateData.previousStepEnabled = true;
+            arToolStateData.okButtonValidator = this;
+            arToolStateData.wallIndicatorsEnabled = true;
+            arToolStateData.anchorPointsEnabled = true;
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetARToolState, arToolStateData));
+
+            var toolState = UIStateManager.current.stateData.toolState;
+            toolState.activeTool = ToolType.OrbitTool;
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
 
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithLevel,
                 new StatusMessageData() { text=m_InstructionConfirmAnchorPoint, level=StatusMessageLevel.Instruction }));
@@ -566,6 +559,7 @@ namespace Unity.Reflect.Viewer.UI
         void OnBoardingCompleteNext()
         {
             ARToolStateData toolState = ARToolStateData.defaultData;
+            toolState.selectionEnabled = true;
             toolState.navigationEnabled = false;
             toolState.okEnabled = true;
             toolState.previousStepEnabled = true;

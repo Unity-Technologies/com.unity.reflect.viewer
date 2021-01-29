@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Unity.Reflect.Viewer.UI;
 using UnityEngine.EventSystems;
 using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
@@ -49,12 +50,14 @@ namespace UnityEngine.Reflect.Viewer
 
         XRManagerSettings m_Manager;
         Camera m_ScreenModeCamera;
+        float m_ScreenModeFieldOfView;
         InputActionMap m_ActionMap;
 
         void Start()
         {
             m_Manager = XRGeneralSettings.Instance.Manager;
             m_ScreenModeCamera = Camera.main;
+            UIStateManager.projectStateChanged += OnProjectStateDataChanged;
 
             var standaloneInputModule = FindObjectOfType<StandaloneInputModule>();
             if (standaloneInputModule != null)
@@ -75,6 +78,7 @@ namespace UnityEngine.Reflect.Viewer
         {
             // swap cameras
             m_ScreenModeCamera.gameObject.SetActive(false);
+            m_ScreenModeFieldOfView = m_ScreenModeCamera.fieldOfView;
 
             if (!m_SkipVrInit)
             {
@@ -123,6 +127,9 @@ namespace UnityEngine.Reflect.Viewer
                 m_Manager.DeinitializeLoader();
             }
 
+            // SteamVR might change the main FoV, so make sure to set it to the default
+            m_ScreenModeCamera.fieldOfView = m_ScreenModeFieldOfView;
+
             // swap cameras
             m_ScreenModeCamera.gameObject.SetActive(true);
 
@@ -130,6 +137,17 @@ namespace UnityEngine.Reflect.Viewer
             {
                 m_ActionMap.Disable();
             }
+
+            UIStateManager.projectStateChanged -= OnProjectStateDataChanged;
+        }
+
+        void OnProjectStateDataChanged(UIProjectStateData data)
+        {
+            if (m_ActionMap == null)
+            {
+                m_ActionMap = m_InputActionAsset.FindActionMap("VR", true);
+            }
+            m_ActionMap.Enable();
         }
 
         void ChooseVRControllerModels()

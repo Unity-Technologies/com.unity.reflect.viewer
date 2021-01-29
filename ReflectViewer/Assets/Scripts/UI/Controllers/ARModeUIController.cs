@@ -37,7 +37,7 @@ namespace Unity.Reflect.Viewer.UI
         GameObject m_InstructionUI;
 
         [SerializeField]
-        float m_DefaultSimulationCameraHeight = 1.7f;
+        float m_DefaultSimulationCameraHeight = 1.6f;
 #pragma warning restore CS0649
 
         bool m_ToolbarsEnabled;
@@ -49,6 +49,8 @@ namespace Unity.Reflect.Viewer.UI
         MARS.MARSCamera m_MARSCamera;
         UniversalAdditionalCameraData m_CameraData;
         float m_InitialScaleSize;
+        float m_InitialNearClippingPlane;
+        float m_InitialFarClippingPlane;
         ArchitectureScale? m_CachedModelScale;
         bool m_ScaleActionInProgress;
         Array m_ScaleValues;
@@ -75,6 +77,9 @@ namespace Unity.Reflect.Viewer.UI
                 var instructionUI = obj as IInstructionUI;
                 instructionUI.Initialize(this);
             }
+
+            m_InitialNearClippingPlane = m_MARSCamera.GetComponent<Camera>().nearClipPlane;
+            m_InitialFarClippingPlane = m_MARSCamera.GetComponent<Camera>().farClipPlane;
         }
 
         private void OnPlacementScaleActionStarted(InputAction.CallbackContext context)
@@ -103,19 +108,16 @@ namespace Unity.Reflect.Viewer.UI
             if (OrphanUIController.isTouchBlockedByUI || m_CachedPlacementGesturesEnabled != true || m_ScaleActionInProgress)
                 return;
 
-            if (context.control.IsPressed())
-            {
-                var delta = context.ReadValue<Vector2>();
+            var delta = context.ReadValue<Vector2>();
 
-                var forward = m_MARSCamera.transform.forward;
-                var worldToVerticalOrientedDevice = Quaternion.Inverse(Quaternion.LookRotation(forward, Vector3.up));
-                var deviceToWorld = m_MARSCamera.transform.rotation;
-                var rotatedDelta = worldToVerticalOrientedDevice * deviceToWorld * delta;
+            var forward = m_MARSCamera.transform.forward;
+            var worldToVerticalOrientedDevice = Quaternion.Inverse(Quaternion.LookRotation(forward, Vector3.up));
+            var deviceToWorld = m_MARSCamera.transform.rotation;
+            var rotatedDelta = worldToVerticalOrientedDevice * deviceToWorld * delta;
 
-                var rotationAmount = -1.0f * (rotatedDelta.x / Screen.dpi) * m_RotationRateDegreesDrag;
+            var rotationAmount = -1.0f * (rotatedDelta.x / Screen.dpi) * m_RotationRateDegreesDrag;
 
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelRotation, new Vector3(0.0f, rotationAmount, 0.0f)));
-            }
+            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelRotation, new Vector3(0.0f, rotationAmount, 0.0f)));
         }
 
         private void OnPlacementScaleAction(InputAction.CallbackContext context)
@@ -275,7 +277,17 @@ namespace Unity.Reflect.Viewer.UI
             m_MARSCamera.GetComponent<Camera>().cullingMask = -1;
 
             InitSimulationCameraPosition();
+
+            ChangeClippingPlane(0.01f, m_InitialFarClippingPlane * 10f);
         }
+
+        void ChangeClippingPlane(float near, float far)
+        {
+            Camera marsCamera = m_MARSCamera.GetComponent<Camera>();
+            marsCamera.nearClipPlane = near;
+            marsCamera.farClipPlane = far;
+        }
+
 
         void DisableARMode()
         {
@@ -303,6 +315,8 @@ namespace Unity.Reflect.Viewer.UI
 
             // Disable the gizmo layer when we are not in AR.
             m_MARSCamera.GetComponent<Camera>().cullingMask &= ~(1 << LayerMask.NameToLayer("Gizmo"));
+
+            ChangeClippingPlane(m_InitialNearClippingPlane, m_InitialFarClippingPlane);
         }
 
         void InitSimulationCameraPosition()

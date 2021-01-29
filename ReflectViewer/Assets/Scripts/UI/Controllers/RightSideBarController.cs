@@ -110,21 +110,8 @@ namespace Unity.Reflect.Viewer.UI
             toolState.activeTool = m_SelectButton.selected ? ToolType.None : ToolType.SelectTool;
 
             var dialogType = m_SelectButton.selected ? DialogType.None : DialogType.BimInfo;
-            var selectionEnabled = !m_SelectButton.selected;
-
-            // enable selection when BimInfo is open
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            if (selectionEnabled)
-            {
-                navigationState.selectionUsageCount++;
-            }
-            else
-            {
-                navigationState.selectionUsageCount--;
-            }
 
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetObjectPicker, m_ObjectSelector));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
             UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, dialogType));
         }

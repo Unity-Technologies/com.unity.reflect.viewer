@@ -68,6 +68,12 @@ namespace Unity.Reflect.Viewer.Builder
             {
                 buildDirectory = commandLineArgsByKey[BuilderConstants.OUTPUT_PATH];
             }
+            Debug.Log("[BSP] ABOUT TO CHECK IF THE DELTADNAOPTIOSN ARE THERE");
+            if(AllDeltaDNAArgsPresent())
+            {
+                Debug.Log("[BSP] DELTADNA OPTIONS ARE THERE");
+                SetDeltaDNASettings();
+            }
         }
 
         private void SwitchToRespectiveBuildTarget(string buildTarget)
@@ -117,6 +123,10 @@ namespace Unity.Reflect.Viewer.Builder
                 Debug.LogWarning("[BuildSettingsParser] Could not parse a valid version. Forcing a development build.");
                 EditorUserBuildSettings.development = true;
             }
+        }
+
+        private void SetDeltaDNASettings()
+        {
         }
 
         private int GetBundleVersionFromVersionString(string version)

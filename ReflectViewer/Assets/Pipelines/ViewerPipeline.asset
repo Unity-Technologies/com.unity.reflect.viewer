@@ -256,6 +256,7 @@ MonoBehaviour:
         m_Root:
           exposedName: a405ddd73d250fb49afc5e00c7fa4fa3
           defaultValue: {fileID: 0}
+        m_GenerateSourceRoots: 1
     00000009:
       type: {class: MetadataFilterNode, ns: UnityEngine.Reflect.Viewer.Pipeline, asm: ReflectViewer}
       data:

@@ -6,6 +6,7 @@ using System.Text;
 using SharpFlux;
 using SharpFlux.Middleware;
 using UnityEngine;
+using UnityEngine.Reflect;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -16,6 +17,11 @@ namespace Unity.Reflect.Viewer.UI
         public string eventName;
         public string userID;
         public string sessionID;
+        public string deviceUniqueIdentifier;
+        public string cloudProvider;
+        public string platform;
+        public string viewerVersion;
+        public string reflectVersion;
     }
 
     [Serializable]
@@ -164,7 +170,12 @@ namespace Unity.Reflect.Viewer.UI
             {
                 eventName = "reflectViewerLoaded",
                 userID = userId,
-                sessionID = sessionId
+                sessionID = sessionId,
+                deviceUniqueIdentifier = SystemInfo.deviceUniqueIdentifier,
+                cloudProvider = LocaleUtils.GetProvider().ToString(),
+                platform = Application.platform.ToString(),
+                viewerVersion = Application.version,
+                reflectVersion = Assembly.GetAssembly(typeof(UnityProject)).GetName().Version.ToString(),
             };
 
             SendEvent(payload);
@@ -177,6 +188,11 @@ namespace Unity.Reflect.Viewer.UI
                 eventName = "reflectViewerOpenProject",
                 userID = userId,
                 sessionID = sessionId,
+                deviceUniqueIdentifier = SystemInfo.deviceUniqueIdentifier,
+                cloudProvider = LocaleUtils.GetProvider().ToString(),
+                platform = Application.platform.ToString(),
+                viewerVersion = Application.version,
+                reflectVersion = Assembly.GetAssembly(typeof(UnityProject)).GetName().Version.ToString(),
                 eventParams = new EventParamProjectID
                 {
                     projectID = projectId
@@ -193,6 +209,11 @@ namespace Unity.Reflect.Viewer.UI
                 eventName = "reflectViewerSyncEnabled",
                 userID = userId,
                 sessionID = sessionId,
+                deviceUniqueIdentifier = SystemInfo.deviceUniqueIdentifier,
+                cloudProvider = LocaleUtils.GetProvider().ToString(),
+                platform = Application.platform.ToString(),
+                viewerVersion = Application.version,
+                reflectVersion = Assembly.GetAssembly(typeof(UnityProject)).GetName().Version.ToString(),
                 eventParams = new EventParamEnabled
                 {
                     isEnabled = isEnabled
