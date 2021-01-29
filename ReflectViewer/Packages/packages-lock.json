@@ -19,7 +19,7 @@
       "dependencies": {
         "com.unity.ugui": "1.0.0"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.analytics": {
       "version": "3.3.5",
@@ -28,35 +28,35 @@
       "dependencies": {
         "com.unity.ugui": "1.0.0"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.collab-proxy": {
       "version": "1.2.16",
       "depth": 0,
       "source": "registry",
       "dependencies": {},
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.device-simulator": {
       "version": "2.2.3-preview",
       "depth": 0,
       "source": "registry",
       "dependencies": {},
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.editorcoroutines": {
       "version": "0.0.2-preview.1",
       "depth": 1,
       "source": "registry",
       "dependencies": {},
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.ext.nunit": {
       "version": "1.0.0",
       "depth": 1,
       "source": "registry",
       "dependencies": {},
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.ide.rider": {
       "version": "3.0.2",
@@ -65,14 +65,14 @@
       "dependencies": {
         "com.unity.test-framework": "1.1.1"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.inputsystem": {
-      "version": "1.0.0",
-      "depth": 0,
+      "version": "1.0.1",
+      "depth": 1,
       "source": "registry",
       "dependencies": {},
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.mars": {
       "version": "1.1.1",
@@ -93,7 +93,7 @@
         "com.unity.modules.video": "1.0.0",
         "com.unity.modules.xr": "1.0.0"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.mars-ar-foundation-providers": {
       "version": "1.1.1",
@@ -104,7 +104,7 @@
         "com.unity.xrtools.module-loader": "1.1.1",
         "com.unity.mars": "1.1.1"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.mars-nav-mesh": {
       "version": "1.1.1",
@@ -115,14 +115,14 @@
         "com.unity.mars": "1.1.1",
         "com.unity.modules.ai": "1.0.0"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.postprocessing": {
       "version": "2.3.0",
       "depth": 1,
       "source": "registry",
       "dependencies": {},
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.purchasing": {
       "version": "2.1.1",
@@ -131,10 +131,10 @@
       "dependencies": {
         "com.unity.ugui": "1.0.0"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.reflect": {
-      "version": "2.0.0-preview.11",
+      "version": "2.0.1-preview.13",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -143,14 +143,14 @@
         "com.unity.postprocessing": "2.3.0",
         "com.unity.ugui": "1.0.0"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.reflect.runtime": {
       "version": "1.3.0-preview.14",
       "depth": 1,
       "source": "registry",
       "dependencies": {},
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.render-pipelines.core": {
       "version": "7.3.1",
@@ -159,7 +159,7 @@
       "dependencies": {
         "com.unity.ugui": "1.0.0"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.render-pipelines.lightweight": {
       "version": "7.3.1",
@@ -169,7 +169,7 @@
         "com.unity.render-pipelines.universal": "7.3.1",
         "com.unity.postprocessing": "2.1.7"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.render-pipelines.universal": {
       "version": "7.3.1",
@@ -179,7 +179,7 @@
         "com.unity.render-pipelines.core": "7.3.1",
         "com.unity.shadergraph": "7.3.1"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.shadergraph": {
       "version": "7.3.1",
@@ -188,14 +188,14 @@
       "dependencies": {
         "com.unity.render-pipelines.core": "7.3.1"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.subsystemregistration": {
       "version": "1.0.6",
       "depth": 1,
       "source": "registry",
       "dependencies": {},
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.test-framework": {
       "version": "1.1.18",
@@ -206,7 +206,7 @@
         "com.unity.modules.imgui": "1.0.0",
         "com.unity.modules.jsonserialize": "1.0.0"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.textmeshpro": {
       "version": "2.0.1",
@@ -215,14 +215,14 @@
       "dependencies": {
         "com.unity.ugui": "1.0.0"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.timeline": {
       "version": "1.2.10",
       "depth": 0,
       "source": "registry",
       "dependencies": {},
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.touch-framework": {
       "version": "file:../../Packages/com.unity.touch-framework",
@@ -248,7 +248,7 @@
         "com.unity.xr.management": "3.0.6",
         "com.unity.modules.androidjni": "1.0.0"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.xr.arfoundation": {
       "version": "3.1.3",
@@ -257,7 +257,7 @@
       "dependencies": {
         "com.unity.xr.arsubsystems": "3.1.3"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.xr.arkit": {
       "version": "3.1.3",
@@ -267,7 +267,7 @@
         "com.unity.xr.arsubsystems": "3.1.3",
         "com.unity.xr.management": "3.0.6"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.xr.arsubsystems": {
       "version": "3.1.3",
@@ -276,25 +276,28 @@
       "dependencies": {
         "com.unity.subsystemregistration": "1.0.6"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.xr.interaction.toolkit": {
-      "version": "0.10.0-preview.6",
+      "version": "1.0.0-pre.2",
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.unity.inputsystem": "1.0.0",
+        "com.unity.inputsystem": "1.0.1",
         "com.unity.ugui": "1.0.0",
-        "com.unity.xr.legacyinputhelpers": "2.1.4"
+        "com.unity.xr.legacyinputhelpers": "2.1.7"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.xr.legacyinputhelpers": {
-      "version": "2.1.4",
+      "version": "2.1.7",
       "depth": 1,
       "source": "registry",
-      "dependencies": {},
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "dependencies": {
+        "com.unity.modules.vr": "1.0.0",
+        "com.unity.modules.xr": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
     },
     "com.unity.xr.management": {
       "version": "3.2.16",
@@ -304,7 +307,17 @@
         "com.unity.xr.legacyinputhelpers": "2.1.2",
         "com.unity.subsystemregistration": "1.0.6"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.xr.oculus": {
+      "version": "1.4.3",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.xr.management": "3.0.6",
+        "com.unity.ugui": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
     },
     "com.unity.xrtools.module-loader": {
       "version": "1.1.1",
@@ -313,14 +326,25 @@
       "dependencies": {
         "com.unity.xrtools.utils": "1.1.1"
       },
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
     },
     "com.unity.xrtools.utils": {
       "version": "1.1.1",
       "depth": 1,
       "source": "registry",
       "dependencies": {},
-      "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
+      "url": "https://packages.unity.com"
+    },
+    "com.valvesoftware.unity.openvr": {
+      "version": "1.0.1",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.xr.management": "3.2.13",
+        "com.unity.ugui": "1.0.0",
+        "com.unity.xr.legacyinputhelpers": "2.1.4"
+      },
+      "url": "https://registry.npmjs.org"
     },
     "com.unity.modules.ai": {
       "version": "1.0.0",
