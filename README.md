@@ -12,10 +12,6 @@ This is a repository for all publicly released packages, tests, and demo project
 ### Supported Unity Versions
 This project supports the latest LTS version of Unity 2019.
 
-### Packages
-[com.unity.touch-framework](Packages/com.unity.touch-framework/README.md)
-The touch-framework package in-development at [Official Repo](https://github.com/Unity-Technologies/VirtualProduction/blob/develop/README.md).
-
 <a name="Installation"></a>
 ## Installation
 This repository uses [Git LFS](https://git-lfs.github.com/) so make sure you have LFS installed to get all the files. Unfortunately this means that the large files are also not included in the "Download ZIP" option on Github.
