@@ -143,7 +143,7 @@
       "url": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates"
     },
     "com.unity.reflect": {
-      "version": "2.1.0-preview.90",
+      "version": "2.1.0-preview.104",
       "depth": 0,
       "source": "registry",
       "dependencies": {
