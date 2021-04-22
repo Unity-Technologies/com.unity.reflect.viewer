@@ -14,6 +14,15 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField, Tooltip("Reference to the Orbit Sidebar")]
         GameObject m_OrbitSidebar;
 
+        [SerializeField, Tooltip("Reference to the Left Sidebar")]
+        GameObject m_LeftSidebar;
+
+        [SerializeField, Tooltip("Reference to the Top Left Sidebar")]
+        GameObject m_TopSidebar;
+
+        [SerializeField, Tooltip("Reference to the Info/Debug button")]
+        GameObject m_InfoSidebar;
+
         [SerializeField, Tooltip("Reference to the Fly Sidebar")]
         GameObject m_FlySidebar;
 
@@ -89,8 +98,17 @@ namespace Unity.Reflect.Viewer.UI
                 case ToolbarType.ARScaleDial:
                     m_ARScaleRadial.Open();
                     break;
+                case ToolbarType.NoSidebar:
+                    m_OrbitSidebar.SetActive(false);
+                    m_LeftSidebar.SetActive(false);
+                    m_TopSidebar.SetActive(false);
+                    m_InfoSidebar.SetActive(false);
+                    break;
                 default:
                     m_OrbitSidebar.SetActive(true);
+                    m_LeftSidebar.SetActive(true);
+                    m_TopSidebar.SetActive(true);
+                    m_InfoSidebar.SetActive(true);
                     break;
             }
 

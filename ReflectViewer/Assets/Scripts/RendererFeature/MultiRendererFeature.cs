@@ -1,3 +1,4 @@
+#if URP_AVAILABLE
 using System.Collections.Generic;
 using UnityEngine.Experimental.Rendering.Universal;
 using UnityEngine.Rendering.Universal;
@@ -21,4 +22,4 @@ namespace UnityEngine.Reflect.Viewer
         }
     }
 }
-
+#endif

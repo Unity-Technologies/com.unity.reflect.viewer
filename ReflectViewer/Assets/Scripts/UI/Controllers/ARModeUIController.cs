@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using SharpFlux;
+using SharpFlux.Dispatching;
 #if UNITY_EDITOR
 using UnityEditor.MARS.Simulation;
 using Unity.MARS.Simulation;
@@ -11,8 +12,12 @@ using Unity.MARS.Providers;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Reflect.Viewer.Input;
-using UnityEngine.Rendering.Universal;
+
 using Object = UnityEngine.Object;
+
+#if URP_AVAILABLE
+    using UnityEngine.Rendering.Universal;
+#endif
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -43,11 +48,15 @@ namespace Unity.Reflect.Viewer.UI
         bool m_ToolbarsEnabled;
         InstructionUIState? m_CachedInstructionUI;
         bool? m_CachedOperationCancelled;
-        bool? m_CachedPlacementGesturesEnabled;
         bool? m_CachedAREnabled;
 
+        bool m_CachedScaleEnabled;
+        bool m_CachedRotateEnabled;
+
         MARS.MARSCamera m_MARSCamera;
+#if URP_AVAILABLE
         UniversalAdditionalCameraData m_CameraData;
+#endif
         float m_InitialScaleSize;
         float m_InitialNearClippingPlane;
         float m_InitialFarClippingPlane;
@@ -64,7 +73,9 @@ namespace Unity.Reflect.Viewer.UI
             UIStateManager.arStateChanged += OnARStateDataChanged;
 
             m_MARSCamera = Camera.main.GetComponent<MARS.MARSCamera>();
+#if URP_AVAILABLE
             m_CameraData = Camera.main.GetComponent<UniversalAdditionalCameraData>();
+#endif
 
             m_InputActionAsset["Placement Rotate Action"].performed += OnPlacementRotateAction;
             m_InputActionAsset["Placement Scale Action"].started += OnPlacementScaleActionStarted;
@@ -82,9 +93,9 @@ namespace Unity.Reflect.Viewer.UI
             m_InitialFarClippingPlane = m_MARSCamera.GetComponent<Camera>().farClipPlane;
         }
 
-        private void OnPlacementScaleActionStarted(InputAction.CallbackContext context)
+        void OnPlacementScaleActionStarted(InputAction.CallbackContext context)
         {
-            if (m_CachedPlacementGesturesEnabled != true)
+            if (!m_CachedScaleEnabled)
                 return;
 
             PinchGestureInteraction interaction = context.interaction as PinchGestureInteraction;
@@ -98,14 +109,14 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        private void OnPlacementScaleActionFinished(PinchGesture context)
+        void OnPlacementScaleActionFinished(PinchGesture context)
         {
             m_ScaleActionInProgress = false;
         }
 
-        private void OnPlacementRotateAction(InputAction.CallbackContext context)
+        void OnPlacementRotateAction(InputAction.CallbackContext context)
         {
-            if (OrphanUIController.isTouchBlockedByUI || m_CachedPlacementGesturesEnabled != true || m_ScaleActionInProgress)
+            if (OrphanUIController.isTouchBlockedByUI || m_CachedRotateEnabled != true || m_ScaleActionInProgress)
                 return;
 
             var delta = context.ReadValue<Vector2>();
@@ -117,12 +128,12 @@ namespace Unity.Reflect.Viewer.UI
 
             var rotationAmount = -1.0f * (rotatedDelta.x / Screen.dpi) * m_RotationRateDegreesDrag;
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelRotation, new Vector3(0.0f, rotationAmount, 0.0f)));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelRotation, new Vector3(0.0f, rotationAmount, 0.0f)));
         }
 
-        private void OnPlacementScaleAction(InputAction.CallbackContext context)
+        void OnPlacementScaleAction(InputAction.CallbackContext context)
         {
-            if (m_CachedPlacementGesturesEnabled != true)
+            if (!m_CachedScaleEnabled)
                 return;
 
             PinchGestureInteraction interaction = context.interaction as PinchGestureInteraction;
@@ -131,11 +142,11 @@ namespace Unity.Reflect.Viewer.UI
                 PinchGesture pinchGesture = interaction?.currentGesture as PinchGesture;
                 var ratio = m_InitialScaleSize / pinchGesture.gap; // inverted because scale size is 1/N
                 var newScale = GetNearestEnumValue((float)m_CachedModelScale * ratio);
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, newScale));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, newScale));
             }
         }
 
-        private ArchitectureScale GetNearestEnumValue(float value)
+        ArchitectureScale GetNearestEnumValue(float value)
         {
             ArchitectureScale returnValue = ArchitectureScale.OneToOne;
             float distance = float.MaxValue;
@@ -181,7 +192,7 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        private void EnableSimulationViewInEditor(bool enable)
+        void EnableSimulationViewInEditor(bool enable)
         {
 #if UNITY_EDITOR
             SimulationSettings.instance.ShowSimulatedEnvironment = enable;
@@ -247,10 +258,8 @@ namespace Unity.Reflect.Viewer.UI
                 }
             }
 
-            if (m_CachedPlacementGesturesEnabled != arStateData.placementGesturesEnabled)
-            {
-                m_CachedPlacementGesturesEnabled = arStateData.placementGesturesEnabled;
-            }
+            m_CachedScaleEnabled = arStateData.arToolStateData.scaleEnabled;
+            m_CachedRotateEnabled = arStateData.arToolStateData.rotateEnabled;
         }
 
         void EnableARMode()
@@ -264,8 +273,10 @@ namespace Unity.Reflect.Viewer.UI
             // disable RootNode
             UIStateManager.current.m_RootNode.SetActive(false);
             UIStateManager.current.m_BoundingBoxRootNode.SetActive(false);
+#if URP_AVAILABLE
             // Set AR Renderer
             m_CameraData.SetRenderer((int) UniversalRenderer.ARRenderer);
+#endif
             m_MARSCamera.enabled = true;
 
             // un-Pause MARSSession
@@ -299,9 +310,10 @@ namespace Unity.Reflect.Viewer.UI
 
             // enable RootNode
             m_MARSCamera.enabled = false;
+#if URP_AVAILABLE
             // return to default Renderer
             m_CameraData.SetRenderer((int) UniversalRenderer.DefaultForwardRenderer);
-
+#endif
 
             UIStateManager.current.m_RootNode.SetActive(true);
 
@@ -344,7 +356,7 @@ namespace Unity.Reflect.Viewer.UI
         {
             yield return new WaitForSeconds(0);
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUIState, InstructionUIState.Started));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUIState, InstructionUIState.Started));
         }
 
         void OnDestroy()
@@ -354,8 +366,11 @@ namespace Unity.Reflect.Viewer.UI
             if (m_MARSCamera != null)
                 m_MARSCamera.enabled = false;
 
-            DestroyImmediate(UIStateManager.current.m_PlacementRules);
-            UIStateManager.current.m_PlacementRules = null;
+            if (UIStateManager.current.m_PlacementRules != null)
+            {
+                DestroyImmediate(UIStateManager.current.m_PlacementRules);
+                UIStateManager.current.m_PlacementRules = null;
+            }
 
             UIStateManager.current.ResetSession();
             UIStateManager.current.PauseSession();

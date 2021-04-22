@@ -1,22 +1,23 @@
+using System;
 using Unity.Reflect.Viewer.UI;
+using UnityEngine;
 
-public enum LookAtConstraint
+namespace Unity.Reflect.Viewer.UI
 {
-    /// <summary>
-    ///     The lookAt point does not move with the camera, resulting
-    ///     in the camera to continue to look at the same point.
-    /// </summary>
-    StandBy,
+    public enum LookAtConstraint
+    {
+        /// <summary>
+        ///     The lookAt point does not move with the camera, resulting
+        ///     in the camera to continue to look at the same point.
+        /// </summary>
+        StandBy,
 
-    /// <summary>
-    ///     The lookAt point moves with the position, resulting in
-    ///     the camera to keep its current rotation while moving.
-    /// </summary>
-    Follow
-}
-
-namespace UnityEngine.Reflect
-{
+        /// <summary>
+        ///     The lookAt point moves with the position, resulting in
+        ///     the camera to keep its current rotation while moving.
+        /// </summary>
+        Follow
+    }
     /// <summary>
     ///     A generic free fly camera with pan, move, rotation, orbit and automatic positioning features.
     /// </summary>
@@ -25,6 +26,8 @@ namespace UnityEngine.Reflect
     {
         [SerializeField]
         FreeFlyCameraSettings m_Settings = null;
+
+        [SerializeField, Tooltip("Once set, the camera will follow this transform")]
 
         Camera m_Camera;
 
@@ -72,6 +75,16 @@ namespace UnityEngine.Reflect
         {
             m_MovingSpeed = 0;
             m_MovingDirection = Vector3.zero;
+        }
+
+        public void TransformTo(Transform newTransform)
+        {
+            m_Camera.transform.position = newTransform.position;
+            m_Camera.transform.rotation = newTransform.rotation;
+            m_DesiredRotation = newTransform.rotation;
+            m_DesiredRotationEuler = newTransform.rotation.eulerAngles;
+            m_DesiredLookAt = newTransform.forward;
+            m_DesiredPosition = newTransform.position;
         }
 
         void Update()
@@ -151,6 +164,16 @@ namespace UnityEngine.Reflect
             }
 
             UpdateSphericalMovement(false);
+        }
+
+        public void SetMovePosition(Vector3 pos, Quaternion rot)
+        {
+            m_DesiredPosition = pos;
+            m_DesiredRotation = rot;
+            m_DesiredRotationEuler = rot.eulerAngles;
+            m_DesiredLookAt = m_DesiredRotation * new Vector3(0.0f, 0.0f, (m_DesiredLookAt - m_DesiredPosition).magnitude) + m_DesiredPosition;
+            UpdateSphericalMovement(true);
+            ForceStop();
         }
 
         /// <summary>

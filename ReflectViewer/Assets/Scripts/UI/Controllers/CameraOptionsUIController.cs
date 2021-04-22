@@ -1,5 +1,6 @@
 ﻿using System;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
@@ -19,23 +20,23 @@ namespace Unity.Reflect.Viewer.UI
         TMP_Dropdown m_CameraViewDropdown;
         [SerializeField]
         Button m_CameraDefaultViewButton;
-        
+
         [SerializeField]
         SlideToggle m_JoysticksToggle;
         [SerializeField]
         SegmentedPropertyControl m_JoystickPreferenceSwitch;
-        
+
         [SerializeField]
-        SlideToggle m_NavigationAutoToggle;        
+        SlideToggle m_NavigationAutoToggle;
         [SerializeField]
         MinMaxPropertyControl m_NavigationSpeedControl;
-        
+
 #pragma warning restore 649
 
         DialogWindow m_DialogWindow;
         Image m_DialogButtonImage;
         CameraOptionData m_CurrentCameraOptionData;
-        
+
         void Awake()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
@@ -43,7 +44,7 @@ namespace Unity.Reflect.Viewer.UI
             m_DialogButtonImage = m_DialogButton.GetComponent<Image>();
             m_DialogWindow = GetComponent<DialogWindow>();
         }
-        
+
         void Start()
         {
             m_DialogButton.onClick.AddListener(OnDialogButtonClicked);
@@ -54,7 +55,7 @@ namespace Unity.Reflect.Viewer.UI
 
             m_JoysticksToggle.onValueChanged.AddListener(OnJoysticksToggleChanged);
             m_JoystickPreferenceSwitch.onValueChanged.AddListener(OnJoystickPreferenceChanged);
-            
+
             m_NavigationAutoToggle.onValueChanged.AddListener(OnNavigationAutoToggleChanged);
             m_NavigationSpeedControl.onIntValueChanged.AddListener(OnNavigationSpeedControlChanged);
         }
@@ -102,7 +103,7 @@ namespace Unity.Reflect.Viewer.UI
 
                 var joystickPreferenceIndex = data.cameraOptionData.joystickPreference == JoystickPreference.RightHanded ? 0 : 1;
                 m_JoystickPreferenceSwitch.activePropertyIndex = joystickPreferenceIndex;
-                
+
                 m_NavigationAutoToggle.on = data.cameraOptionData.enableAutoNavigationSpeed;
                 m_NavigationSpeedControl.SetValue(data.cameraOptionData.navigationSpeed);
 
@@ -113,18 +114,18 @@ namespace Unity.Reflect.Viewer.UI
         void OnDialogButtonClicked()
         {
             var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.CameraOptions;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
         }
-        
+
 
         void OnCameraTypeChanged(int index)
         {
             var data = UIStateManager.current.stateData.cameraOptionData;
-            
+
             data.cameraProjectionType =
                 index == 0 ? CameraProjectionType.Perspective : CameraProjectionType.Orthographic;
-            
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, data));
+
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, data));
         }
 
         void OnCameraViewChanged(int index)
@@ -139,21 +140,21 @@ namespace Unity.Reflect.Viewer.UI
                 cameraViewType = CameraViewType.Right;
 
             data.cameraViewType = cameraViewType;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, data));
         }
 
         void OnCameraDefaultViewButtonClicked()
         {
             var data = UIStateManager.current.stateData.cameraOptionData;
             data.cameraViewType = CameraViewType.Default;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, data));
         }
 
         void OnJoysticksToggleChanged(bool on)
         {
             var data = UIStateManager.current.stateData.cameraOptionData;
             data.enableJoysticks = on;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetJoystickOption, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetJoystickOption, data));
         }
 
         void OnJoystickPreferenceChanged(int index)
@@ -162,21 +163,21 @@ namespace Unity.Reflect.Viewer.UI
             var rightHanded = index == 0;
             var preference = rightHanded ? JoystickPreference.RightHanded : JoystickPreference.LeftHanded;
             data.joystickPreference = preference;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetJoystickOption, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetJoystickOption, data));
         }
 
         void OnNavigationAutoToggleChanged(bool on)
         {
             var data = UIStateManager.current.stateData.cameraOptionData;
             data.enableJoysticks = on;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationOption, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationOption, data));
         }
 
         void OnNavigationSpeedControlChanged(int value)
         {
             var data = UIStateManager.current.stateData.cameraOptionData;
             data.navigationSpeed = value;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationOption, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationOption, data));
         }
     }
 }

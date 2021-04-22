@@ -7,6 +7,7 @@ TagManager:
   - VRPlayer
   - MiniWorldCamera
   - ShowInMiniWorld
+  - Dude
   layers:
   - Default
   - TransparentFX
@@ -14,10 +15,10 @@ TagManager:
   - 
   - Water
   - UI
-  - 
+  - Avatars
   - 
   - PostProcessing
-  - Selection
+  - 
   - BimFilterSelect
   - BimFilterOthers
   - Gizmo
@@ -25,6 +26,8 @@ TagManager:
   - BaseBeam
   - Beam
   - 
+  - MeasureToolCursor
+  - MeasureToolLine
   - 
   - 
   - 
@@ -36,9 +39,7 @@ TagManager:
   - 
   - 
   - 
-  - 
-  - 
-  - 
+  - MARS Simulation Environment
   - HMDOnly
   m_SortingLayers:
   - name: Default

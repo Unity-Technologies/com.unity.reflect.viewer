@@ -1,5 +1,44 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-9088064430104590885
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b3d386ba5cd94485973aee1479b272e, type: 3}
+  m_Name: MeasureToolCursors
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings:
+    passTag: MeasureToolCursors
+    Event: 550
+    filterSettings:
+      RenderQueueType: 1
+      LayerMask:
+        serializedVersion: 2
+        m_Bits: 131072
+      PassNames: []
+    overrideMaterial: {fileID: 2100000, guid: 7369224532fd9d747acf183ce07072a0, type: 2}
+    overrideMaterialPassIndex: 0
+    overrideDepthState: 1
+    depthCompareFunction: 5
+    enableWrite: 0
+    stencilSettings:
+      overrideStencilState: 0
+      stencilReference: 0
+      stencilCompareFunction: 8
+      passOperation: 0
+      failOperation: 0
+      zFailOperation: 0
+    cameraSettings:
+      overrideCamera: 0
+      restoreCamera: 1
+      offset: {x: 0, y: 0, z: 0, w: 0}
+      cameraFieldOfView: 60
 --- !u!114 &-7423249690925945804
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18,7 +57,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 70afb68f23b6c1f41b6f845ff57a6fdc, type: 2}
   - {fileID: 11400000, guid: f8efc8b217563b940a68cdbd9a1ac958, type: 2}
   - {fileID: 11400000, guid: cef34d4fc60d6a446bf57d00e1699fde, type: 2}
---- !u!114 &-452626111029043351
+--- !u!114 &-6973229676998480232
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -27,20 +66,56 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f62c9c65cf3354c93be831c8bc075510, type: 3}
-  m_Name: CustomScreenSpaceAmbientOcclusion
+  m_Script: {fileID: 11500000, guid: 6b3d386ba5cd94485973aee1479b272e, type: 3}
+  m_Name: MeasureToolLine
   m_EditorClassIdentifier: 
   m_Active: 1
-  m_Shader: {fileID: 4800000, guid: f7817933a512e4c36a78b7adfbc79f6b, type: 3}
-  m_Settings:
-    renderPassEvent: 400
-    Downsample: 0
-    Source: 0
-    NormalSamples: 2
-    Intensity: 0.8
-    DirectLightingStrength: 0.3
-    Radius: 0.2
-    SampleCount: 12
+  settings:
+    passTag: MeasureToolLine
+    Event: 550
+    filterSettings:
+      RenderQueueType: 1
+      LayerMask:
+        serializedVersion: 2
+        m_Bits: 262144
+      PassNames: []
+    overrideMaterial: {fileID: 2100000, guid: 70a7d95dc32f03347b8670f7292786de, type: 2}
+    overrideMaterialPassIndex: 0
+    overrideDepthState: 1
+    depthCompareFunction: 5
+    enableWrite: 0
+    stencilSettings:
+      overrideStencilState: 0
+      stencilReference: 0
+      stencilCompareFunction: 8
+      passOperation: 0
+      failOperation: 0
+      zFailOperation: 0
+    cameraSettings:
+      overrideCamera: 0
+      restoreCamera: 1
+      offset: {x: 0, y: 0, z: 0, w: 0}
+      cameraFieldOfView: 60
+--- !u!114 &-1175322425371560917
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e4e1c771b3e48d494e830fda0ffd4a5, type: 3}
+  m_Name: MultiSelectionOutlineFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings:
+    IsEnabled: 1
+    WhenToInsert: 500
+    Filters:
+      serializedVersion: 2
+      m_Bits: 0
+    MaterialToBlit: {fileID: 2100000, guid: bb300a72ad829d448998ab022bb6571c, type: 2}
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -54,26 +129,33 @@ MonoBehaviour:
   m_Name: ForwardRenderer-HQ
   m_EditorClassIdentifier: 
   m_RendererFeatures:
-  - {fileID: -452626111029043351}
+  - {fileID: 6057632130195873352}
   - {fileID: -7423249690925945804}
-  - {fileID: 5791773680119984309}
-  - {fileID: 6440303160123899625}
   - {fileID: 7421284727478962336}
-  m_RendererFeatureMap: 691f0c3cf3f2b7f934ac5475bc51fb98b53002d779836050e9be02199a8d6059a0486ad623b3fd66
+  - {fileID: 3564760396032643047}
+  - {fileID: -1175322425371560917}
+  - {fileID: -9088064430104590885}
+  - {fileID: -6973229676998480232}
+  m_RendererFeatureMap: 485e51e45308115434ac5475bc51fb98a0486ad623b3fd66e70fe87ab19278312b742d337b6ab0efdbc5c02b8db5e081982e4bf58d1c3a9f
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
+  xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
   shaders:
     blitPS: {fileID: 4800000, guid: c17132b1f77d20942aa75f8429c0f8bc, type: 3}
     copyDepthPS: {fileID: 4800000, guid: d6dae50ee9e1bfa4db75f19f99355220, type: 3}
     screenSpaceShadowPS: {fileID: 4800000, guid: 0f854b35a0cf61a429bd5dcfea30eddd,
       type: 3}
     samplingPS: {fileID: 4800000, guid: 04c410c9937594faa893a11dceb85f7e, type: 3}
+    tileDepthInfoPS: {fileID: 0}
+    tileDeferredPS: {fileID: 0}
+    stencilDeferredPS: {fileID: 4800000, guid: e9155b26e1bc55942a41e518703fe304, type: 3}
     fallbackErrorPS: {fileID: 4800000, guid: e6e9a19c3678ded42a3bc431ebef7dbd, type: 3}
+    materialErrorPS: {fileID: 4800000, guid: 5fd9a8feb75a4b5894c241777f519d4e, type: 3}
   m_OpaqueLayerMask:
     serializedVersion: 2
-    m_Bits: 4294964223
+    m_Bits: 4294967295
   m_TransparentLayerMask:
     serializedVersion: 2
-    m_Bits: 4294964223
+    m_Bits: 4294967295
   m_DefaultStencilState:
     overrideStencilState: 0
     stencilReference: 0
@@ -82,7 +164,9 @@ MonoBehaviour:
     failOperation: 0
     zFailOperation: 0
   m_ShadowTransparentReceive: 1
---- !u!114 &5791773680119984309
+  m_RenderingMode: 0
+  m_AccurateGbufferNormals: 0
+--- !u!114 &3564760396032643047
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -91,27 +175,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e4e1c771b3e48d494e830fda0ffd4a5, type: 3}
-  m_Name: SelectionOutlineFeature
-  m_EditorClassIdentifier: 
-  m_Active: 1
-  settings:
-    IsEnabled: 1
-    WhenToInsert: 500
-    Filters:
-      serializedVersion: 2
-      m_Bits: 512
-    MaterialToBlit: {fileID: 2100000, guid: bb300a72ad829d448998ab022bb6571c, type: 2}
---- !u!114 &6440303160123899625
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e4e1c771b3e48d494e830fda0ffd4a5, type: 3}
+  m_Script: {fileID: 11500000, guid: 6ef08f47e5cf9ad4aad5e40675d57e2f, type: 3}
   m_Name: PlaneSelectionFeature
   m_EditorClassIdentifier: 
   m_Active: 1
@@ -122,6 +186,28 @@ MonoBehaviour:
       serializedVersion: 2
       m_Bits: 8192
     MaterialToBlit: {fileID: 2100000, guid: f974a4e17c79f204c86398cc3c1e7096, type: 2}
+--- !u!114 &6057632130195873352
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f62c9c65cf3354c93be831c8bc075510, type: 3}
+  m_Name: ScreenSpaceAmbientOcclusion
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  m_Shader: {fileID: 4800000, guid: 0849e84e3d62649e8882e9d6f056a017, type: 3}
+  m_Settings:
+    Downsample: 0
+    Source: 0
+    NormalSamples: 2
+    Intensity: 0.8
+    DirectLightingStrength: 0.3
+    Radius: 0.2
+    SampleCount: 12
 --- !u!114 &7421284727478962336
 MonoBehaviour:
   m_ObjectHideFlags: 0

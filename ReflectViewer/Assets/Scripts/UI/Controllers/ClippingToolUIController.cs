@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -61,12 +62,12 @@ namespace Unity.Reflect.Viewer.UI
 
             if (m_CloseOnSelect)
             {
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
             }
 
             var toolState = UIStateManager.current.stateData.toolState;
             toolState.clippingTool = clippingTool;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
         }
     }
 }

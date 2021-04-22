@@ -39,7 +39,7 @@ namespace UnityEngine.Reflect
             InputSystem.InputSystem.RegisterBindingComposite<Vector3Composite>();
         }
 
-        [RuntimeInitializeOnLoadMethod]
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Init() {} // Trigger static constructor.
 
         public override Vector3 ReadValue(ref InputBindingCompositeContext context)

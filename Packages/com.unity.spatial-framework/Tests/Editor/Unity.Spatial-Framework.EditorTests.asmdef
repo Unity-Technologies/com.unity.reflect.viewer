@@ -1,0 +1,14 @@
+{
+    "name": "Unity.Spatial-Framework.EditorTests",
+    "references": [
+        "Unity.Spatial-Framework.Editor",
+        "Unity.Spatial-Framework"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": []
+}

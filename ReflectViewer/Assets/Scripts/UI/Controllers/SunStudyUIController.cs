@@ -2,6 +2,7 @@ using SharpFlux;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using SharpFlux.Dispatching;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
@@ -203,21 +204,22 @@ namespace Unity.Reflect.Viewer.UI
             var toolState = UIStateManager.current.stateData.toolState;
             toolState.activeTool = m_DialogWindow.open ? ToolType.None : ToolType.SunstudyTool;
 
-            if (m_DialogWindow.open)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, ""));
-            else UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatus, TimeRadialUIController.GetTimeStatusMessage(UIStateManager.current.stateData.sunStudyData)));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
+            var data = UIStateManager.current.stateData;
+            if (m_DialogWindow.open || data.dialogMode == DialogMode.Help)
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
+            else
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, TimeRadialUIController.GetTimeStatusMessage(data.sunStudyData)));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
 
             // don't use dial in VR or Help Mode
-            var data = UIStateManager.current.stateData;
             if (data.navigationState.navigationMode != NavigationMode.VR && data.dialogMode != DialogMode.Help)
             {
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, toolbarType));
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, toolbarType));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
             }
             // Always change mode back to Geographic since dial will be Time or closed
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, false));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, false));
         }
 
         void OnStateDataChanged(UIStateData data)
@@ -275,7 +277,7 @@ namespace Unity.Reflect.Viewer.UI
             if (!data.isStaticMode)
             {
                 data.timeOfDay = value;
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
             }
         }
 
@@ -285,7 +287,7 @@ namespace Unity.Reflect.Viewer.UI
             if (!data.isStaticMode)
             {
                 data.timeOfYear = value;
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
             }
         }
 
@@ -295,7 +297,7 @@ namespace Unity.Reflect.Viewer.UI
             if (!data.isStaticMode)
             {
                 data.utcOffset = value;
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
             }
         }
 
@@ -305,7 +307,7 @@ namespace Unity.Reflect.Viewer.UI
             if (!data.isStaticMode)
             {
                 data.latitude = value;
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
             }
         }
 
@@ -315,7 +317,7 @@ namespace Unity.Reflect.Viewer.UI
             if (!data.isStaticMode)
             {
                 data.longitude = value;
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
             }
         }
 
@@ -323,7 +325,7 @@ namespace Unity.Reflect.Viewer.UI
         {
             var data = UIStateManager.current.stateData.sunStudyData;
             data.northAngle = value;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
         }
     }
 }

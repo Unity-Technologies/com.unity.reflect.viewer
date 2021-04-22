@@ -1,5 +1,6 @@
 using System;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -134,56 +135,52 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnSelectButtonClicked()
         {
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.ARSelect)) return;
+
             if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
 
             var toolState = UIStateManager.current.stateData.toolState;
             toolState.activeTool = m_SelectButton.selected ? ToolType.None : ToolType.SelectTool;
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
         }
 
         void OnOkButtonClicked()
         {
-            var currentStep = UIStateManager.current.arStateData.currentInstructionUI.CurrentInstructionStep;
-            if(currentStep.validations != null)
-            {
-                foreach (var validation in currentStep.validations)
-                {
-                    if(!validation.IsValid(UIStateManager.current.arStateData.placementStateData, out var message))
-                    {
-                        UIStateManager.current.popUpManager.DisplayModalPopUp(message);
-                        return;
-                    }
-                }
-            }
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.Ok)) return;
 
             if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
-
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.activeTool = m_OkButton.selected ? ToolType.None : ToolType.SelectTool;
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
 
             UIStateManager.current.arStateData.currentInstructionUI.Next();
         }
 
         void OnLookAroundButtonClicked()
         {
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.LookAround)) return;
+
             if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
 
             var toolState = UIStateManager.current.stateData.toolState;
             toolState.activeTool =  m_LookAroundButton.selected ? ToolType.None : ToolType.OrbitTool;
             toolState.orbitType = OrbitType.WorldOrbit;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
         }
 
         void OnOrbitButtonClicked()
         {
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.OrbitSelect)) return;
+
             var toolState = UIStateManager.current.stateData.toolState;
 
             if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
 
             if (m_OrbitButton.selected)
             {
@@ -194,21 +191,21 @@ namespace Unity.Reflect.Viewer.UI
                 toolState.activeTool = m_CurrentOrbitButtonType;
                 toolState.orbitType = OrbitType.OrbitAtPoint;
             }
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
         }
 
         void OnOrbitButtonLongPressed()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.OrbitSelect));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.OrbitSelect));
         }
 
         void OnBackButtonClicked()
         {
-            if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.Back)) return;
 
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.activeTool = m_OkButton.selected ? ToolType.None : ToolType.SelectTool;
+            if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
 
             UIStateManager.current.arStateData.currentInstructionUI.Back();
         }

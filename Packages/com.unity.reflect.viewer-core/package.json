@@ -1,0 +1,12 @@
+{
+	"name": "com.unity.reflect.viewer-core",
+	"displayName":"Reflect Viewer Core",
+	"version": "0.1.0-preview",
+	"unity": "2019.4",
+	"description": "Unity Reflect Viewer Core UI Framework. \n\nThis includes: \n\u25AA com.unity.touch-framework: \n\u25AA A set of UGUI widget and classes used by all Reflect Runtime Apps \n\nNote: com.unity.touch-framework is not an officially supported package.",
+	"dependencies": {
+        "com.unity.reflect.touch-framework": "0.1.0-preview",
+        "nuget.moq": "1.0.0",
+        "com.unity.ext.nunit": "1.0.6"
+  }
+}

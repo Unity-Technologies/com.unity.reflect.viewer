@@ -3,7 +3,6 @@ Shader "Custom/SelectionOutline"
      Properties
     {
         _MainTex ("Main Texture", 2D) = "white" {}
-        _Cutoff ("Alpha cutoff", Range(0,1)) = 0.01
         _OutlineColor ("OutlineColor", Color) = (1.0, 0.4, 0.0, 0.0)
         _OutlineWidth ("OutlineWidth", Float) = 2
     }
@@ -42,7 +41,7 @@ Shader "Custom/SelectionOutline"
 
         Tags { "RenderType"="Opaque" }
 
-        // #0: things that are visible (pass depth). 1 in alpha, 1 in red (SM2.0)
+        // #0: Mask 1 in alpha, 1 in red
         Pass
         {
             Blend One Zero
@@ -101,7 +100,8 @@ Shader "Custom/SelectionOutline"
                     if (any(i.uv - _MainTex_TexelSize.xy*_OutlineWidth < 0) || any(i.uv + _MainTex_TexelSize.xy*_OutlineWidth > 1))
                         alpha = 1;
                 }
-                float4 outlineColor = float4(_OutlineColor.rgb,alpha);
+
+                half4 outlineColor = half4(_OutlineColor.rgb, alpha);
                 return outlineColor;
             }
             ENDCG

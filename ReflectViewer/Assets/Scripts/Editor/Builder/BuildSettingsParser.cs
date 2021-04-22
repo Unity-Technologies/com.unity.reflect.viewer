@@ -127,6 +127,7 @@ namespace Unity.Reflect.Viewer.Builder
 
         private void SetDeltaDNASettings()
         {
+            UCB.SetDDNAURL(commandLineArgsByKey[BuilderConstants.DELTA_DNA_BASE_URL] + commandLineArgsByKey[BuilderConstants.DELTA_DNA_LIVE_URL]);
         }
 
         private int GetBundleVersionFromVersionString(string version)

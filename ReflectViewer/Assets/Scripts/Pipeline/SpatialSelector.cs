@@ -16,9 +16,11 @@ namespace UnityEngine.Reflect.Viewer
 
         const int k_MaxResultsCount = 10;
 
+        static int k_ObjectsLayer => ~LayerMask.GetMask("Avatars"); // All layers but avatars, can change this
+
         readonly RaycastHit[] m_RaycastHitCache = new RaycastHit[k_MaxResultsCount];
         readonly List<ISpatialObject> m_SpatialObjects = new List<ISpatialObject>();
-        internal readonly List<Collider> m_Colliders = new List<Collider>();
+        internal Dictionary<int, MeshCollider> m_ColliderCache = new Dictionary<int, MeshCollider>();
 
         RayData[] m_RayDatas;
 
@@ -41,12 +43,16 @@ namespace UnityEngine.Reflect.Viewer
 
         void AddMeshColliderRecursively(GameObject obj)
         {
-            // only add colliders if there aren't any present, keep track of them to destroy when we're done
-            if (obj.GetComponent<MeshRenderer>() != null && obj.GetComponent<Collider>() == null )
+            if (!m_ColliderCache.ContainsKey(obj.GetInstanceID()))
             {
-                m_Colliders.Add(obj.AddComponent<MeshCollider>());
+                // only add colliders if there aren't any present, keep track of them to destroy when we're done
+                if (obj.GetComponent<MeshRenderer>() != null && obj.GetComponent<Collider>() == null)
+                {
+                    m_ColliderCache.Add(obj.GetInstanceID(), obj.AddComponent<MeshCollider>());
+                }
             }
-            foreach (Transform childTransform  in obj.transform)
+
+            foreach (Transform childTransform in obj.transform)
             {
                 AddMeshColliderRecursively(childTransform.gameObject);
             }
@@ -56,27 +62,49 @@ namespace UnityEngine.Reflect.Viewer
         {
             results.Sort((a, b) => a.Item2.distance.CompareTo(b.Item2.distance));
 
-            foreach (var c in m_Colliders)
+            foreach (var c in m_ColliderCache.Values)
                 Object.Destroy(c);
 
-            m_Colliders.Clear();
+            m_ColliderCache.Clear();
         }
 
         public void Pick(Ray ray, List<Tuple<GameObject, RaycastHit>> results)
         {
+            PrePicking(ray, results);
+            PostRaycast(results);
+        }
+
+        void PrePicking(Ray ray, List<Tuple<GameObject, RaycastHit>> results)
+        {
             var transformedRay = new Ray(WorldRoot.InverseTransformPoint(ray.origin), WorldRoot.InverseTransformDirection(ray.direction));
+
             // narrow down the possible objects using the spatial picker
             SpatialPicker.Pick(transformedRay, m_SpatialObjects);
 
             PreRaycast();
             RaycastInternal(ray, results);
-            PostRaycast(results);
+        }
+
+        public void CleanCache()
+        {
+            foreach (var col in m_ColliderCache)
+            {
+                Object.Destroy(col.Value);
+            }
+
+            m_ColliderCache.Clear();
+        }
+
+        public void VRPick(Ray ray, List<Tuple<GameObject, RaycastHit>> results)
+        {
+            PrePicking(ray, results);
+            results.Sort((a, b) => a.Item2.distance.CompareTo(b.Item2.distance));
         }
 
         void RaycastInternal(Ray ray, List<Tuple<GameObject, RaycastHit>> results)
         {
             results.Clear();
-            var count = Physics.RaycastNonAlloc(ray, m_RaycastHitCache);
+            var count = Physics.RaycastNonAlloc(ray, m_RaycastHitCache, float.MaxValue, k_ObjectsLayer);
             for (var i = 0; i < count; ++i)
                 results.Add(new Tuple<GameObject, RaycastHit>(m_RaycastHitCache[i].collider.gameObject, m_RaycastHitCache[i]));
         }
@@ -117,13 +145,26 @@ namespace UnityEngine.Reflect.Viewer
             var totalDistance = 0f;
             foreach (var rayData in m_RayDatas)
             {
-                var count = Physics.RaycastNonAlloc(rayData.ray, m_RaycastHitCache, rayData.length);
+                var count = Physics.RaycastNonAlloc(rayData.ray, m_RaycastHitCache, rayData.length, k_ObjectsLayer);
                 for (var i = 0; i < count; ++i)
                 {
                     m_RaycastHitCache[i].distance += totalDistance;
                     results.Add(new Tuple<GameObject, RaycastHit>(m_RaycastHitCache[i].collider.gameObject, m_RaycastHitCache[i]));
                 }
                 totalDistance += rayData.length;
+            }
+        }
+
+        public void Pick(float distance, List<Tuple<GameObject, RaycastHit>> results, Transform origin)
+        {
+            results.Clear();
+            SpatialPicker.Pick(distance, m_SpatialObjects, origin);
+            foreach (var spatialObject in m_SpatialObjects)
+            {
+                if (spatialObject.loadedObject == null)
+                    continue;
+
+                results.Add(new Tuple<GameObject, RaycastHit>(spatialObject.loadedObject, new RaycastHit()));
             }
         }
     }

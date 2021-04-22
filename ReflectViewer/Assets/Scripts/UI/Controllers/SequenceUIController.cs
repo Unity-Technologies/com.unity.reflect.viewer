@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.UI;
@@ -24,7 +25,7 @@ namespace Unity.Reflect.Viewer.UI
 
         DialogWindow m_DialogWindow;
         Image m_DialogButtonImage;
-        
+
         void Awake()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
@@ -57,16 +58,16 @@ namespace Unity.Reflect.Viewer.UI
         {
             throw new System.NotImplementedException();
         }
-        
+
         void Start()
         {
             m_DialogButton.onClick.AddListener(OnDialogButtonClick);
         }
-        
+
         void OnDialogButtonClick()
         {
             var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.Sequence;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿using System;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using UnityEngine;
+using UnityEngine.Reflect.MeasureTool;
 using UnityEngine.Reflect.Viewer;
 using UnityEngine.UI;
 
@@ -22,6 +24,9 @@ namespace Unity.Reflect.Viewer.UI
         ToolButton m_SunStudyButton;
 
         [SerializeField]
+        ToolButton m_MeasureToolButton;
+
+        [SerializeField]
         Sprite m_OrbitImage;
         [SerializeField]
         Sprite m_ZoomImage;
@@ -33,21 +38,34 @@ namespace Unity.Reflect.Viewer.UI
         ToolType m_CurrentOrbitButtonType;
 
         bool m_ToolbarsEnabled;
-        ToolState m_CurrentToolState;
+        ToolState? m_CachedToolState;
+        ExternalToolStateData? m_CachedExternalToolStateData;
+        MeasureToolStateData? m_CachedMeasureToolStateData;
 
         SpatialSelector m_ObjectSelector;
 
         void Awake()
         {
             UIStateManager.stateChanged += OnStateDataChanged;
+            UIStateManager.externalToolChanged += OnExternalToolStateDataChanged;
 
             m_OrbitButton.buttonClicked += OnOrbitButtonClicked;
             m_OrbitButton.buttonLongPressed += OnOrbitButtonLongPressed;
             m_LookAroundButton.buttonClicked += OnLookAroundButtonClicked;
             m_SelectButton.buttonClicked += OnSelectButtonClicked;
             m_SunStudyButton.buttonClicked += OnSunStudyButtonClicked;
+            m_MeasureToolButton.buttonClicked += OnMeasureToolButtonClicked;
 
             m_ObjectSelector = new SpatialSelector();
+        }
+
+        void OnExternalToolStateDataChanged(ExternalToolStateData data)
+        {
+            if (m_CachedMeasureToolStateData != data.measureToolStateData)
+            {
+                m_MeasureToolButton.selected = data.measureToolStateData.toolState;
+                m_CachedMeasureToolStateData = data.measureToolStateData;
+            }
         }
 
         void OnStateDataChanged(UIStateData data)
@@ -58,10 +76,11 @@ namespace Unity.Reflect.Viewer.UI
                 m_LookAroundButton.button.interactable = data.toolbarsEnabled;
                 m_SelectButton.button.interactable = data.toolbarsEnabled;
                 m_SunStudyButton.button.interactable = data.toolbarsEnabled;
+                m_MeasureToolButton.button.interactable = data.toolbarsEnabled;
                 m_ToolbarsEnabled = data.toolbarsEnabled;
             }
 
-            if (m_CurrentToolState != data.toolState)
+            if (m_CachedToolState != data.toolState)
             {
                 m_OrbitButton.selected = false;
 
@@ -97,23 +116,23 @@ namespace Unity.Reflect.Viewer.UI
                     m_OrbitButton.selected = true;
                     m_OrbitButton.SetIcon(m_PanImage);
                 }
-                m_CurrentToolState = data.toolState;
+                m_CachedToolState = data.toolState;
             }
         }
 
         void OnSelectButtonClicked()
         {
             if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
 
             var toolState = UIStateManager.current.stateData.toolState;
             toolState.activeTool = m_SelectButton.selected ? ToolType.None : ToolType.SelectTool;
 
             var dialogType = m_SelectButton.selected ? DialogType.None : DialogType.BimInfo;
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetObjectPicker, m_ObjectSelector));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, dialogType));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetObjectPicker, m_ObjectSelector));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, dialogType));
         }
 
         void OnLookAroundButtonClicked()
@@ -122,15 +141,15 @@ namespace Unity.Reflect.Viewer.UI
             if (HelpDialogController.SetHelpID(HelpModeEntryID.LookAround)) return;
 
             if (m_SelectButton.selected)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
 
             if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
 
             var toolState = UIStateManager.current.stateData.toolState;
             toolState.activeTool =  m_LookAroundButton.selected ? ToolType.None : ToolType.OrbitTool;
             toolState.orbitType = OrbitType.WorldOrbit;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
         }
 
         void OnOrbitButtonClicked()
@@ -139,12 +158,12 @@ namespace Unity.Reflect.Viewer.UI
             if (HelpDialogController.SetHelpID(HelpModeEntryID.OrbitSelect)) return;
 
             if (m_SelectButton.selected)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
 
             var toolState = UIStateManager.current.stateData.toolState;
 
             if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
 
             if (m_OrbitButton.selected)
             {
@@ -155,15 +174,15 @@ namespace Unity.Reflect.Viewer.UI
                 toolState.activeTool = m_CurrentOrbitButtonType;
                 toolState.orbitType = OrbitType.OrbitAtPoint;
             }
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
         }
 
         void OnOrbitButtonLongPressed()
         {
             if (m_SelectButton.selected)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.OrbitSelect));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.OrbitSelect));
         }
 
         void OnSunStudyButtonClicked()
@@ -172,16 +191,48 @@ namespace Unity.Reflect.Viewer.UI
             if (HelpDialogController.SetHelpID(HelpModeEntryID.SunStudyDial)) return;
 
             if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
             if (m_SelectButton.selected)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, false));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.TimeOfDayYearDial));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, false));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.TimeOfDayYearDial));
             var toolState = UIStateManager.current.stateData.toolState;
             toolState.activeTool = ToolType.SunstudyTool;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
             var sunStudyData = UIStateManager.current.stateData.sunStudyData;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatus, TimeRadialUIController.GetTimeStatusMessage(sunStudyData)));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, TimeRadialUIController.GetTimeStatusMessage(sunStudyData)));
+        }
+
+        void OnMeasureToolButtonClicked()
+        {
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.MeasureTool)) return;
+
+            var data = UIStateManager.current.externalToolStateData.measureToolStateData;
+            data.toolState = !data.toolState;
+
+            if (data.toolState)
+            {
+                if (UIStateManager.current.stateData.toolState.activeTool == ToolType.SelectTool && UIStateManager.current.projectStateData.objectSelectionInfo.CurrentSelectedObject() == null)
+                {
+                    var toolState = UIStateManager.current.stateData.toolState;
+                    toolState.activeTool = ToolType.None;
+                    Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+                    Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
+                }
+
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithType,
+                    new StatusMessageData() { text = UIMeasureToolController.instructionStart, type = StatusMessageType.Instruction }));
+            }
+            else
+            {
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, ""));
+            }
+
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetMeasureToolOptions, data));
+
+            // To initialize Anchor
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetObjectPicker, m_ObjectSelector));
         }
     }
 }

@@ -229,6 +229,9 @@ MonoBehaviour:
   m_glyphInfoList: []
   m_KerningTable:
     kerningPairs: []
+  m_FontFeatureTable:
+    m_GlyphPairAdjustmentRecords: []
+  fallbackFontAssets: []
   m_FallbackFontAssetTable:
   - {fileID: 11400000, guid: cfaba1c292109e443a9a2cdace8abde4, type: 2}
   m_CreationSettings:
@@ -315,6 +318,8 @@ Texture2D:
   m_TextureFormat: 1
   m_MipCount: 1
   m_IsReadable: 1
+  m_IgnoreMasterTextureLimit: 0
+  m_IsPreProcessed: 0
   m_StreamingMipmaps: 0
   m_StreamingMipmapsPriority: 0
   m_AlphaIsTransparency: 0

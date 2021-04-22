@@ -1,5 +1,6 @@
 ﻿using System;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
@@ -76,12 +77,12 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnDownloadButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.DownloadProject, m_CurrentProject));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.DownloadProject, m_CurrentProject));
         }
 
         void OnDeleteButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.RemoveProject, m_CurrentProject));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.RemoveProject, m_CurrentProject));
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using SharpFlux;
+using SharpFlux.Dispatching;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
@@ -110,14 +111,14 @@ namespace Unity.Reflect.Viewer.UI
         {
             var data = UIStateManager.current.stateData.sceneOptionData;
             data.enableTexture = on;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetViewOption, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetViewOption, data));
         }
 
         void OnLightDataToggleChanged(bool on)
         {
             var data = UIStateManager.current.stateData.sceneOptionData;
             data.enableLightData = on;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetViewOption, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetViewOption, data));
         }
 
         void OnSkyboxChanged(int index)
@@ -132,14 +133,14 @@ namespace Unity.Reflect.Viewer.UI
                 data.skyboxData.skyboxType = SkyboxType.Custom;
                 data.skyboxData.customColor = Color.green;
             }
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSkybox, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSkybox, data));
         }
 
         void OnSimulationToggleChanged(bool on)
         {
             var data = UIStateManager.current.stateData.sceneOptionData;
             data.enableClimateSimulation = on;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetClimateOption, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetClimateOption, data));
         }
 
 
@@ -151,20 +152,20 @@ namespace Unity.Reflect.Viewer.UI
             else if (index == 1)
                 data.weatherType = WeatherType.Sunny;
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetClimateOption, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetClimateOption, data));
         }
 
         void OnTemperatureControlChanged(float value)
         {
             var data = UIStateManager.current.stateData.sceneOptionData;
             data.temperature = value;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetClimateOption, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetClimateOption, data));
         }
 
         void OnDialogButtonClicked()
         {
             var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.SceneOptions;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
         }
     }
 }

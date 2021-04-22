@@ -1,6 +1,7 @@
 using SharpFlux;
 using System.Collections;
 using System.Collections.Generic;
+using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.UI;
@@ -50,45 +51,45 @@ namespace Unity.Reflect.Viewer.UI
         {
             var data = UIStateManager.current.stateData.sunStudyData;
             data.latitude = (int)value;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
             var Message = "Latitude: " + data.latitude + ", Longitude: " + data.longitude;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatus, Message));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, Message));
         }
 
         void OnLongitudeDialValueChanged(float value)
         {
             var data = UIStateManager.current.stateData.sunStudyData;
             data.longitude = (int)value;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
             var Message = "Latitude: " + data.latitude + ", Longitude: " + data.longitude;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatus, Message));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, Message));
         }
 
         void OnRefreshButtonClicked()
         {
-            
+
         }
 
         void onToolButtonClicked()
         {
             // TODO: on close, display previous ToolbarType instead of ORBIT Sidebar!
             //var toolbarType = m_DialogWindow.open ? ToolbarType.OrbitSidebar : ToolbarType.SunStudyDial;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.AltitudeAzimuthDial));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.AltitudeAzimuthDial));
         }
 
         void OnMainButtonClicked()
         {
             // TODO: on close, display previous ToolbarType instead of ORBIT Sidebar!
             //var toolbarType = m_DialogWindow.open ? ToolbarType.OrbitSidebar : ToolbarType.SunStudyDial;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.OrbitSidebar));
-            //UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveTool, ToolType.None));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, ""));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.OrbitSidebar));
+            //Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveTool, ToolType.None));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
         }
 
         void OnSecondaryButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.AltitudeAzimuthDial));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, ""));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.AltitudeAzimuthDial));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
         }
     }
 }

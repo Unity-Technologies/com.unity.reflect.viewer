@@ -1,12 +1,11 @@
 using System;
-using System.Collections;
-using System.IO;
+using System.Linq;
 using System.Text;
 using TMPro;
-using Unity.Reflect.IO;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.Reflect;
+using UnityEngine.Reflect.Utils;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -19,7 +18,9 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         TextMeshProUGUI m_TitleText;
         [SerializeField]
-        TextMeshProUGUI m_DescriptionText;
+        TextMeshProUGUI m_ServerText;
+        [SerializeField]
+        TextMeshProUGUI m_OrganizationText;
         [SerializeField]
         TextMeshProUGUI m_DateText;
         [SerializeField]
@@ -27,21 +28,34 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         Button m_OptionButton;
         [SerializeField]
-        Image m_ConnectedImage;
+        Image m_ConnectionStatusImage;
         [SerializeField]
-        Image m_DisconnectedImage;
+        Image m_UpdatingImage;
         [SerializeField]
         Image m_ThumbnailImage;
+        [SerializeField]
+        CollaborationUIController m_CollaboratorsList;
+
+        [Space(10)]
+        [SerializeField]
+        Sprite m_SyncedSprite;
+        [SerializeField]
+        Sprite m_DisconnectedSprite;
+        [SerializeField]
+        Sprite m_UpdatesAvailableSprite;
 
 #pragma warning restore CS0649
 
         string m_ThumbnailPath;
-        Project m_project;
+        ProjectRoom m_Room;
 
         ProjectServerType m_ProjectServerType = ProjectServerType.None;
+        ScreenSizeQualifier m_ScreenSizeQualifier;
+        string[] m_UserList;
 
+        private const string k_OrganizationFallback = "-";
 
-        public Project project => m_project;
+        public ProjectRoom room => m_Room;
         public Sprite projectThumbnail
         {
             get => m_ThumbnailImage.sprite;
@@ -63,42 +77,60 @@ namespace Unity.Reflect.Viewer.UI
             m_OptionButton.onClick.AddListener(OnOptionButtonClicked);
         }
 
-        public void InitProjectItem(Project project, Sprite thumbnail)
+        void Awake()
         {
-            m_project = project;
-            m_TitleText.text = project.name;
-            projectThumbnail = thumbnail;
+            m_UserList = new string[0];
+            UIStateManager.stateChanged += UIStateManagerOnstateChanged;
+        }
 
-            m_DescriptionText.text = project.description;
-            if (project.description == "Local")
+        void UIStateManagerOnstateChanged(UIStateData uiStateData)
+        {
+            if (uiStateData.display.screenSizeQualifier != m_ScreenSizeQualifier)
+            {
+                m_ScreenSizeQualifier = uiStateData.display.screenSizeQualifier;
+                m_CollaboratorsList.maxHorizontalAvatars = (m_ScreenSizeQualifier < ScreenSizeQualifier.Medium)? 2 : 3;
+                m_CollaboratorsList.UpdateUserList(m_UserList);
+            }
+        }
+
+        public void OnProjectRoomChanged(ProjectRoom projectRoom)
+        {
+            m_Room = projectRoom;
+            m_TitleText.text = projectRoom.project.name;
+            projectThumbnail = ThumbnailController.LoadThumbnailForProject(projectRoom.project);
+
+            m_ServerText.text = projectRoom.project.description;
+            if (projectRoom.project.description == "Local")
             {
                 m_ProjectServerType = ProjectServerType.Local;
             }
-            else if (project.description == "Cloud")
+            else if (projectRoom.project.description == "Cloud")
             {
                 m_ProjectServerType = ProjectServerType.Cloud;
             }
-            else if (project.description == "Network")
+            else if (projectRoom.project.description == "Network")
             {
                 m_ProjectServerType = ProjectServerType.Network;
             }
 
-            m_DateText.text = project.lastPublished.ToShortDateString();
-
-            bool isConnected = project.isAvailableOnline;
-            m_ConnectedImage.gameObject.SetActive(isConnected);
-            m_DisconnectedImage.gameObject.SetActive(!isConnected);
+            m_OrganizationText.text = ((UnityProject)projectRoom.project).Organization?.Name ?? k_OrganizationFallback;
+            m_DateText.text = UIUtils.GetTimeIntervalSinceNow(projectRoom.project.lastPublished.ToLocalTime());
+            m_UserList = projectRoom.users.Select(u => u.matchmakerId).ToArray();
+            m_CollaboratorsList.UpdateUserList(m_UserList);
+            m_ConnectionStatusImage.sprite = projectRoom.project.isAvailableOnline ? m_SyncedSprite : m_DisconnectedSprite;
+            m_UpdatingImage.gameObject.SetActive(false);
         }
 
         public void SetHighlightString(string search)
         {
+            var projectName = m_Room.project.name;
             if (string.IsNullOrWhiteSpace(search))
             {
-                m_TitleText.text = m_project.name;
+                m_TitleText.text = projectName;
             }
             else
             {
-                var indexOf = m_project.name.IndexOf(search, StringComparison.OrdinalIgnoreCase);
+                var indexOf = projectName.IndexOf(search, StringComparison.OrdinalIgnoreCase);
                 if (indexOf != -1)
                 {
                     StringBuilder sb = new StringBuilder();
@@ -107,15 +139,15 @@ namespace Unity.Reflect.Viewer.UI
 
                     while (indexOf != -1)
                     {
-                        sb.Append(m_project.name.Substring(currentIndex, indexOf - currentIndex));
+                        sb.Append(projectName.Substring(currentIndex, indexOf - currentIndex));
                         sb.Append("<mark=#2096F3>");
-                        sb.Append(m_project.name.Substring(indexOf, search.Length));
+                        sb.Append(projectName.Substring(indexOf, search.Length));
                         sb.Append("</mark>");
                         currentIndex = indexOf + search.Length;
 
-                        indexOf = m_project.name.IndexOf(search, currentIndex, StringComparison.OrdinalIgnoreCase);
+                        indexOf = projectName.IndexOf(search, currentIndex, StringComparison.OrdinalIgnoreCase);
                     }
-                    sb.Append(m_project.name.Substring(currentIndex));
+                    sb.Append(projectName.Substring(currentIndex));
                     m_TitleText.text = sb.ToString();
                 }
             }
@@ -128,12 +160,12 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnItemButtonClicked()
         {
-            projectItemClicked?.Invoke(m_project);
+            projectItemClicked?.Invoke(m_Room.project);
         }
 
         void OnOptionButtonClicked()
         {
-            optionButtonClicked?.Invoke(m_project);
+            optionButtonClicked?.Invoke(m_Room.project);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using UnityEngine;
@@ -6,6 +6,15 @@ using UnityEngine.Reflect;
 
 namespace Unity.Reflect.Viewer.UI
 {
+    [Flags]
+    public enum CollaborationState
+    {
+        Disconnected= 0,
+        ConnectedMatchmaker = 1,
+        ConnectedRoom = 2,
+        ConnectedNetcode = 4
+    }
+
     public enum LoginState
     {
         LoggedOut = 0,
@@ -22,18 +31,30 @@ namespace Unity.Reflect.Viewer.UI
         {
             loggedState = LoginState.LoggedOut,
             user = null,
-            projects = new Project[]{}
+            rooms = new ProjectRoom[] { }
         };
 
+        public CollaborationState collaborationState;
         public LoginState loggedState;
         public UnityUser user;
-        public Project[] projects;
+        public UserIdentity userIdentity;
+        public bool isInPrivateMode;
+        public ProjectRoom[] rooms;
+        public bool linkShareLoggedOut;
+        public LinkPermission linkSharePermission;
+        public ProjectRoom linkSharedProjectRoom;
 
-        public SessionState(LoginState loggedState, UnityUser user, Project[] projects)
+        public SessionState(LoginState loggedState, UnityUser user, ProjectRoom[] rooms)
         {
             this.loggedState = loggedState;
             this.user = user;
-            this.projects = projects;
+            this.rooms = rooms;
+            userIdentity = default;
+            linkShareLoggedOut = false;
+            linkSharePermission = LinkPermission.Private;
+            isInPrivateMode = false;
+            collaborationState = CollaborationState.Disconnected;
+            linkSharedProjectRoom = default;
         }
 
         public static SessionState Validate(SessionState state)
@@ -56,9 +77,14 @@ namespace Unity.Reflect.Viewer.UI
         public bool Equals(SessionState other)
         {
             return
+                this.collaborationState == other.collaborationState &&
                 this.loggedState == other.loggedState &&
+                this.isInPrivateMode == other.isInPrivateMode &&
+                this.linkShareLoggedOut == other.linkShareLoggedOut &&
+                this.linkSharePermission == other.linkSharePermission &&
                 this.user.Equals(other.user) &&
-                this.projects.Equals(other.projects);
+                this.linkSharedProjectRoom.Equals(other.linkSharedProjectRoom) &&
+                this.rooms.Equals(other.rooms);
         }
 
         public override bool Equals(object obj)
@@ -71,8 +97,13 @@ namespace Unity.Reflect.Viewer.UI
             unchecked
             {
                 var hashCode = (int)loggedState;
+                hashCode = (hashCode * 397) ^ (int)collaborationState;
                 hashCode = (hashCode * 397) ^ user.GetHashCode();
-                hashCode = (hashCode * 397) ^ projects.GetHashCode();
+                hashCode = (hashCode * 397) ^ isInPrivateMode.GetHashCode();
+                hashCode = (hashCode * 397) ^ linkShareLoggedOut.GetHashCode();
+                hashCode = (hashCode * 397) ^ linkSharePermission.GetHashCode();
+                hashCode = (hashCode * 397) ^ rooms.GetHashCode();
+                hashCode = (hashCode * 397) ^ linkSharedProjectRoom.GetHashCode();
                 return hashCode;
             }
         }

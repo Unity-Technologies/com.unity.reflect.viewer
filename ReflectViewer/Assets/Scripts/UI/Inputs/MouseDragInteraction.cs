@@ -73,7 +73,7 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        [RuntimeInitializeOnLoadMethod]
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Init()
         {
         }

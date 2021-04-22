@@ -1,48 +1,51 @@
-﻿using System;
+using System;
 
-[Flags]
-public enum ProjectServerType
+namespace Unity.Reflect.Viewer.UI
 {
-    None = 0,
-    Local = 1 << 0,
-    Network = 1 << 1,
-    Cloud = 1 << 2,
-    All = (Cloud << 1) -1
-}
-
-[Serializable]
-public struct ProjectListFilterData : IEquatable<ProjectListFilterData>
-{
-    public ProjectServerType projectServerType;
-    public string searchString;
-
-    public static bool operator ==(ProjectListFilterData a, ProjectListFilterData b)
+    [Flags]
+    public enum ProjectServerType
     {
-        return a.Equals(b);
+        None = 0,
+        Local = 1 << 0,
+        Network = 1 << 1,
+        Cloud = 1 << 2,
+        All = (Cloud << 1) - 1
     }
 
-    public static bool operator !=(ProjectListFilterData a, ProjectListFilterData b)
+    [Serializable]
+    public struct ProjectListFilterData : IEquatable<ProjectListFilterData>
     {
-        return !(a == b);
-    }
+        public ProjectServerType projectServerType;
+        public string searchString;
 
-    public bool Equals(ProjectListFilterData other)
-    {
-        return projectServerType == other.projectServerType && searchString == other.searchString;
-    }
-
-    public override bool Equals(object obj)
-    {
-        return obj is ProjectListFilterData other && Equals(other);
-    }
-
-    public override int GetHashCode()
-    {
-        unchecked
+        public static bool operator ==(ProjectListFilterData a, ProjectListFilterData b)
         {
-            var hashCode = (int) projectServerType;
-            hashCode = (hashCode * 397) ^ (searchString != null ? searchString.GetHashCode() : 0);
-            return hashCode;
+            return a.Equals(b);
+        }
+
+        public static bool operator !=(ProjectListFilterData a, ProjectListFilterData b)
+        {
+            return !(a == b);
+        }
+
+        public bool Equals(ProjectListFilterData other)
+        {
+            return projectServerType == other.projectServerType && searchString == other.searchString;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ProjectListFilterData other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var hashCode = (int)projectServerType;
+                hashCode = (hashCode * 397) ^ (searchString != null ? searchString.GetHashCode() : 0);
+                return hashCode;
+            }
         }
     }
 }

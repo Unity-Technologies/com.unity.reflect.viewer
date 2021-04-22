@@ -95,10 +95,10 @@ namespace UnityEngine.Reflect.Viewer
 
             results.Sort((a, b) => a.Item2.distance.CompareTo(b.Item2.distance));
 
-            foreach (var c in m_Colliders)
+            foreach (var c in m_ColliderCache.Values)
                 Object.Destroy(c);
 
-            m_Colliders.Clear();
+            m_ColliderCache.Clear();
         }
     }
 }

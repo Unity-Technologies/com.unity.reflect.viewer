@@ -20,7 +20,11 @@ namespace Unity.Reflect.Viewer
 
         public override int GetHashCode()
         {
-            return qualityStateData.GetHashCode();
+            unchecked
+            {
+                var hashCode = qualityStateData.GetHashCode();
+                return hashCode;
+            }
         }
 
         public static bool operator ==(ApplicationStateData a, ApplicationStateData b)

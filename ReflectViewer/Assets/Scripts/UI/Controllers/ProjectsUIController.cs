@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.Reflect;
@@ -26,6 +28,8 @@ namespace Unity.Reflect.Viewer.UI
         DialogWindow m_DialogWindow;
         Image m_DialogButtonImage;
 
+        List<ProjectListItem> m_ProjectListItems = new List<ProjectListItem>();
+
         void Awake()
         {
             m_DialogButtonImage = m_DialogButton.GetComponent<Image>();
@@ -51,31 +55,54 @@ namespace Unity.Reflect.Viewer.UI
             m_DialogButton.interactable = data.sessionState.loggedState == LoginState.LoggedIn;
             if (data.sessionState.loggedState == LoginState.LoggedIn)
             {
-                InstantiateButtons(data.sessionState.projects);
+                InstantiateButtons(data.sessionState.rooms);
             }
         }
 
-        void InstantiateButtons(Project[] projects)
+        void InstantiateButtons(ProjectRoom[] rooms)
         {
-            Array.Sort(projects, (project1, project2) => project2.lastPublished.CompareTo(project1.lastPublished));
-            foreach (var project in projects)
+            Array.Sort(rooms, (room1, room2) => room2.project.lastPublished.CompareTo(room1.project.lastPublished));
+            for (var index = 0; index < rooms.Length || index < m_ProjectListItems.Count; index++)
             {
-                var listItem = Instantiate(m_ProjectListItemPrefab, m_ScrollViewContent.transform);
-                listItem.gameObject.SetActive(true);
-                listItem.InitProjectItem(project, ThumbnailController.LoadThumbnailForProject(project));
-
-                listItem.projectItemClicked += OnProjectSelectButtonClick;
-                listItem.optionButtonClicked += OnProjectOptionButtonClick;
+                var listItem = GetProjectListItemAt(index);
+                if (index < rooms.Length)
+                {
+                    var room = rooms[index];
+                    listItem.gameObject.SetActive(true);
+                    listItem.OnProjectRoomChanged(room);
+                }
+                else
+                {
+                    listItem.gameObject.SetActive(false);
+                }
             }
+        }
+
+        ProjectListItem GetProjectListItemAt(int index)
+        {
+            ProjectListItem item;
+            if (index >= m_ProjectListItems.Count)
+            {
+                item = Instantiate(m_ProjectListItemPrefab, m_ScrollViewContent.transform);
+                item.projectItemClicked += OnProjectSelectButtonClick;
+                item.optionButtonClicked += OnProjectOptionButtonClick;
+                m_ProjectListItems.Add(item);
+            }
+            else
+            {
+                item = m_ProjectListItems[index];
+            }
+
+            return item;
         }
 
         void OnDialogButtonClick()
         {
             var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.Projects;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
 
             if(dialogType == DialogType.None)
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenOptionDialog, OptionDialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenOptionDialog, OptionDialogType.None));
         }
 
         void OnProjectSelectButtonClick(Project project)
@@ -83,7 +110,7 @@ namespace Unity.Reflect.Viewer.UI
             var projectData = UIStateManager.current.projectStateData;
             projectData.activeProject = project;
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenProject, projectData));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenProject, projectData));
         }
 
         void OnProjectOptionButtonClick(Project project)
@@ -91,12 +118,12 @@ namespace Unity.Reflect.Viewer.UI
             var model = UIStateManager.current.stateData;
             if (model.activeOptionDialog == OptionDialogType.ProjectOptions && model.selectedProjectOption == project)
             {
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenOptionDialog, OptionDialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenOptionDialog, OptionDialogType.None));
             }
             else
             {
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetOptionProject, project));
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenOptionDialog, OptionDialogType.ProjectOptions));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetOptionProject, project));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenOptionDialog, OptionDialogType.ProjectOptions));
             }
         }
     }

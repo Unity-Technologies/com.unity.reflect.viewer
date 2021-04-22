@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -10,6 +11,9 @@ namespace Unity.Reflect.Viewer.UI
     {
         public string Name;
         public Color BackgroundColor;
+        public Sprite SelectionBackground;
+        public bool IsBackgroundEnable;
+        public float LayoutSize;
     }
 
     public class ThemeController : MonoBehaviour
@@ -44,9 +48,24 @@ namespace Unity.Reflect.Viewer.UI
                 {
                     foreach (var context in m_ThemeContexts)
                     {
+                        foreach (var background in context.EnableBackgrounds)
+                        {
+                            background.enabled = settings.IsBackgroundEnable;
+                        }
+
                         foreach (var background in context.Backgrounds)
                         {
                             background.color = settings.BackgroundColor;
+                        }
+
+                        foreach (var selectionBackground in context.SelectionBackgrounds)
+                        {
+                            selectionBackground.sprite = settings.SelectionBackground;
+                        }
+
+                        foreach (var layout in context.LayoutElements)
+                        {
+                            layout.minWidth = layout.minHeight = settings.LayoutSize;
                         }
                     }
                 }

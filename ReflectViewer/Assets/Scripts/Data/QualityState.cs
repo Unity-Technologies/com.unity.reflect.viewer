@@ -8,15 +8,17 @@ namespace Unity.Reflect.Viewer
     {
         public static readonly QualityState defaultData = new QualityState()
         {
-            fpsThresholdQualityDecrease = 24,
+            fpsThresholdQualityDecrease = 15,
             fpsThresholdQualityIncrease = 60,
             qualityLevel = QualitySettings.GetQualityLevel(),
+            isAutomatic = true,
             lastQualityChangeTimestamp = -1
         };
 
         public int fpsThresholdQualityDecrease;
         public int fpsThresholdQualityIncrease;
         public int qualityLevel;
+        public bool isAutomatic;
         public float lastQualityChangeTimestamp;
 
         public static bool operator ==(QualityState a, QualityState b)
@@ -32,6 +34,7 @@ namespace Unity.Reflect.Viewer
         public bool Equals(QualityState other)
         {
             return qualityLevel == other.qualityLevel &&
+                   isAutomatic == other.isAutomatic &&
                 lastQualityChangeTimestamp == other.lastQualityChangeTimestamp &&
                 fpsThresholdQualityDecrease == other.fpsThresholdQualityDecrease &&
                 fpsThresholdQualityIncrease == other.fpsThresholdQualityIncrease;
@@ -47,6 +50,7 @@ namespace Unity.Reflect.Viewer
             unchecked
             {
                 var hashCode = qualityLevel;
+                hashCode = (hashCode * 397) ^ isAutomatic.GetHashCode();
                 hashCode = (hashCode * 397) ^ fpsThresholdQualityDecrease;
                 hashCode = (hashCode * 397) ^ fpsThresholdQualityIncrease;
                 hashCode = (hashCode * 397) ^ lastQualityChangeTimestamp.GetHashCode();

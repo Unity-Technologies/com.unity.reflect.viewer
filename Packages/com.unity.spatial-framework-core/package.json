@@ -1,0 +1,21 @@
+{
+  "name": "com.unity.spatial-framework-core",
+  "displayName": "Spatial Framework Core",
+  "version": "0.1.0-preview",
+  "unity": "2019.3",
+  "description": "Core components and systems for a spatial framework",
+  "dependencies": {
+      "com.unity.xrtools.module-loader": "1.2.0",
+      "com.unity.xrtools.utils": "1.2.0",
+      "com.unity.xr-line-renderer": "0.1.2-preview",
+      "com.unity.inputsystem": "1.1.0-preview.2",
+      "com.unity.textmeshpro": "2.1.1",
+      "com.unity.xr.interaction.toolkit": "1.0.0-pre.2"
+  },
+  "keywords": [
+    "spatial",
+    "XR",
+    "VR",
+    "AR"
+  ]
+}

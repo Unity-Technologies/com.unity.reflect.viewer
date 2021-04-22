@@ -1,23 +1,35 @@
-﻿using System.Collections;
+using System.Collections;
+using SharpFlux;
+using SharpFlux.Dispatching;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class VRLoader : MonoBehaviour
+namespace Unity.Reflect.Viewer.UI
 {
-    // Start is called before the first frame update
-    void Start()
+    public class VRLoader : MonoBehaviour
     {
-        StartCoroutine(LoadAsyncScene("ReflectVR"));
-    }
-
-    IEnumerator LoadAsyncScene(string scenePath)
-    {
-        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(scenePath, LoadSceneMode.Additive);
-
-        // Wait until the asynchronous scene fully loads
-        while (!asyncLoad.isDone)
+        // Start is called before the first frame update
+        void Start()
         {
-            yield return null;
+            StartCoroutine(LoadAsyncScene("ReflectVR"));
+        }
+
+        IEnumerator LoadAsyncScene(string scenePath)
+        {
+            AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(scenePath, LoadSceneMode.Additive);
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableVR, true));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCulling, false));
+            var navigationState = UIStateManager.current.stateData.navigationState;
+            navigationState.EnableAllNavigation(true);
+            navigationState.navigationMode = NavigationMode.VR;
+            navigationState.showScaleReference = false;
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+
+            // Wait until the asynchronous scene fully loads
+            while (!asyncLoad.isDone)
+            {
+                yield return null;
+            }
         }
     }
 }

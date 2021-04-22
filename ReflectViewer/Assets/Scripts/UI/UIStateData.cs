@@ -4,6 +4,7 @@ using UnityEngine.Reflect;
 
 namespace Unity.Reflect.Viewer.UI
 {
+    [Serializable]
     public enum DialogType
     {
         None = 0,
@@ -26,6 +27,11 @@ namespace Unity.Reflect.Viewer.UI
         GizmoMode = 17,
         InfoSelect = 18,
         DebugOptions = 19,
+        CollaborationMenu = 20,
+        CollaborationUserList = 21,
+        CollaborationUserInfo = 22,
+        LoginScreen = 23,
+        LinkSharing = 24,
     }
     /// <summary>
     /// Defines a global mode for dialog buttons. For example Help Mode, which makes clicking any dialog button open a help dialog.
@@ -40,7 +46,7 @@ namespace Unity.Reflect.Viewer.UI
     /// <summary>
     /// Defines a global mode for HelpMode Buttons that don't have dialog/subdialog.
     /// </summary>
-    public enum HelpModeEntryID // rename to Last Button Clicked
+    public enum HelpModeEntryID
     {
         None,
         Sync,
@@ -49,6 +55,16 @@ namespace Unity.Reflect.Viewer.UI
         OrbitSelect,
         LookAround,
         SunStudyDial,
+        // AR Sidebars
+        Back,
+        Scale,
+        Target, // Not used yet
+        Ok,
+        Cancel,
+        ARSelect, // Select button without opening subdialog
+        MeasureTool,
+        Microphone,
+        LinkSharing
     }
 
     public enum ToolbarType
@@ -62,7 +78,8 @@ namespace Unity.Reflect.Viewer.UI
         ARScaleDial,
         TimeOfDayYearDial,
         AltitudeAzimuthDial,
-        VRSidebar
+        VRSidebar,
+        NoSidebar
     }
 
     public enum OptionDialogType
@@ -79,21 +96,21 @@ namespace Unity.Reflect.Viewer.UI
         ZoomTool = 3,
         PanTool = 4,
         ClippingTool = 5,
-        SunstudyTool = 6,
-        MeasureTool = 6
+        SunstudyTool = 6
     }
 
-    public enum StatusMessageLevel
+    public enum StatusMessageType
     {
-        Debug = 0,
-        Info = 1,
-        Instruction = 2,
+        Debug,
+        Info,
+        Instruction,
+        Warning
     }
 
     public struct StatusMessageData
     {
+        public StatusMessageType type;
         public string text;
-        public StatusMessageLevel level;
     }
 
     public enum ArchitectureScale
@@ -124,7 +141,8 @@ namespace Unity.Reflect.Viewer.UI
     {
         None,
         ARCapability = 0x01,
-        VRCapability = 0x02
+        VRCapability = 0x02,
+        SupportsAsyncGPUReadback = 0x04,
     }
 
     [Serializable]
@@ -134,8 +152,6 @@ namespace Unity.Reflect.Viewer.UI
         public SettingsToolStateData settingsToolStateData;
         public bool syncEnabled;
         public bool operationCancelled;
-        public string statusMessage;
-        public StatusMessageLevel statusMessageLevel;
         public ToolState toolState;
         public DialogType activeDialog;
         public DialogType activeSubDialog;
@@ -157,7 +173,11 @@ namespace Unity.Reflect.Viewer.UI
         public ProjectListFilterData landingScreenFilterData;
         public ArchitectureScale modelScale;
         public DeviceCapability deviceCapability;
+        public DisplayData display;
         public string themeName;
+        public bool VREnable;
+        public Color[] colorPalette;
+        public UserInfoDialogData SelectedUserData;
 
         public override string ToString()
         {
@@ -166,7 +186,7 @@ namespace Unity.Reflect.Viewer.UI
                 "HelpModeEntryId {9}, ActiveToolbar {10} , ActiveOptionDialog {11}, SettingsDialogState {12}, " +
                 "NavigationState {13}, CameraOptionData {14}, SceneOptionData {15}, ProjectOptionIndex {16}, " +
                 "SunStudyData {17}, ProgressData {18}, BimGroup {19}, FilterGroup {20}, LandingScreenFilterData {21}, ModelScale {22}, DeviceCapability {23}, " +
-                "ThemeName {24}");
+                "ThemeName {24}, MeasureToolStateData {25}");
         }
 
         public string ToString(string format)
@@ -175,8 +195,8 @@ namespace Unity.Reflect.Viewer.UI
                 toolbarsEnabled,
                 syncEnabled,
                 operationCancelled,
-                statusMessage,
-                statusMessageLevel,
+                "",
+                "",
                 toolState,
                 activeDialog,
                 activeSubDialog,
@@ -196,7 +216,8 @@ namespace Unity.Reflect.Viewer.UI
                 landingScreenFilterData,
                 modelScale,
                 deviceCapability,
-                themeName);
+                themeName,
+                VREnable);
         }
 
         public override int GetHashCode()
@@ -207,7 +228,6 @@ namespace Unity.Reflect.Viewer.UI
                 hashCode = (hashCode * 397) ^ settingsToolStateData.GetHashCode();
                 hashCode = (hashCode * 397) ^ syncEnabled.GetHashCode();
                 hashCode = (hashCode * 397) ^ operationCancelled.GetHashCode();
-                hashCode = (hashCode * 397) ^ (statusMessage != null ? statusMessage.GetHashCode() : 0);
                 hashCode = (hashCode * 397) ^ toolState.GetHashCode();
                 hashCode = (hashCode * 397) ^ (int) activeDialog;
                 hashCode = (hashCode * 397) ^ (int) activeSubDialog;
@@ -228,7 +248,11 @@ namespace Unity.Reflect.Viewer.UI
                 hashCode = (hashCode * 397) ^ landingScreenFilterData.GetHashCode();
                 hashCode = (hashCode * 397) ^ modelScale.GetHashCode();
                 hashCode = (hashCode * 397) ^ deviceCapability.GetHashCode();
+                hashCode = (hashCode * 397) ^ display.GetHashCode();
                 hashCode = (hashCode * 397) ^ themeName.GetHashCode();
+                hashCode = (hashCode * 397) ^ VREnable.GetHashCode();
+                hashCode = (hashCode * 397) ^ colorPalette.GetHashCode();
+                hashCode = (hashCode * 397) ^ SelectedUserData.GetHashCode();
 
                 return hashCode;
             }
@@ -245,7 +269,6 @@ namespace Unity.Reflect.Viewer.UI
                 settingsToolStateData == other.settingsToolStateData &&
                 syncEnabled == other.syncEnabled &&
                 operationCancelled == other.operationCancelled &&
-                statusMessage == other.statusMessage &&
                 toolState.Equals(other.toolState) &&
                 activeDialog == other.activeDialog &&
                 activeSubDialog == other.activeSubDialog &&
@@ -262,11 +285,15 @@ namespace Unity.Reflect.Viewer.UI
                 sunStudyData.Equals(other.sunStudyData) &&
                 progressData.Equals(other.progressData) &&
                 bimGroup == other.bimGroup &&
-                filterGroup == other.filterGroup && 
+                filterGroup == other.filterGroup &&
                 landingScreenFilterData == other.landingScreenFilterData &&
                 modelScale == other.modelScale &&
                 deviceCapability == other.deviceCapability &&
-                themeName == other.themeName;
+                display == other.display &&
+                VREnable == other.VREnable &&
+                themeName == other.themeName &&
+                colorPalette == other.colorPalette &&
+                SelectedUserData == other.SelectedUserData;
         }
 
         public static bool operator ==(UIStateData a, UIStateData b)
@@ -277,14 +304,6 @@ namespace Unity.Reflect.Viewer.UI
         public static bool operator !=(UIStateData a, UIStateData b)
         {
             return !(a == b);
-        }
-
-        public void LogStatusMessage(string message, StatusMessageLevel level = StatusMessageLevel.Info)
-        {
-            if (level >= statusMessageLevel)
-            {
-                statusMessage = message;
-            }
         }
     }
 

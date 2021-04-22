@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine.Reflect;
 
@@ -10,8 +11,6 @@ namespace Unity.Reflect.Viewer.UI
     {
 #pragma warning disable 0649
         [Header("Gizmo Axis properties")]
-        [SerializeField]
-        FreeFlyCamera m_FreeFlyCamera;
         [SerializeField]
         Transform m_Target;
         [SerializeField]
@@ -94,20 +93,20 @@ namespace Unity.Reflect.Viewer.UI
 
         void DispatchAction()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, m_CameraOptionData));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, m_CameraOptionData));
         }
 
         [ContextMenu(nameof(OnNavigationButtonClicked))]
         void OnNavigationButtonClicked()
         {
             var dialogType = m_FanOutWindow.open ? DialogType.None : DialogType.GizmoMode;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
         }
 
         void Update()
         {
             //Apply camera movement to the gizmo Cube
-            m_Target.rotation = Quaternion.Inverse(m_FreeFlyCamera.transform.rotation);
+            m_Target.rotation = Quaternion.Inverse(Camera.main.transform.rotation);
         }
 
         void DrawCustomGizmos()

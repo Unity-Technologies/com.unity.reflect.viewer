@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Sentry;
 using UnityEngine;
 
 namespace Unity.Reflect.Viewer.UI

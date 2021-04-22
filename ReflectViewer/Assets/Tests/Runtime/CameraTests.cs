@@ -10,36 +10,31 @@ using UnityEngine.TestTools;
 
 namespace ReflectViewerRuntimeTests
 {
-    public class CameraTests
+    public class CameraTests : BaseReflectSceneTests
     {
-        bool sceneLoaded;
-        [OneTimeSetUp]
-        public void OneTimeSetUp()
-        {
-            SceneManager.sceneLoaded += OnSceneLoaded;
-            SceneManager.LoadScene("Reflect", LoadSceneMode.Single);
-        }
 
-        void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-        {
-            sceneLoaded = true;
-        }
-
-        // A UnityTest behaves like a coroutine in Play Mode. In Edit Mode you can use
-        // `yield return null;` to skip a frame.
         [UnityTest]
-        public IEnumerator Verify_Camera_ClearFlags_SkyboxTest()
+        public IEnumerator Camera_IfNoInputGiven_CameraDoesntMove()
         {
-            yield return new WaitWhile(() => sceneLoaded == false);
-            yield return null;
+            //Given the main camera is in a certain position
+            Camera mainCamera = GivenObjectNamed<Camera>("Main Camera");
+            var position = mainCamera.transform.position;
 
-            IUsesSessionControl uiStateManager = Resources.FindObjectsOfTypeAll<UIStateManager>().First();
-            yield return new WaitWhile(() => uiStateManager.SessionReady() == false);
-            yield return null;
+            //When there is not input between frames
+            yield return WaitAFrame();
 
-            Camera[] objects = Resources.FindObjectsOfTypeAll<Camera>();
-            Camera mainCamera = objects.SingleOrDefault(e => e.name == "Main Camera");
+            //Then the camera should remain in that position
+            Assert.That(mainCamera.transform.position.Equals(position));
+        }
 
+        [UnityTest]
+        public IEnumerator Camera_OnStartup_ClearFlagsIsSetToSkybox()
+        {
+            //Given Session is ready and there is a main camera
+            yield return WaitAFrame();
+            Camera mainCamera = GivenObjectNamed<Camera>("Main Camera");
+
+            //Then the camera's clear flags should be set to skybox
             Assert.That(mainCamera.clearFlags == CameraClearFlags.Skybox);
         }
     }

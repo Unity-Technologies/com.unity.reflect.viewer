@@ -39,7 +39,7 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        [RuntimeInitializeOnLoadMethod]
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         [SuppressMessage("Code Quality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
         [Preserve]
         private static void Init()
