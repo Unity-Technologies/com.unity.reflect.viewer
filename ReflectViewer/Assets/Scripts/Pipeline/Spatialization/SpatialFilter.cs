@@ -17,6 +17,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         public StreamAssetOutput assetOutput = new StreamAssetOutput();
 
         public GameObjectInput gameObjectInput = new GameObjectInput();
+        public GameObjectOutput visibilityOutput = new GameObjectOutput();
 
         public SpatialFilterSettings settings;
 
@@ -24,8 +25,8 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         protected override SpatialFilter Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
-            var root = settings.boundingBoxRoot.Resolve(resolver);
-            var p = new SpatialFilter(hook.helpers.clock, hook.helpers.memoryStats, hook.services.eventHub, hook.systems.memoryCleaner.memoryLevel, root, settings, assetOutput);
+            var p = new SpatialFilter(hook.helpers.clock, hook.helpers.memoryStats, hook.services.eventHub, hook.systems.memoryCleaner.memoryLevel,
+                settings, assetOutput, visibilityOutput, resolver);
 
             assetInput.streamBegin = assetOutput.SendBegin;
             assetInput.streamEvent = p.OnStreamAssetEvent;
@@ -48,32 +49,30 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
     {
         class SpatialObject : ISpatialObject
         {
-            public static Action<SpatialObject> Load;
-            public static Action<SpatialObject> Unload;
-
             public Vector3 min { get; }
             public Vector3 max { get; }
             public Vector3 center { get; }
             public float priority { get; set; }
             public bool isVisible { get; set; }
-            public GameObject loadedObject { get; set; }
+            public GameObject loadedObject
+            {
+                get => SyncedGameObject.data;
+                set => SyncedGameObject = new SyncedData<GameObject>(StreamAsset.key, value);
+            }
 
             // the following fields break the Unity code conventions, which suggest using properties instead
             // however, in the worst cases these fields are accessed multiple times per object per frame
             // which causes a massive performance hit when deep profiling in the Unity Editor
             // this is worth the trade-off since this class is private
             public bool IsLoaded;
-            public MeshRenderer[] MeshRenderers;
-            public bool HasMeshRendererChanged;
+            public bool WasVisible;
             public readonly SyncedData<StreamAsset> StreamAsset;
-
-            bool m_ReceivedVisibilityUpdate, m_WasVisible;
-
-            public bool HasMeshRenderers => MeshRenderers != null && MeshRenderers.Length > 0;
+            public SyncedData<GameObject> SyncedGameObject;
 
             public SpatialObject(SyncedData<StreamAsset> streamAsset)
             {
                 StreamAsset = streamAsset;
+                SyncedGameObject = new SyncedData<GameObject>(streamAsset.key, null);
 
                 var syncBb = streamAsset.data.boundingBox;
                 min = new Vector3(syncBb.Min.X, syncBb.Min.Y, syncBb.Min.Z);
@@ -85,46 +84,6 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             {
                 // nothing to do
             }
-
-            public bool TryRefreshVisibility()
-            {
-                if (isVisible && !IsLoaded)
-                {
-                    Load?.Invoke(this);
-                }
-                else if (!isVisible && IsLoaded)
-                {
-                    Unload?.Invoke(this);
-                }
-
-                if (isVisible == m_WasVisible)
-                    return false;
-
-                m_WasVisible = isVisible;
-
-                return true;
-            }
-
-            public bool TryRefreshRenderers(bool forceHidden = false)
-            {
-                if (!HasMeshRenderers)
-                    return false;
-
-                var visible = isVisible && !forceHidden;
-                foreach (var meshRenderer in MeshRenderers)
-                {
-                    if (meshRenderer.enabled != visible)
-                        meshRenderer.enabled = visible;
-                }
-
-                return true;
-            }
-        }
-
-        struct BoundingBoxReference
-        {
-            public Transform transform;
-            public MeshRenderer meshRenderer;
         }
 
         static readonly int k_MinNbObjects = 100;
@@ -141,34 +100,33 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         volatile int m_CurrentMaxVisibleObjects;
 
         readonly StreamAssetOutput m_StreamOutput;
+        readonly GameObjectOutput m_VisibilityOutput;
         public SpatialFilterSettings settings { get; }
 
         readonly List<ISpatialObject> m_PrevVisibilityResults = new List<ISpatialObject>();
         readonly List<ISpatialObject> m_VisibilityResults = new List<ISpatialObject>();
 
-        Transform m_Root;
         Bounds m_Bounds = new Bounds();
         Camera m_Camera;
         Transform m_CameraTransform;
-        float m_VisibilitySqrDist;
-        Vector3 m_CamPos, m_CamForward, m_BoundsSize, m_ObjDirection;
+        Transform m_DistanceCheckOrigin;
+        float m_VisibilitySqrDist, m_GlobalMaxSqrDistance, m_PickSqrDistance;
+        Vector3 m_CamPos, m_CamForward, m_BoundsSize, m_ObjDirection, m_GlobalBoundsSize;
 
         readonly Dictionary<StreamKey, SpatialObject> m_ObjectsByStreamKey = new Dictionary<StreamKey, SpatialObject>();
         readonly PriorityHeap<SpatialObject> m_ObjectsToLoad;
-
-        Transform m_BoundingBoxParent;
-        BoundingBoxReference[] m_BoundingBoxes;
-        int m_BoundingBoxIndex, m_PrevBoundingBoxIndex;
+        readonly PriorityHeap<SpatialObject> m_ObjectsToUnload;
 
         readonly Func<ISpatialObject, bool> m_VisibilityPredicate;
         readonly Func<ISpatialObject, float> m_VisibilityPrioritizer;
 
         bool m_ProjectLifecycleStarted;
-        bool m_DisplayOnlyBoundingBoxes;
         volatile bool m_IsPendingVisibilityUpdate;
 
         Ray m_SelectionRay;
         Ray[] m_SelectionRaySamplePoints;
+
+        readonly SpatialFilterCulling m_Culling;
 
         public ISpatialCollection<ISpatialObject> spatialCollection { get; }
 
@@ -179,8 +137,8 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             settings.useDynamicNbVisibleObjectsDesktop;
         #endif
 
-        public SpatialFilter(Clock.Proxy clock, MemoryStats.Proxy stats, EventHub hub, MemoryLevel memoryLevel, Transform root, SpatialFilterSettings settings,
-            StreamAssetOutput streamOutput,
+        public SpatialFilter(Clock.Proxy clock, MemoryStats.Proxy stats, EventHub hub, MemoryLevel memoryLevel, SpatialFilterSettings settings,
+            StreamAssetOutput streamOutput, GameObjectOutput visibilityOutput, IExposedPropertyTable resolver,
             ISpatialCollection<ISpatialObject> spatialCollection = null,
             Func<ISpatialObject, bool> visibilityPredicate = null,
             Func<ISpatialObject, float> visibilityPrioritizer = null)
@@ -190,10 +148,12 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             m_Hub = hub;
 
             m_MemoryLevel = memoryLevel;
+            settings.memoryLevelChanged?.Invoke(m_MemoryLevel);
 
-            m_Root = root;
             this.settings = settings;
+            m_Culling = new SpatialFilterCulling(settings.cullingSettings, resolver);
             m_StreamOutput = streamOutput;
+            m_VisibilityOutput = visibilityOutput;
             this.spatialCollection = spatialCollection ?? CreateDefaultSpatialCollection();
 
             m_VisibilityPredicate = visibilityPredicate ?? DefaultVisibilityPredicate;
@@ -206,10 +166,8 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
             InitCamera();
 
-            if (settings.displayUnloadedObjectBoundingBoxes)
-                InitBoundingBoxSceneObjects();
-
             m_ObjectsToLoad = new PriorityHeap<SpatialObject>(settings.visibleObjectsMax, Comparer<SpatialObject>.Create((a, b) => a.priority.CompareTo(b.priority)));
+            m_ObjectsToUnload = new PriorityHeap<SpatialObject>(settings.visibleObjectsMax, Comparer<SpatialObject>.Create((a, b) => b.priority.CompareTo(a.priority)));
 
             if (useDynamicNbVisibleObjects)
                 m_CurrentMaxVisibleObjects = Math.Min(k_MinNbObjects, settings.visibleObjectsMax);
@@ -219,25 +177,11 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         {
             base.Dispose();
 
-            if (m_BoundingBoxParent != null && m_BoundingBoxParent.gameObject != null)
-            {
-                // only destroy the bounding box root if we created it ourselves
-                if (m_Root != null)
-                {
-                    for (var i = m_BoundingBoxParent.childCount - 1; i >= 0; --i)
-                        Object.Destroy(m_BoundingBoxParent.GetChild(i).gameObject);
-                }
-                else
-                    Object.Destroy(m_BoundingBoxParent.gameObject);
-            }
-
             if (m_CameraTransform != null && m_CameraTransform.gameObject)
                 Object.Destroy(m_CameraTransform.gameObject);
 
             m_Camera = null;
             m_CameraTransform = null;
-            m_BoundingBoxes = null;
-            m_BoundingBoxParent = null;
 
             m_Hub.DestroyGroup(m_Group);
         }
@@ -248,9 +192,6 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 return;
 
             m_ProjectLifecycleStarted = true;
-
-            SpatialObject.Load += OnLoad;
-            SpatialObject.Unload += OnUnload;
 
             CacheCameraData();
             Run();
@@ -265,18 +206,6 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 return;
 
             m_ProjectLifecycleStarted = false;
-
-            if (m_BoundingBoxes != null)
-            {
-                for (var i = 0; i < m_BoundingBoxes.Length; ++i)
-                {
-                    if (m_BoundingBoxes[i].meshRenderer != null)
-                        m_BoundingBoxes[i].meshRenderer.enabled = false;
-                }
-            }
-
-            SpatialObject.Load -= OnLoad;
-            SpatialObject.Unload -= OnUnload;
 
             spatialCollection.Dispose();
 
@@ -299,6 +228,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             if (spatialCollection.objectCount <= 0)
                 return;
 
+            if (settings.useCulling)
+                m_Culling.OnUpdate();
+
             m_LastSpeculationUpdate += m_Clock.deltaTime;
 
             if (m_IsMemoryLevelFresh)
@@ -317,69 +249,76 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
             m_IsPendingVisibilityUpdate = false;
 
-            m_BoundingBoxIndex = 0;
+            var count = Mathf.CeilToInt(settings.streamFactor / Time.deltaTime);
+
             foreach (var obj in m_ObjectsByStreamKey.Values)
             {
-                // early exit if neither the visibility nor the renderers have changed
-                // and the object doesn't require displaying its bounding box (not visible or renderers are loaded)
-                // make sure not to exit if we're displaying only bounding boxes
-                // or if the bounding box display toggle has changed, to correctly refresh MeshRenderers
-                if (!obj.TryRefreshVisibility()
-                    && !obj.HasMeshRendererChanged
-                    && (!obj.isVisible || obj.HasMeshRenderers)
-                    && !m_DisplayOnlyBoundingBoxes
-                    && m_DisplayOnlyBoundingBoxes == settings.displayOnlyBoundingBoxes)
-                    continue;
-
-                obj.HasMeshRendererChanged = false;
-
-                // if the object is visible but there is no renderer loaded, display the bounding box instead
-                // due to async visibility changes there might be more visible objects than bounding boxes
-                // so check to make sure we haven't reached the limit yet
-                if ((obj.TryRefreshRenderers(settings.displayOnlyBoundingBoxes) && !settings.displayOnlyBoundingBoxes)
-                    || !obj.isVisible
-                    || !settings.displayUnloadedObjectBoundingBoxes
-                    || m_BoundingBoxIndex >= m_BoundingBoxes.Length)
-                    continue;
-
-                var box = m_BoundingBoxes[m_BoundingBoxIndex];
-                box.transform.localPosition = obj.center;
-                box.transform.localScale = obj.max - obj.min;
-                var meshRenderer = box.meshRenderer;
-                if (!meshRenderer.enabled)
-                    meshRenderer.enabled = true;
-                ++m_BoundingBoxIndex;
+                if (obj.isVisible)
+                {
+                    if (!obj.IsLoaded)
+                        OnLoad(obj);
+                    if (!obj.WasVisible)
+                        OnShow(obj);
+                }
+                else
+                {
+                    if (obj.WasVisible)
+                        OnHide(obj);
+                    // only unload when past the object limit
+                    if (obj.IsLoaded && m_NbLoadedGameObjects > m_CurrentMaxVisibleObjects)
+                        OnUnload(obj);
+                }
             }
-            m_DisplayOnlyBoundingBoxes = settings.displayOnlyBoundingBoxes;
 
-            if (m_ObjectsToLoad.count > 0)
+            // all visible objects are already loading, start loading hidden objects
+            if (settings.loadHiddenObjects &&
+                m_ObjectsToLoad.count < count &&
+                m_NbLoadedGameObjects < m_CurrentMaxVisibleObjects &&
+                m_NbLoadedGameObjects < spatialCollection.objectCount)
             {
-                const int count = 5; // TODO improve how we determine the count
+                var nbToLoad = Mathf.Min(count - m_ObjectsToLoad.count, m_CurrentMaxVisibleObjects - m_NbLoadedGameObjects);
+                foreach (var obj in m_ObjectsByStreamKey.Values)
+                {
+                    if (!obj.isVisible && !obj.IsLoaded)
+                    {
+                        OnLoad(obj);
+                        --nbToLoad;
+                    }
+
+                    if (nbToLoad <= 0)
+                        break;
+                }
+            }
+
+            if (m_ObjectsToUnload.count > 0)
+            {
                 for (var i = 0; i < count; ++i)
                 {
-                    if (!m_ObjectsToLoad.TryPop(out var obj))
+                    if (!m_ObjectsToUnload.TryPop(out var obj))
                         break;
 
-                    obj.IsLoaded = true;
-                    m_StreamOutput.SendStreamAdded(obj.StreamAsset);
+                    obj.IsLoaded = false;
+                    m_StreamOutput.SendStreamRemoved(obj.StreamAsset);
                 }
 
                 // clear any remaining objects, they will re-add themselves during the next visibility update
-                m_ObjectsToLoad.Clear();
+                m_ObjectsToUnload.Clear();
             }
 
-            if (!settings.displayUnloadedObjectBoundingBoxes)
+            if (m_ObjectsToLoad.count <= 0)
                 return;
 
-            // hide unused visible boxes
-            for (var i = m_BoundingBoxIndex; i < m_PrevBoundingBoxIndex; ++i)
+            for (var i = 0; i < count; ++i)
             {
-                var meshRenderer = m_BoundingBoxes[i].meshRenderer;
-                if (meshRenderer.enabled)
-                    meshRenderer.enabled = false;
+                if (!m_ObjectsToLoad.TryPop(out var obj))
+                    break;
+
+                obj.IsLoaded = true;
+                m_StreamOutput.SendStreamAdded(obj.StreamAsset);
             }
 
-            m_PrevBoundingBoxIndex = m_BoundingBoxIndex;
+            // clear any remaining objects, they will re-add themselves during the next visibility update
+            m_ObjectsToLoad.Clear();
         }
 
         public void OnStreamAssetEvent(SyncedData<StreamAsset> streamAsset, StreamEvent eventType)
@@ -416,6 +355,10 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                     m_StreamOutput.SendStreamRemoved(streamAsset);
                     break;
             }
+
+            m_GlobalBoundsSize = spatialCollection.bounds.size;
+            m_GlobalMaxSqrDistance = Mathf.Max(m_GlobalBoundsSize.x, m_GlobalBoundsSize.y, m_GlobalBoundsSize.z);
+            m_GlobalMaxSqrDistance *= m_GlobalMaxSqrDistance;
         }
 
         public void OnStreamInstanceEnd()
@@ -424,11 +367,6 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             Debug.Log($"[Spatial Filter] depth: {spatialCollection.depth}, " +
                       $"# objects: {spatialCollection.objectCount}, " +
                       $"bounds: [{bounds.min}, {bounds.max}]");
-
-            if (spatialCollection.objectCount != 0)
-            {
-                settings.onGlobalBoundsCalculated?.Invoke(bounds);
-            }
 
             m_StreamOutput.SendEnd();
         }
@@ -444,30 +382,19 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             switch (eventType)
             {
                 case StreamEvent.Added:
+                    obj.loadedObject = gameObject.data;
                     ++m_NbLoadedGameObjects;
                     if (m_NbLoadedGameObjects >= m_CurrentMaxVisibleObjects * 0.98f)
                         UpdateSpeculation();
-                    UpdateObject(obj, gameObject);
                     break;
                 case StreamEvent.Changed:
-                    UpdateObject(obj, gameObject);
+                    obj.loadedObject = gameObject.data;
                     break;
                 case StreamEvent.Removed:
-                    --m_NbLoadedGameObjects;
                     obj.loadedObject = null;
-                    obj.MeshRenderers = null;
+                    --m_NbLoadedGameObjects;
                     break;
             }
-            obj.HasMeshRendererChanged = true;
-        }
-
-        static void UpdateObject(SpatialObject obj, SyncedData<GameObject> gameObject)
-        {
-            obj.loadedObject = gameObject.data;
-            obj.MeshRenderers = gameObject.data.GetComponentsInChildren<MeshRenderer>();
-            // disable mesh renderers to avoid popping when displaying only bounding boxes
-            foreach (var meshRenderer in obj.MeshRenderers)
-                meshRenderer.enabled = false;
         }
 
         void UpdateSpeculation()
@@ -531,14 +458,26 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         void OnUnload(SpatialObject obj)
         {
-            obj.IsLoaded = false;
-            m_StreamOutput.SendStreamRemoved(obj.StreamAsset);
+            m_ObjectsToUnload.Push(obj);
+        }
+
+        void OnShow(SpatialObject obj)
+        {
+            m_VisibilityOutput.SendStreamAdded(obj.SyncedGameObject);
+            obj.WasVisible = true;
+        }
+
+        void OnHide(SpatialObject obj)
+        {
+            m_VisibilityOutput.SendStreamRemoved(obj.SyncedGameObject);
+            obj.WasVisible = false;
         }
 
         void OnMemoryEvent(MemoryLevelChanged e)
         {
             m_MemoryLevel = e.Level;
             m_IsMemoryLevelFresh = true;
+            settings.memoryLevelChanged?.Invoke(e.Level);
         }
 
         void Add(ISpatialObject obj)
@@ -555,6 +494,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         {
             spatialCollection.DrawDebug(settings.drawNodes ? settings.drawNodesGradient : null,
                 settings.drawObjects ? settings.drawObjectsGradient : null,
+                settings.priorityWeightAngle + settings.priorityWeightDistance + settings.priorityWeightSize,
                 settings.drawMaxDepth);
         }
 
@@ -589,6 +529,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         bool DefaultVisibilityPredicate(ISpatialObject obj)
         {
+            if (settings.useCulling)
+                return m_Culling.IsVisible(obj);
+
             m_Bounds.SetMinMax(obj.min, obj.max);
             return m_Bounds.SqrDistance(m_CamPos) < m_VisibilitySqrDist;
         }
@@ -597,11 +540,15 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         {
             m_Bounds.SetMinMax(obj.min, obj.max);
             m_BoundsSize = m_Bounds.size;
-            m_ObjDirection = m_Bounds.center - m_CamPos;
-            // map dot [-1, 1] to [1, 0] so objects closer to m_CamForward have better (lower) score
-            return (Vector3.Dot(m_CamForward, m_ObjDirection.normalized) * -0.5f + 0.5f)
-                   * m_ObjDirection.sqrMagnitude
-                   / (m_BoundsSize.x + m_BoundsSize.y + m_BoundsSize.z);
+            m_ObjDirection = m_Bounds.ClosestPoint(m_CamPos) - m_CamPos;
+            // lower priority is better so change sign after adding the weighted values
+            return -1f *
+                   // backward [0-1] forward
+                   (settings.priorityWeightAngle * (1f - Vector3.Angle(m_CamForward, m_ObjDirection) / 180f)
+                    // farther [0-1] closer
+                    + settings.priorityWeightDistance * (1f - m_ObjDirection.sqrMagnitude / m_GlobalMaxSqrDistance)
+                    // smaller [0-1] larger
+                    + settings.priorityWeightSize * (m_BoundsSize.x + m_BoundsSize.y + m_BoundsSize.z) / (m_GlobalBoundsSize.x + m_GlobalBoundsSize.y + m_GlobalBoundsSize.z));
         }
 
         void InitCamera()
@@ -617,6 +564,8 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 m_CameraTransform = new GameObject("SpatialFilterCameraTracker").transform;
 
             m_CameraTransform.SetParent(m_Camera.transform, false);
+
+            m_Culling.SetCamera(m_Camera);
         }
 
         void CacheCameraData()
@@ -630,23 +579,6 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             m_VisibilitySqrDist *= m_VisibilitySqrDist;
         }
 
-        void InitBoundingBoxSceneObjects()
-        {
-            // init bounding boxes
-            var amount = m_CurrentMaxVisibleObjects;
-            m_BoundingBoxParent = m_Root != null
-                ? m_Root
-                : new GameObject("BoundingBoxRoot").transform;
-            m_BoundingBoxes = new BoundingBoxReference[amount];
-            for (var i = 0; i < amount; ++i)
-            {
-                var obj = Object.Instantiate(settings.boundingBoxPrefab, m_BoundingBoxParent);
-                var meshRenderer = obj.GetComponent<MeshRenderer>();
-                meshRenderer.enabled = false;
-                m_BoundingBoxes[i] = new BoundingBoxReference { transform = obj.transform, meshRenderer = meshRenderer };
-            }
-        }
-
         public void Pick(Ray ray, List<ISpatialObject> results)
         {
             m_SelectionRay = ray;
@@ -654,6 +586,22 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             spatialCollection.Search(CheckIntersectRay,
                 GetRayCastDistance,
                 settings.selectedObjectsMax,
+                results);
+        }
+
+        public void VRPick(Ray ray, List<ISpatialObject> results)
+        {
+            Pick(ray, results);
+        }
+
+        public void Pick(float distance, List<ISpatialObject> results, Transform origin)
+        {
+            m_DistanceCheckOrigin = origin;
+            m_PickSqrDistance = distance * distance;
+
+            spatialCollection.Search(CheckDistance,
+                GetRayCastDistance,
+                k_MinNbObjects,
                 results);
         }
 
@@ -697,6 +645,17 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         {
             m_Bounds.SetMinMax(obj.min, obj.max);
             if (!m_Bounds.IntersectRay(m_SelectionRay, out var distance))
+                return false;
+
+            obj.priority = distance;
+            return true;
+        }
+
+        bool CheckDistance(ISpatialObject obj)
+        {
+            m_Bounds.SetMinMax(obj.min, obj.max);
+            var distance = m_Bounds.SqrDistance(m_DistanceCheckOrigin.position);
+            if (distance > m_PickSqrDistance)
                 return false;
 
             obj.priority = distance;

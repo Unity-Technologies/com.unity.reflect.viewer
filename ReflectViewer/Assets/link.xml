@@ -1,3 +1,5 @@
 <linker>
-  <assembly fullname="Unity.XR.ARKit" preserve="none" ignoreIfMissing="1"/>
+    <assembly fullname="Unity.XR.ARKit" preserve="none" ignoreIfMissing="1"/>
+    <assembly fullname="Unity.Reflect.Multiplayer" preserve="all"/>
+    <assembly fullname="Reflect.Multiplayer" preserve="all"/>
 </linker>

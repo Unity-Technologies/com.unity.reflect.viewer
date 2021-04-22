@@ -1,6 +1,8 @@
 ﻿using System;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using UnityEngine;
+using UnityEngine.Reflect.MeasureTool;
 using UnityEngine.Reflect.Viewer;
 
 namespace Unity.Reflect.Viewer.UI
@@ -21,6 +23,9 @@ namespace Unity.Reflect.Viewer.UI
         ToolButton m_TargetButton;
 
         [SerializeField]
+        ToolButton m_MeasureToolButton;
+
+        [SerializeField]
         GameObject m_ScaleRadial;
 #pragma warning restore CS0649
 
@@ -29,6 +34,7 @@ namespace Unity.Reflect.Viewer.UI
         InstructionUIState? m_CurrentInstructionUI;
         ToolState? m_CurrentToolState;
         ARToolStateData? m_CachedARToolStateData;
+        MeasureToolStateData? m_CachedMeasureToolStateData;
 
         SpatialSelector m_ObjectSelector;
 
@@ -36,15 +42,26 @@ namespace Unity.Reflect.Viewer.UI
         {
             UIStateManager.stateChanged += OnStateDataChanged;
             UIStateManager.arStateChanged += OnARStateDataChanged;
+            UIStateManager.externalToolChanged += OnExternalToolStateDataChanged;
 
             m_BackButton.buttonClicked += OnBackButtonClicked;
             m_SelectButton.buttonClicked += OnSelectButtonClicked;
             m_ScaleButton.buttonClicked += OnScaleButtonClicked;
             m_TargetButton.buttonClicked += OnTargetButtonClicked;
+            m_MeasureToolButton.buttonClicked += OnMeasureToolButtonClicked;
 
             OnStateDataChanged(UIStateManager.current.stateData);
             OnARStateDataChanged(UIStateManager.current.arStateData);
             m_ObjectSelector = new SpatialSelector();
+        }
+
+        void OnExternalToolStateDataChanged(ExternalToolStateData data)
+        {
+            if (m_CachedMeasureToolStateData != data.measureToolStateData)
+            {
+                m_MeasureToolButton.selected = data.measureToolStateData.toolState;
+                m_CachedMeasureToolStateData = data.measureToolStateData;
+            }
         }
 
         void OnStateDataChanged(UIStateData data)
@@ -74,8 +91,30 @@ namespace Unity.Reflect.Viewer.UI
                 m_SelectButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.selectionEnabled;
                 m_ScaleButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.scaleEnabled;
                 m_BackButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.previousStepEnabled;
+                m_MeasureToolButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.measureToolEnabled;
                 m_CachedARToolStateData = arData.arToolStateData;
             }
+        }
+
+        void OnMeasureToolButtonClicked()
+        {
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.MeasureTool)) return;
+
+            var data = UIStateManager.current.externalToolStateData.measureToolStateData;
+            data.toolState = !data.toolState;
+
+            if (data.toolState)
+            {
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithType,
+                    new StatusMessageData() { text = UIMeasureToolController.instructionStart, type = StatusMessageType.Instruction }));
+            }
+            else
+            {
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, ""));
+            }
+
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetMeasureToolOptions, data));
         }
 
         void OnTargetButtonClicked()
@@ -84,7 +123,9 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnScaleButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARScaleDial));
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.Scale)) return;
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARScaleDial));
             ARScaleRadialUIController.m_previousToolbar = ToolbarType.ARSidebar;
 
             var radialPosition = m_ScaleRadial.transform.position;
@@ -99,13 +140,15 @@ namespace Unity.Reflect.Viewer.UI
 
             var dialogType = m_SelectButton.selected ? DialogType.None : DialogType.BimInfo;
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetObjectPicker, m_ObjectSelector));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, dialogType));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetObjectPicker, m_ObjectSelector));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, dialogType));
         }
 
         void OnBackButtonClicked()
         {
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.Back)) return;
             UIStateManager.current.arStateData.currentInstructionUI.Back();
         }
     }

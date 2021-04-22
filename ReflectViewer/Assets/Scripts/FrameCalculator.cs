@@ -1,5 +1,6 @@
 using SharpFlux;
 using System;
+using SharpFlux.Dispatching;
 using Unity.Reflect.Viewer.UI;
 using UnityEngine;
 using UnityEngine.Events;
@@ -81,7 +82,7 @@ namespace UnityEngine.Reflect
             statsInfoData.fpsAvg = Mathf.Clamp((int) m_CurrentFrameRate, 0, 99);
             statsInfoData.fpsMax = Mathf.Clamp((int) m_MaxFrameRate, 0, 99);
             statsInfoData.fpsMin = Mathf.Clamp((int) m_MinFrameRate, 0, 99);
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatsInfo,
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatsInfo,
                 statsInfoData));
         }
     }

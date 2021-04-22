@@ -19,7 +19,15 @@ EditorBuildSettings:
       type: 2}
     Unity.XR.OpenVR.Settings: {fileID: 11400000, guid: 454486449fa4338419724f2ae2012680,
       type: 2}
+    UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: e2207d182a55e7249bd50ad1cfecb585,
+      type: 2}
+    UnityEditor.XR.ARKit.ARKitSettings: {fileID: 11400000, guid: dda154c85886d6c42933a361c2d0da02,
+      type: 2}
     com.unity.input.settings: {fileID: 11400000, guid: c1837a2957f925244b9eb7c13fff6cc7,
       type: 2}
+    com.unity.mars-ar-foundation-providers.xr_subsystem_settings: {fileID: 11400000,
+      guid: 1f01e9b724c979b4fb290adc2ac2beb9, type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 765d7aee5e60ad14c80f0e02d1f6e4c5,
+      type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: e527ad922e39a0c419efd24f446fb229,
       type: 2}

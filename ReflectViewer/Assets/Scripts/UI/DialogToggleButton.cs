@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -106,12 +107,12 @@ namespace Unity.Reflect.Viewer.UI
             {
                 var toolState = UIStateManager.current.stateData.toolState;
                 toolState.activeTool = data.toolState.activeTool == m_ToolImages[0].m_ToolType?ToolType.None:m_ToolImages[0].m_ToolType;
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
             }
 
             if (m_Held == false)
             {
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
             }
 
             m_Held = false;
@@ -137,10 +138,10 @@ namespace Unity.Reflect.Viewer.UI
             m_Held = true;
             var data = UIStateManager.current.stateData;
             data.toolState.activeTool = m_ToolImages[0].m_ToolType;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, data.toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, data.toolState));
 
             var activeDialog = data.activeDialog == m_DialogType ? DialogType.None : m_DialogType;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, activeDialog));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, activeDialog));
         }
 
         private IEnumerator DelayPress(float delay)

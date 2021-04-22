@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.Reflect.Pipeline;
-using UnityEngine.Rendering.Universal;
+#if URP_AVAILABLE
+    using UnityEngine.Rendering.Universal;
+#endif
 
 namespace UnityEngine.Reflect.Viewer.Pipeline
 {
@@ -22,8 +23,10 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             "Phase Demolished", "Layer"
         };
 
+#if URP_AVAILABLE
         [SerializeField]
         public List<ForwardRendererData> forwardRendererDatas;
+#endif
 
         [HideInInspector]
         public MetadataGroupsChangedEvent groupsChanged;

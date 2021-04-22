@@ -201,18 +201,16 @@ namespace Unity.Reflect.Viewer.UI
         {
             if (m_CachedARToolStateData != null && m_CachedARToolStateData.Value.wallIndicatorsEnabled)
             {
-                // Align indicators with center of picked planes
+                // Align indicator to the selected point on the plane
                 if (m_CachedARPlacementStateData?.firstSelectedPlane != null && m_HitpointA != Vector3.zero)
                 {
-                    var center = m_CachedARPlacementStateData.Value.firstSelectedPlane.transform.TransformPoint(m_HitpointA);
-                    var pos = RectTransformUtility.WorldToScreenPoint (m_Camera, center);
+                    var pos = RectTransformUtility.WorldToScreenPoint (m_Camera, m_HitpointA);
                     m_PlaneAIndicator.position = pos;
                 }
 
                 if (m_CachedARPlacementStateData?.secondSelectedPlane != null && m_HitpointB != Vector3.zero)
                 {
-                    var center = m_CachedARPlacementStateData.Value.secondSelectedPlane.transform.TransformPoint(m_HitpointB);
-                    var pos = RectTransformUtility.WorldToScreenPoint (m_Camera, center);
+                    var pos = RectTransformUtility.WorldToScreenPoint (m_Camera, m_HitpointB);
                     m_PlaneBIndicator.position = pos;
                 }
             }
@@ -220,7 +218,7 @@ namespace Unity.Reflect.Viewer.UI
             {
                 if (m_CachedARToolStateData != null && m_CachedARToolStateData.Value.arWallIndicatorsEnabled)
                 {
-                    // Align indicators with center of picked planes
+                    // Align indicator to the selected point on the plane
                     if (m_CachedARPlacementStateData?.firstARSelectedPlane != null && m_MeshRendererA != null)
                     {
                         var center = m_MeshRendererA.bounds.center;

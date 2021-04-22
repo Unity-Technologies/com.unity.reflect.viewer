@@ -1,0 +1,151 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6962043218881623859
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6962043218881623863}
+  - component: {fileID: 6962043218881623862}
+  - component: {fileID: 6962043218881623860}
+  - component: {fileID: 6962043218881623856}
+  - component: {fileID: 6962043218881623857}
+  m_Layer: 0
+  m_Name: Managers
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6962043218881623863
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6962043218881623859}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -473.30328, y: 12.883823, z: -335.67722}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6962043218881623862
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6962043218881623859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d387e92a555240d197bf0e7db3ee07a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  authenticationFailed:
+    m_PersistentCalls:
+      m_Calls: []
+  tokenUpdated:
+    m_PersistentCalls:
+      m_Calls: []
+  userLoggedIn:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 6962043218881623860}
+        m_TargetAssemblyTypeName: 
+        m_MethodName: OnUserLogin
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  userLoggedOut:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 6962043218881623860}
+        m_TargetAssemblyTypeName: 
+        m_MethodName: OnUserLogout
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  linkSharingDetected:
+    m_PersistentCalls:
+      m_Calls: []
+  openInViewerDetected:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &6962043218881623860
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6962043218881623859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a4386eca2f9c9745bc2717dc1a16727, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_exceptionExtraInfo:
+    deviceUniqueIdentifier: 
+    cloudProvider: 
+    platform: 
+    viewerVersion: 
+    reflectVersion: 
+    userId: 
+    reflectUpid: 
+    EnvTrace: 
+  onExceptionExtraInfoChanged:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &6962043218881623856
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6962043218881623859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69b8b6856d90c46aeaf820cf895c062f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  url: 
+--- !u!114 &6962043218881623857
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6962043218881623859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b979377a2644e1083f583fb0bc68561, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sharingLinkCreated:
+    m_PersistentCalls:
+      m_Calls: []
+  linkSharingProjectInfoEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  linkCreatedExceptionEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  projectInfoExceptionEvent:
+    m_PersistentCalls:
+      m_Calls: []

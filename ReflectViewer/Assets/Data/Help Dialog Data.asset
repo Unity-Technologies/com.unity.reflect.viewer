@@ -69,3 +69,39 @@ MonoBehaviour:
     helpModeEntryId: 5
     title: Sun Study Dial
     content: Adjust the position of the sun relative to the scene environment
+  - dialogTypeId: 0
+    helpModeEntryId: 6
+    title: Back
+    content: dummy text
+  - dialogTypeId: 0
+    helpModeEntryId: 7
+    title: Scale
+    content: dummy text
+  - dialogTypeId: 0
+    helpModeEntryId: 8
+    title: Target
+    content: dummy text
+  - dialogTypeId: 0
+    helpModeEntryId: 9
+    title: Ok
+    content: dummy text
+  - dialogTypeId: 0
+    helpModeEntryId: 10
+    title: Cancel
+    content: dummy text
+  - dialogTypeId: 0
+    helpModeEntryId: 11
+    title: Select
+    content: dummy text (select tool for model alignment, doesn't open subdialog)
+  - dialogTypeId: 0
+    helpModeEntryId: 12
+    title: Measure Tool
+    content: Select anchors to get distance in between
+  - dialogTypeId: 0
+    helpModeEntryId: 13
+    title: Microphone
+    content: Turn microphone on/off for online chat
+  - dialogTypeId: 0
+    helpModeEntryId: 14
+    title: Link Sharing
+    content: Share this project

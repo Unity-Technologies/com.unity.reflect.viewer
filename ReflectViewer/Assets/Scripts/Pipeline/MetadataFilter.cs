@@ -3,7 +3,9 @@ using System.Linq;
 using Unity.Reflect;
 using Unity.Reflect.Model;
 using UnityEngine.Reflect.Pipeline;
+#if URP_AVAILABLE
 using UnityEngine.Rendering.Universal;
+#endif
 
 namespace UnityEngine.Reflect.Viewer.Pipeline
 {
@@ -34,9 +36,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         FilterData m_HighlightedFilterData;
         MetadataFilterSettings m_Settings;
 
-        static readonly int k_SelectedLayer = LayerMask.NameToLayer("BimFilterSelect");
-        static readonly int k_OtherLayer = LayerMask.NameToLayer("BimFilterOthers");
-        static readonly int k_LayerMask = LayerMask.GetMask("BimFilterSelect", "BimFilterOthers");
+        public static readonly int k_SelectedLayer = LayerMask.NameToLayer("BimFilterSelect");
+        public static readonly int k_OtherLayer = LayerMask.NameToLayer("BimFilterOthers");
+        public static readonly int k_LayerMask = LayerMask.GetMask("BimFilterSelect", "BimFilterOthers");
 
         public MetadataFilter(MetadataFilterSettings settings)
         {
@@ -82,6 +84,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             {
                 if (syncMetadata.Parameters.TryGetValue(key, out SyncParameter category))
                 {
+                    if (string.IsNullOrEmpty(category.Value))
+                        continue;
+
                     if (!m_FilterGroups.ContainsKey(key))
                     {
                         m_FilterGroups[key] = new Dictionary<string, FilterData>();
@@ -241,11 +246,14 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             }
         }
 
+#if URP_AVAILABLE
         readonly Dictionary<ForwardRendererData, LayerMask> m_OpaqueLayerMasks = new Dictionary<ForwardRendererData, LayerMask>();
         readonly Dictionary<ForwardRendererData, LayerMask> m_TransparentLayerMasks = new Dictionary<ForwardRendererData, LayerMask>();
+#endif
 
         public void OnPipelineInitialized()
         {
+#if URP_AVAILABLE
             foreach (var data in m_Settings.forwardRendererDatas)
             {
                 m_OpaqueLayerMasks[data] = data.opaqueLayerMask;
@@ -253,15 +261,18 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 data.opaqueLayerMask &= ~k_LayerMask;
                 data.transparentLayerMask &= ~k_LayerMask;
             }
+#endif
         }
 
         public void OnPipelineShutdown()
         {
+#if URP_AVAILABLE
             foreach (var data in m_Settings.forwardRendererDatas)
             {
                 data.opaqueLayerMask = m_OpaqueLayerMasks[data];
                 data.transparentLayerMask = m_TransparentLayerMasks[data];
             }
+#endif
 
             m_GameObjects.Clear();
             m_FilterGroups.Clear();

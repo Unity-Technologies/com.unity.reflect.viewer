@@ -1,5 +1,19 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &2856225824177871315
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5662340319151552961}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a445ee08530de44f88c1831dbe06328, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Offset: {x: 45, y: 0, z: 0}
+  m_IsLeftHand: 1
 --- !u!1 &5662340319300250176
 GameObject:
   m_ObjectHideFlags: 0
@@ -116,6 +130,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
+  m_PresetInfoIsWorld: 0
 --- !u!114 &5662340319543159475
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -233,6 +248,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
+  m_PresetInfoIsWorld: 0
 --- !u!114 &5662340319630942354
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -350,6 +366,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
+  m_PresetInfoIsWorld: 1
 --- !u!114 &5662340320177046103
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -467,6 +484,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
+  m_PresetInfoIsWorld: 0
 --- !u!114 &5662340320290982273
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -581,6 +599,26 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.01
+      objectReference: {fileID: 0}
+    - target: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
@@ -592,27 +630,17 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.01
-      objectReference: {fileID: 0}
-    - target: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b8cd5407792522543a52d20579ae4966, type: 3}
 --- !u!4 &5662340319151202181 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966,
+    type: 3}
+  m_PrefabInstance: {fileID: 5662340319151633539}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5662340319151552961 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 118082, guid: b8cd5407792522543a52d20579ae4966,
     type: 3}
   m_PrefabInstance: {fileID: 5662340319151633539}
   m_PrefabAsset: {fileID: 0}

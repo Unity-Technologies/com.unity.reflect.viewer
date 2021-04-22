@@ -14,11 +14,12 @@ namespace Unity.Reflect.Viewer.UI
         SetSettingsToolState,
         OpenDialog,
         CloseAllDialogs,
+        ResetToolbars,
         SetDialogMode,
         SetHelpModeID,
-        SetStatus,
-        SetStatusWithLevel,
-        SetStatusLevel,
+        SetStatusMessage,
+        SetStatusWithType,
+        SetStatusInstructionMode,
         ClearStatus,
         RefreshProjectList,
         OpenProject,
@@ -32,17 +33,24 @@ namespace Unity.Reflect.Viewer.UI
         SetObjectPicker,
         SelectObjects,
         SetBimGroup,
+        SetBimSearch,
         SetLandingScreenFilter,
         SelectOrbitType,
         OpenSubDialog,
         SetProgressIndicator,
         SetSync,
         Teleport,
+        FinishTeleport,
         Cancel,
+        EnableWalk,
+        BeginDrag,
+        OnDrag,
+        EndDrag,
 
         SetVisibleFilter,
         SetHighlightFilter,
         SetFilterGroup,
+        SetFilterSearch,
         SetViewOption,
         SetSkybox,
         SetClimateOption,
@@ -61,7 +69,13 @@ namespace Unity.Reflect.Viewer.UI
         SetDebugOptions,
 
         SetTheme,
+        SetDisplay,
         SetQuality,
+
+        SetSpatialPriorityWeights,
+        SetDebugBoundingBoxMaterials,
+        SetCulling,
+        SetStaticBatching,
 
         // AR
         SetARMode,
@@ -73,9 +87,25 @@ namespace Unity.Reflect.Viewer.UI
         SetModelScale,
         SetModelRotation,
         SetPlacementRules,
-        EnablePlacement,
         SetARToolState,
         SetPlacementState,
+
+        //Multiplayer
+        SetPrivateMode,
+        FollowUser,
+        EnableVR,
+        SetUserInfo,
+        ToggleUserMicrophone,
+
+        // External Tools
+        ResetExternalTools,
+        SetMeasureToolOptions,
+
+        SetLoginSetting,
+        DeleteCloudEnvironmentSetting,
+
+        // Link Share
+        SetLinkSharePermission,
 
         Failure = Int32.MaxValue,
     }

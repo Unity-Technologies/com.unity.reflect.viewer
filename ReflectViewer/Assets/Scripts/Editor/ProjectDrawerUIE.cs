@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Unity.Reflect;
 using Unity.Reflect.Viewer.UI;
 using UnityEditor;
@@ -66,7 +66,7 @@ public class ProjectDrawerUIE : PropertyDrawer
                 try
                 {
                     var index = int.Parse(label.text.Split(' ')[1]);
-                    UnityProject unityProject = realProject.sessionStateData.sessionState.projects[index];
+                    UnityProject unityProject = realProject.sessionStateData.sessionState.rooms[index].project;
                     project.project.Name = unityProject.Name;
                     project.project.ProjectId = unityProject.ProjectId;
                     project.project.Host = unityProject.Host;

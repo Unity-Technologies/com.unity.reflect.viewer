@@ -30,7 +30,7 @@ namespace Unity.Reflect.Viewer.UI
             return new TwoFingerDragGestureRecognizer(touch1, touch2);
         }
 
-        [RuntimeInitializeOnLoadMethod]
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         [Preserve]
         private static void Init()
         {

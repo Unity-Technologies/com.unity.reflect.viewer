@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using SharpFlux.Middleware;
 using UnityEngine;
 using UnityEngine.Reflect;
@@ -77,7 +78,7 @@ namespace Unity.Reflect.Viewer.UI
             if (url != string.Empty && Uri.IsWellFormedUriString(ddnaUrl, UriKind.Absolute))
             {
                 UIStateManager.sessionStateChanged += OnSessionStateDataChanged;
-                UIStateManager.current.Dispatcher.RegisterMiddleware(this);
+                Dispatcher.RegisterMiddleware(this);
             }
         }
 
@@ -106,7 +107,7 @@ namespace Unity.Reflect.Viewer.UI
                 case ActionTypes.SetToolState:
                 case ActionTypes.OpenDialog:
                 case ActionTypes.CloseAllDialogs:
-                case ActionTypes.SetStatus:
+                case ActionTypes.SetStatusMessage:
                 case ActionTypes.ClearStatus:
                 case ActionTypes.Failure:
                     break;

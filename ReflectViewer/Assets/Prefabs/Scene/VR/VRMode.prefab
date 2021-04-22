@@ -1,0 +1,108 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2151423452900280401
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2151423452900280415}
+  - component: {fileID: 2151423452900280400}
+  - component: {fileID: 2151423452900280414}
+  m_Layer: 0
+  m_Name: VRMode
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2151423452900280415
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2151423452900280401}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2151423452900280400
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2151423452900280401}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 982c992fcbd715f48bec91468d61232e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_InputActionAsset: {fileID: -944628639613478452, guid: 603b1280fd69e48d9b1e45442fbc61fe,
+    type: 3}
+  m_VrAnchorController: {fileID: 2151423452900280414}
+  m_RightController: {fileID: 11400000, guid: 2a1f8bee5a67b4949933744d2f54ad04, type: 2}
+  m_SkipVrInit: 0
+  m_LeftHandController: {fileID: 0}
+  m_RightHandController: {fileID: 0}
+  m_VRControllers:
+  - Type: 0
+    LeftPrefab: {fileID: 1878811091285458324, guid: 2681af9510747844dbe1b66f377464c6,
+      type: 3}
+    RightPrefab: {fileID: 2901925432569678037, guid: ab700f79c1ef04c45813da143e8ea6c7,
+      type: 3}
+    Rotation: {x: 0, y: 180, z: 0}
+  - Type: 1
+    LeftPrefab: {fileID: 6483227060356275043, guid: 924bd11f62af27045a5b9e0dce2ad8cb,
+      type: 3}
+    RightPrefab: {fileID: 6251654678387385606, guid: a46d353297fbda744b9006ee1aceaff6,
+      type: 3}
+    Rotation: {x: 0, y: 0, z: 0}
+  - Type: 2
+    LeftPrefab: {fileID: 183951644614796305, guid: b63c18b075cac494d978a2975621937d,
+      type: 3}
+    RightPrefab: {fileID: 2424619865097279051, guid: 46b9f8dcfaf4c3f4a9ca9c46ad03b1b4,
+      type: 3}
+    Rotation: {x: 0, y: 0, z: 0}
+  - Type: 3
+    LeftPrefab: {fileID: 3593050145032225167, guid: 02a9f6187102fd4489e424e5d336649f,
+      type: 3}
+    RightPrefab: {fileID: 6983276501808889474, guid: 33c4a8c3bd3051640983455c00ce6fd7,
+      type: 3}
+    Rotation: {x: 0, y: 0, z: 0}
+  - Type: 4
+    LeftPrefab: {fileID: 1878811091285458324, guid: 2681af9510747844dbe1b66f377464c6,
+      type: 3}
+    RightPrefab: {fileID: 2901925432569678037, guid: ab700f79c1ef04c45813da143e8ea6c7,
+      type: 3}
+    Rotation: {x: 0, y: 90, z: 0}
+  - Type: 6
+    LeftPrefab: {fileID: 1878811091285458324, guid: 2681af9510747844dbe1b66f377464c6,
+      type: 3}
+    RightPrefab: {fileID: 2901925432569678037, guid: ab700f79c1ef04c45813da143e8ea6c7,
+      type: 3}
+    Rotation: {x: 0, y: 90, z: 0}
+  m_XRManagerNames: []
+  m_XRManagerObjectsToInstantiate: []
+--- !u!114 &2151423452900280414
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2151423452900280401}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f85c1e5ab0ebc6428dcc77cca8ebeb7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_UiCanvasDistance: 1
+  m_UiCanvasSize: 0.0008
+  m_UiCanvasWidthOverride: 850
+  m_XrRig: {fileID: 0}

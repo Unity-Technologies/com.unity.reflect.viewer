@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Unity.Reflect.IO;
@@ -8,7 +6,6 @@ using Unity.Reflect.Viewer.UI;
 using Unity.XRTools.Utils;
 using UnityEngine;
 using UnityEngine.Reflect;
-using UnityEngine.Rendering.Universal;
 
 namespace Unity.Reflect.Viewer
 {
@@ -19,11 +16,9 @@ namespace Unity.Reflect.Viewer
 
         public const int k_ThumbnailHistoryAmount = 10;
 
-        private static PlayerStorage m_PlayerStorage = new PlayerStorage();
+        static PlayerStorage m_PlayerStorage;
 
 #pragma warning disable CS0649
-        [SerializeField]
-        ScriptableRendererFeature[] m_CameraFeaturesToDisable;
         [SerializeField]
         Camera m_Camera;
         [SerializeField]
@@ -32,11 +27,12 @@ namespace Unity.Reflect.Viewer
 
         public void Awake()
         {
-            m_PlayerStorage.SetEnvironment(UnityEngine.Reflect.ProjectServer.ProjectDataPath, true, false);
+            m_PlayerStorage = new PlayerStorage(UnityEngine.Reflect.ProjectServer.ProjectDataPath, true, false);
         }
 
         public static Sprite LoadThumbnailForProject(Project project)
         {
+            m_PlayerStorage.HasLocalData(project);
             var thumbnailPath = GetProjectThumbnailLoadPath(project);
             if (File.Exists(thumbnailPath))
             {
@@ -62,8 +58,7 @@ namespace Unity.Reflect.Viewer
                     m_Camera,
                     k_ThumbnailDimension, k_ThumbnailDimension,
                     thumbnailPositionRotation,
-                    m_ThumbnailMask,
-                    m_CameraFeaturesToDisable); // There are some issue with SSAO, needs to disable it before Rendering or everything comes black
+                    m_ThumbnailMask);
 
                 var imageData = thumbnailTexture.EncodeToPNG();
                 var path = GetProjectThumbnailSavePath(projectStateData.activeProject);
@@ -112,7 +107,7 @@ namespace Unity.Reflect.Viewer
             return mostRecentThumbnail ?? string.Empty;
         }
 
-        public static Texture2D CaptureCameraFrame(Camera camera, int frameWidth, int frameHeight, CameraTransformInfo captureLocation, LayerMask layerToRender, ScriptableRendererFeature[] featuresToDisable = null)
+        public static Texture2D CaptureCameraFrame(Camera camera, int frameWidth, int frameHeight, CameraTransformInfo captureLocation, LayerMask layerToRender)
         {
             var originalTransform = new CameraTransformInfo() { position = camera.transform.position, rotation = camera.transform.rotation.eulerAngles };
             var originalRenderTarget = camera.targetTexture;
@@ -125,15 +120,6 @@ namespace Unity.Reflect.Viewer
             camera.targetTexture = rt;
             camera.cullingMask = layerToRender;
             RenderTexture.active = rt;
-            var originalFeaturesActive = new bool[featuresToDisable.Length];
-            if(featuresToDisable != null)
-            {
-                for (int i = 0; i < featuresToDisable.Length; i++)
-                {
-                    originalFeaturesActive[i] = featuresToDisable[i].isActive;
-                    featuresToDisable[i].SetActive(false);
-                }
-            }
 
             camera.Render();
             var tex = new Texture2D(frameWidth, frameHeight, TextureFormat.RGB24, false);
@@ -144,14 +130,6 @@ namespace Unity.Reflect.Viewer
             camera.targetTexture = originalRenderTarget;
             camera.cullingMask = originalLayerMask;
             RenderTexture.active = originalRenderTexture;
-
-            if (featuresToDisable != null)
-            {
-                for (int i = 0; i < featuresToDisable.Length; i++)
-                {
-                    featuresToDisable[i].SetActive(originalFeaturesActive[i]);
-                }
-            }
 
             RenderTexture.ReleaseTemporary(rt);
             return tex;

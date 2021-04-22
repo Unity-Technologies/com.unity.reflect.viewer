@@ -38,6 +38,8 @@ namespace Unity.Reflect.Viewer.UI
         public bool anchorPointsEnabled;
         public bool arWallIndicatorsEnabled;
         public bool arAnchorPointsEnabled;
+        public bool rotateEnabled;
+        public bool measureToolEnabled;
         public IUIButtonValidator okButtonValidator;
 
         public static readonly ARToolStateData defaultData = new ARToolStateData()
@@ -53,11 +55,13 @@ namespace Unity.Reflect.Viewer.UI
             okButtonValidator = null,
             arWallIndicatorsEnabled = false,
             arAnchorPointsEnabled = false,
+            rotateEnabled = false,
+            measureToolEnabled = false,
         };
 
         public ARToolStateData(bool selectionEnabled, bool navigationEnabled, bool previousStepEnabled, bool okEnabled,
             bool cancelEnabled, bool scaleEnabled, bool wallIndicatorsEnabled, bool anchorPointsEnabled, IUIButtonValidator okButtonValidator,
-            bool arWallIndicatorsEnabled, bool arAnchorPointsEnabled)
+            bool arWallIndicatorsEnabled, bool arAnchorPointsEnabled, bool rotateEnabled, bool measureToolEnabled)
         {
             this.selectionEnabled = selectionEnabled;
             this.navigationEnabled = navigationEnabled;
@@ -70,6 +74,8 @@ namespace Unity.Reflect.Viewer.UI
             this.okButtonValidator = okButtonValidator;
             this.arWallIndicatorsEnabled = arWallIndicatorsEnabled;
             this.arAnchorPointsEnabled = arAnchorPointsEnabled;
+            this.rotateEnabled = rotateEnabled;
+            this.measureToolEnabled = measureToolEnabled;
         }
 
         public static ARToolStateData Validate(ARToolStateData stateData)
@@ -79,24 +85,9 @@ namespace Unity.Reflect.Viewer.UI
 
         public override string ToString()
         {
-            return ToString("selectionEnabled{0}, navigationEnabled{1}, previousStepEnabled{2}, okEnabled{3}" +
-                "cancelEnabled{4}, scaleEnabled{5}, wallIndicatorsEnabled{6}, anchorPointsEnabled{7}, arWallIndicatorsEnabled{8} " +
-                "arAnchorPointsEnabled{9");
-        }
-
-        public string ToString(string format)
-        {
-            return string.Format(format,
-                selectionEnabled,
-                navigationEnabled,
-                previousStepEnabled,
-                okEnabled,
-                cancelEnabled,
-                scaleEnabled,
-                wallIndicatorsEnabled,
-                anchorPointsEnabled,
-                arWallIndicatorsEnabled,
-                arAnchorPointsEnabled);
+            return $"selectionEnabled {selectionEnabled}, navigationEnabled {navigationEnabled}, previousStepEnabled {previousStepEnabled}, okEnabled {okEnabled}, " +
+                $"cancelEnabled {cancelEnabled}, scaleEnabled {scaleEnabled}, wallIndicatorsEnabled {wallIndicatorsEnabled}, anchorPointsEnabled {anchorPointsEnabled}, " +
+                $"okButtonValidator {okButtonValidator}, arWallIndicatorsEnabled {arWallIndicatorsEnabled}, arAnchorPointsEnabled {arAnchorPointsEnabled}, rotateEnabled {rotateEnabled}, measureToolEnabled {measureToolEnabled} ";
         }
 
         public bool Equals(ARToolStateData other)
@@ -111,7 +102,9 @@ namespace Unity.Reflect.Viewer.UI
                    anchorPointsEnabled == other.anchorPointsEnabled &&
                    okButtonValidator == other.okButtonValidator &&
                    arWallIndicatorsEnabled == other.arWallIndicatorsEnabled &&
-                   arAnchorPointsEnabled == other.arAnchorPointsEnabled;
+                   arAnchorPointsEnabled == other.arAnchorPointsEnabled &&
+                   rotateEnabled == other.rotateEnabled &&
+                   measureToolEnabled == other.measureToolEnabled;
         }
 
         public override bool Equals(object obj)
@@ -134,6 +127,8 @@ namespace Unity.Reflect.Viewer.UI
                 hashCode = (hashCode * 397) ^ anchorPointsEnabled.GetHashCode();
                 hashCode = (hashCode * 397) ^ arWallIndicatorsEnabled.GetHashCode();
                 hashCode = (hashCode * 397) ^ arAnchorPointsEnabled.GetHashCode();
+                hashCode = (hashCode * 397) ^ rotateEnabled.GetHashCode();
+                hashCode = (hashCode * 397) ^ measureToolEnabled.GetHashCode();
                 return hashCode;
             }
         }
@@ -280,7 +275,6 @@ namespace Unity.Reflect.Viewer.UI
         public InstructionUIState instructionUIState;
         public IInstructionUI currentInstructionUI;
         public int instructionUIStep;
-        public bool placementGesturesEnabled;
         public int numProxyInstances;
         public ARToolStateData arToolStateData;
         public ARPlacementStateData placementStateData;
@@ -293,7 +287,6 @@ namespace Unity.Reflect.Viewer.UI
             currentInstructionUI = null,
             numProxyInstances = 0,
             instructionUIStep = 0,
-            placementGesturesEnabled = false,
             arToolStateData = ARToolStateData.defaultData,
             placementStateData = ARPlacementStateData.defaultData,
             arMode = null
@@ -307,7 +300,6 @@ namespace Unity.Reflect.Viewer.UI
             this.currentInstructionUI = currentInstructionUI;
             this.numProxyInstances = numProxyInstances;
             this.instructionUIStep = instructionUIStep;
-            this.placementGesturesEnabled = placementGesturesEnabled;
             this.arToolStateData = arToolStateData;
             this.placementStateData = placementStateData;
             this.arMode = arMode;
@@ -331,7 +323,6 @@ namespace Unity.Reflect.Viewer.UI
                 (object) instructionUIState,
                 numProxyInstances,
                 instructionUIStep,
-                placementGesturesEnabled,
                 arToolStateData.ToString(),
                 placementStateData.ToString());
         }
@@ -343,7 +334,6 @@ namespace Unity.Reflect.Viewer.UI
                    currentInstructionUI == other.currentInstructionUI &&
                    numProxyInstances == other.numProxyInstances &&
                    instructionUIStep == other.instructionUIStep &&
-                   placementGesturesEnabled == other.placementGesturesEnabled &&
                    arToolStateData == other.arToolStateData &&
                    placementStateData == other.placementStateData;
         }
@@ -362,7 +352,6 @@ namespace Unity.Reflect.Viewer.UI
                 hashCode = (hashCode * 397) ^ currentInstructionUI.GetHashCode();
                 hashCode = (hashCode * 397) ^ numProxyInstances;
                 hashCode = (hashCode * 397) ^ instructionUIStep;
-                hashCode = (hashCode * 397) ^ placementGesturesEnabled.GetHashCode();
                 hashCode = (hashCode * 397) ^ arToolStateData.GetHashCode();
                 hashCode = (hashCode * 397) ^ placementStateData.GetHashCode();
                 return hashCode;

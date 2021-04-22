@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Reflect;
-using UnityEngine.Reflect.Pipeline;
 using UnityEngine.Reflect.Viewer.Pipeline;
 
 namespace Unity.Reflect.Viewer.UI
@@ -88,6 +87,8 @@ namespace Unity.Reflect.Viewer.UI
     {
         public List<GameObject> selectedObjects;
         public int currentIndex;
+        public string userId;
+        public int colorId;
 
         public GameObject CurrentSelectedObject()
         {
@@ -104,6 +105,10 @@ namespace Unity.Reflect.Viewer.UI
         public bool Equals(ObjectSelectionInfo other)
         {
             if (currentIndex != other.currentIndex)
+                return false;
+            if (userId != other.userId)
+                return false;
+            if (colorId != other.colorId)
                 return false;
             if (selectedObjects != null && other.selectedObjects != null)
                 return selectedObjects.SequenceEqual(other.selectedObjects);
@@ -127,7 +132,11 @@ namespace Unity.Reflect.Viewer.UI
                 if (selectedObjects == null || selectedObjects.Count == 0)
                     return currentIndex;
 
-                return selectedObjects.Aggregate(currentIndex, (hash, obj) => (hash * 397) ^ obj.GetHashCode());
+                var hashCode = selectedObjects.Aggregate(currentIndex, (hash, obj) => (hash * 397) ^ obj.GetHashCode());
+                hashCode = (hashCode * 397) ^ userId.GetHashCode();
+                hashCode = (hashCode * 397) ^ colorId.GetHashCode();
+
+                return hashCode;
             }
         }
     }
@@ -167,10 +176,55 @@ namespace Unity.Reflect.Viewer.UI
         }
     }
 
-    public enum ProjectSortMethod
+    [Serializable]
+    public struct ProjectListSortData : IEquatable<ProjectListSortData>
+    {
+        public ProjectSortField sortField;
+        public ProjectSortMethod method;
+        public static bool operator ==(ProjectListSortData a, ProjectListSortData b)
+        {
+            return a.Equals(b);
+        }
+
+        public static bool operator !=(ProjectListSortData a, ProjectListSortData b)
+        {
+            return !(a == b);
+        }
+
+        public bool Equals(ProjectListSortData other)
+        {
+            return sortField == other.sortField && method == other.method;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ProjectListSortData other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return ((int)sortField * 397) ^ (int)method;
+            }
+        }
+    }
+
+    [Serializable]
+    public enum ProjectSortField
     {
         SortByDate = 0,
         SortByName = 1,
+        SortByServer = 2,
+        SortByOrganization = 3,
+        SortByCollaborators = 4
+    }
+
+    [Serializable]
+    public enum ProjectSortMethod
+    {
+        Ascending = 0,
+        Descending = 1
     }
 
     [Serializable]
@@ -180,12 +234,14 @@ namespace Unity.Reflect.Viewer.UI
         public Project activeProject;
         [NonSerialized]
         public Sprite activeProjectThumbnail;
-        public ProjectSortMethod projectSortMethod;
+        public ProjectListSortData projectSortData;
 
         public Bounds rootBounds;
         public List<string> filterGroupList;
         public HighlightFilterInfo highlightFilter;
         public List<FilterItemInfo> filterItemInfos;
+        public string filterSearchString;
+        public string bimSearchString;
         public FilterItemInfo lastChangedFilterItem;
         public ObjectSelectionInfo objectSelectionInfo;
         public ISpatialPicker<Tuple<GameObject, RaycastHit>> objectPicker;
@@ -215,11 +271,13 @@ namespace Unity.Reflect.Viewer.UI
         public bool Equals(UIProjectStateData other)
         {
             return Equals(activeProject, other.activeProject) &&
-                projectSortMethod.Equals(other.projectSortMethod) &&
+                projectSortData.Equals(other.projectSortData) &&
                 rootBounds.Equals(other.rootBounds) &&
                 Equals(filterGroupList, other.filterGroupList) &&
                 highlightFilter.Equals(other.highlightFilter) &&
                 Equals(filterItemInfos, other.filterItemInfos) &&
+                filterSearchString == other.filterSearchString &&
+                bimSearchString == other.bimSearchString &&
                 lastChangedFilterItem.Equals(other.lastChangedFilterItem) &&
                 objectSelectionInfo.Equals(other.objectSelectionInfo) &&
                 objectPicker == other.objectPicker &&
@@ -243,11 +301,13 @@ namespace Unity.Reflect.Viewer.UI
             unchecked
             {
                 var hashCode = (activeProject != null ? activeProject.GetHashCode() : 0);
-                hashCode = (hashCode * 397) ^ projectSortMethod.GetHashCode();
+                hashCode = (hashCode * 397) ^ projectSortData.GetHashCode();
                 hashCode = (hashCode * 397) ^ rootBounds.GetHashCode();
                 hashCode = (hashCode * 397) ^ (filterGroupList != null ? filterGroupList.GetHashCode() : 0);
                 hashCode = (hashCode * 397) ^ highlightFilter.GetHashCode();
                 hashCode = (hashCode * 397) ^ (filterItemInfos != null ? filterItemInfos.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ (filterSearchString != null ? filterSearchString.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ (bimSearchString != null ? bimSearchString.GetHashCode() : 0);
                 hashCode = (hashCode * 397) ^ lastChangedFilterItem.GetHashCode();
                 hashCode = (hashCode * 397) ^ objectSelectionInfo.GetHashCode();
                 hashCode = (hashCode * 397) ^ (objectPicker != null ? objectPicker.GetHashCode() : 0);

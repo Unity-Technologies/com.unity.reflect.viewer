@@ -15,7 +15,7 @@ namespace UnityEngine.Reflect.Viewer
     [Serializable]
     public enum VRControllerType
     {
-        Generic=0,
+        Generic = 0,
         OculusTouch,
         OculusTouchS,
         OculusTouchQuest2,
@@ -35,19 +35,28 @@ namespace UnityEngine.Reflect.Viewer
 
     public class VRMode : MonoBehaviour
     {
-        #pragma warning disable 0649
-        [SerializeField] InputActionAsset m_InputActionAsset;
-        [SerializeField] VRAnchorController m_VrAnchorController;
-        [SerializeField] bool m_SkipVrInit;
-        [SerializeField] XRBaseController m_LeftHandController;
-        [SerializeField] XRBaseController m_RightHandController;
-        [SerializeField] List<VRController> m_VRControllers;
+#pragma warning disable 0649
+        [SerializeField]
+        InputActionAsset m_InputActionAsset;
+        [SerializeField]
+        VRAnchorController m_VrAnchorController;
+        [SerializeField]
+        TransformVariable m_RightController;
+        [SerializeField]
+        bool m_SkipVrInit;
+        [SerializeField]
+        XRBaseController m_LeftHandController;
+        [SerializeField]
+        XRBaseController m_RightHandController;
+        [SerializeField]
+        List<VRController> m_VRControllers;
         [Space(10)]
-        [SerializeField] List<string> XRManagerNames;
-        [SerializeField] List<GameObject> m_XRManagerObjectsToInstantiate;
+        [SerializeField]
+        List<string> m_XRManagerNames;
+        [SerializeField]
+        List<GameObject> m_XRManagerObjectsToInstantiate;
         [Space(10)]
-        #pragma warning restore 0649
-
+#pragma warning restore 0649
         XRManagerSettings m_Manager;
         Camera m_ScreenModeCamera;
         float m_ScreenModeFieldOfView;
@@ -58,6 +67,7 @@ namespace UnityEngine.Reflect.Viewer
             m_Manager = XRGeneralSettings.Instance.Manager;
             m_ScreenModeCamera = Camera.main;
             UIStateManager.projectStateChanged += OnProjectStateDataChanged;
+            m_RightController.Value = m_RightHandController.transform;
 
             var standaloneInputModule = FindObjectOfType<StandaloneInputModule>();
             if (standaloneInputModule != null)
@@ -82,6 +92,8 @@ namespace UnityEngine.Reflect.Viewer
 
             if (!m_SkipVrInit)
             {
+                m_Manager.DeinitializeLoader();
+
                 // initialize VR
                 yield return m_Manager.InitializeLoader();
 
@@ -93,21 +105,27 @@ namespace UnityEngine.Reflect.Viewer
 
                 // start VR subsystems
                 m_Manager.StartSubsystems();
-            }
 
-            // wait one frame to let InputDevice initialise
-            yield return null;
-
-            ChooseVRControllerModels();
-
-            if (!m_SkipVrInit)
-            {
-                var xRManagerIndex = XRManagerNames.IndexOf(m_Manager.activeLoader.name);
+                var xRManagerIndex = m_XRManagerNames.IndexOf(m_Manager.activeLoader.name);
                 if (xRManagerIndex != -1 && m_XRManagerObjectsToInstantiate[xRManagerIndex] != null)
                 {
                     Instantiate(m_XRManagerObjectsToInstantiate[xRManagerIndex]);
                 }
             }
+
+            // wait to let InputDevice initialise
+            for (int i = 120; i >= 0; i--)
+            {
+                if (InputDevices.GetDeviceAtXRNode(XRNode.LeftHand) != null &&
+                    !string.IsNullOrEmpty(InputDevices.GetDeviceAtXRNode(XRNode.LeftHand).name))
+                {
+                    break;
+                }
+
+                yield return null;
+            }
+
+            ChooseVRControllerModels();
 
             yield return null;
 
@@ -147,13 +165,16 @@ namespace UnityEngine.Reflect.Viewer
             {
                 m_ActionMap = m_InputActionAsset.FindActionMap("VR", true);
             }
+
             m_ActionMap.Enable();
         }
 
         void ChooseVRControllerModels()
         {
             var type = VRControllerType.Generic;
+
             var deviceName = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand).name;
+
             Debug.Log($"Device name : {deviceName}");
             if (!string.IsNullOrEmpty(deviceName))
             {
@@ -161,36 +182,42 @@ namespace UnityEngine.Reflect.Viewer
                 if (deviceName.Contains("quest2"))
                 {
                     //TODO: Not supported yet
+                    type = VRControllerType.Generic;
                     //type = VRControllerType.OculusTouchQuest2;
                 }
                 else if (deviceName.Contains("rifts") ||
-                         deviceName.Contains("touchs") ||
-                         deviceName.Contains("quest"))
+                    deviceName.Contains("touchs") ||
+                    deviceName.Contains("quest"))
                 {
                     //TODO: Not supported yet
+                    type = VRControllerType.Generic;
                     //type = VRControllerType.OculusTouchS;
                 }
                 else if (deviceName.Contains("oculus") ||
-                         deviceName.Contains("rift") ||
-                         deviceName.Contains("touch"))
+                    deviceName.Contains("rift") ||
+                    deviceName.Contains("touch"))
                 {
                     type = VRControllerType.OculusTouch;
                 }
                 else if (deviceName.Contains("index") ||
-                         deviceName.Contains("knuckle"))
+                    deviceName.Contains("knuckle"))
                 {
                     //TODO: Not supported yet
-                    //type = VRControllerType.ViveIndex;
+                    type = VRControllerType.ViveIndex;
                 }
                 else if (deviceName.Contains("cosmos"))
                 {
                     //TODO: Not supported yet
-                    //type = VRControllerType.ViveCosmos;
+                    type = VRControllerType.ViveCosmos;
                 }
                 else if (deviceName.Contains("vive") ||
-                         deviceName.Contains("valve"))
+                    deviceName.Contains("valve"))
                 {
                     type = VRControllerType.ViveWand;
+                }
+                else
+                {
+                    type = VRControllerType.Generic;
                 }
             }
 

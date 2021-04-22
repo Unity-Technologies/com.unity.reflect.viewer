@@ -1,14 +1,13 @@
 using System;
 using System.Collections;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.Reflect;
 using UnityEngine.Reflect.Viewer;
 using UnityEngine.Reflect.Viewer.Input;
-using TouchPhase = UnityEngine.TouchPhase;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -39,6 +38,9 @@ namespace Unity.Reflect.Viewer.UI
         ToolButton m_DebugButton;
         [SerializeField]
         float m_ZoomGestureSensibility = 30.0f;
+
+        [SerializeField]
+        GameObject m_PointMesh;
 #pragma warning restore CS0649
 
         ToolType? m_CachedToolType;
@@ -56,6 +58,7 @@ namespace Unity.Reflect.Viewer.UI
 
         bool m_ZoomPressed;
         bool m_PanPressed;
+        bool isTeleportInit = false;
 
         Bounds m_InitialCameraBounds;
 
@@ -112,6 +115,9 @@ namespace Unity.Reflect.Viewer.UI
             m_ZoomButton.onClick.AddListener(OnZoomButtonClicked);
 
             m_DefaultColor = m_DebugButton.buttonRound.color;
+
+            m_PointMesh = Instantiate(m_PointMesh);
+            m_PointMesh.SetActive(false);
         }
 
         void OnZoomButtonClicked()
@@ -195,6 +201,16 @@ namespace Unity.Reflect.Viewer.UI
 
             if (Time.unscaledDeltaTime <= m_UINavigationControllerSettings.inputLagCutoffThreshold)
             {
+                if (UIStateManager.current.stateData.navigationState.moveEnabled)
+                {
+                    m_MovingAction.Enable();
+                }
+                else
+                {
+                    m_MovingAction.Disable();
+                    return;
+                }
+
                 var val = m_MovingAction.ReadValue<Vector3>();
                 if (val != m_LastMovingAction)
                 {
@@ -231,7 +247,7 @@ namespace Unity.Reflect.Viewer.UI
                 if (m_ZoomGestureInProgress)
                 {
                     m_DebugButton.buttonRound.color = Color.red;
-                    m_DebugButton.selected= true;
+                    m_DebugButton.selected = true;
                 }
                 else
                 {
@@ -270,27 +286,7 @@ namespace Unity.Reflect.Viewer.UI
         {
             if (m_ToolbarsEnabled != stateData.toolbarsEnabled)
             {
-                if (stateData.toolbarsEnabled)
-                {
-                    if (stateData.navigationState.navigationMode == NavigationMode.Orbit)
-                    {
-                        m_Camera.enabled = true;
-                        m_InputActionAsset.Enable();
-                    }
-                    else
-                    {
-                        m_Camera.enabled = false;
-                        m_InputActionAsset.Disable();
-                    }
-                }
-                else
-                {
-                    m_Camera.enabled = false;
-                    m_InputActionAsset.Disable();
-                }
-
                 m_ResetButton.button.interactable = stateData.toolbarsEnabled;
-
                 m_ToolbarsEnabled = stateData.toolbarsEnabled;
             }
 
@@ -363,18 +359,21 @@ namespace Unity.Reflect.Viewer.UI
                 if (stateData.navigationState.teleportEnabled)
                 {
                     m_InputActionAsset["Teleport Action"].Enable();
+                    m_InputActionAsset["TouchTeleport Action"].Enable();
                 }
                 else
                 {
                     m_InputActionAsset["Teleport Action"].Disable();
+                    m_InputActionAsset["TouchTeleport Action"].Disable();
                 }
 
                 if (m_CachedNavigationMode != stateData.navigationState.navigationMode)
                 {
-                    if (stateData.navigationState.navigationMode == NavigationMode.Orbit)
+                    if (stateData.navigationState.navigationMode == NavigationMode.Orbit && m_CachedNavigationMode != NavigationMode.Walk)
                     {
                         StartCoroutine(ResetHomeView());
                     }
+
                     m_CachedNavigationMode = stateData.navigationState.navigationMode;
                 }
 
@@ -425,10 +424,18 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
+        void LeaveFollowUserMode()
+        {
+            if (!string.IsNullOrEmpty(UIStateManager.current.stateData.toolState.followUserTool.userId))
+            {
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.FollowUser, null));
+            }
+        }
+
         IEnumerator ResetHomeView()
         {
             yield return new WaitForSeconds(0);
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ResetHomeView, null));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ResetHomeView, null));
             m_Camera.camera.clearFlags = CameraClearFlags.Skybox;
         }
 
@@ -460,7 +467,7 @@ namespace Unity.Reflect.Viewer.UI
                 m_ZoomPressed = false;
             }
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
         }
 
         bool IsTemporaryTool(ToolType activeTool)
@@ -470,7 +477,6 @@ namespace Unity.Reflect.Viewer.UI
                 case ToolType.ClippingTool:
                 case ToolType.OrbitTool:
                 case ToolType.SelectTool:
-                case ToolType.MeasureTool:
                     return false;
             }
 
@@ -480,7 +486,7 @@ namespace Unity.Reflect.Viewer.UI
         bool CheckTreatInput(double deltaTime)
         {
             return
-                 deltaTime <= m_UINavigationControllerSettings.inputLagSkipThreshold ||
+                deltaTime <= m_UINavigationControllerSettings.inputLagSkipThreshold ||
                 ((deltaTime <= m_UINavigationControllerSettings.inputLagCutoffThreshold) && (m_InputSkipper % m_UINavigationControllerSettings.inputLagSkipAmount == 0));
         }
 
@@ -513,17 +519,24 @@ namespace Unity.Reflect.Viewer.UI
                 m_PanPressed = false;
             }
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+        }
+
+        void OnInteraction()
+        {
+            LeaveFollowUserMode();
         }
 
         void Zoom(Vector2 delta)
         {
             m_Camera.MoveOnLookAtAxis(delta.y);
+            OnInteraction();
         }
 
         void Pan(Vector2 delta)
         {
             m_Camera.Pan(delta);
+            OnInteraction();
         }
 
         void Orbit(Vector2 delta)
@@ -544,8 +557,9 @@ namespace Unity.Reflect.Viewer.UI
             if (m_CachedCameraOptionData?.cameraViewType != CameraViewType.Default)
             {
                 data.cameraOptionData.cameraViewType = CameraViewType.Default;
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, data.cameraOptionData));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, data.cameraOptionData));
             }
+            OnInteraction();
         }
 
         void OnOrbit(InputAction.CallbackContext context)
@@ -584,8 +598,8 @@ namespace Unity.Reflect.Viewer.UI
             {
                 var dragGesture = interaction?.currentGesture as TwoFingerDragGesture;
                 if (m_PanGestureCoroutine != null)
-                    StopCoroutine (m_PanGestureCoroutine);
-                m_PanGestureCoroutine = StartCoroutine (StopPanGesture ());
+                    StopCoroutine(m_PanGestureCoroutine);
+                m_PanGestureCoroutine = StartCoroutine(StopPanGesture());
                 m_PanDelta.SetNewFrameDelta(dragGesture.Delta);
                 float ratio = 0.01f;
 #if UNITY_ANDROID
@@ -616,8 +630,8 @@ namespace Unity.Reflect.Viewer.UI
             {
                 var pinchGesture = interaction?.currentGesture as PinchGesture;
                 if (m_ZoomGestureCoroutine != null)
-                    StopCoroutine (m_ZoomGestureCoroutine);
-                m_ZoomGestureCoroutine = StartCoroutine (StopZoomGesture ());
+                    StopCoroutine(m_ZoomGestureCoroutine);
+                m_ZoomGestureCoroutine = StartCoroutine(StopZoomGesture());
 #if UNITY_ANDROID
                 // TODO: This should be the general algorithm, but we will need to test it on iOS first.
                 var distance = m_GestureCameraStartPosition - (m_GestureCameraStartPosition) * ((pinchGesture.gap - pinchGesture.startGap) / Screen.height);
@@ -626,6 +640,7 @@ namespace Unity.Reflect.Viewer.UI
                     // Double zoom out ratio
                     distance += distance - m_GestureCameraStartPosition;
                 }
+
                 m_Camera.SetDistanceFromLookAt(distance);
 #else
                 m_ZoomDelta.SetNewFrameDelta(new Vector2(0.0f, pinchGesture.gapDelta / pinchGesture.gap) * m_ZoomGestureSensibility);
@@ -657,7 +672,7 @@ namespace Unity.Reflect.Viewer.UI
             var toolState = UIStateManager.current.stateData.toolState;
             var navigationToolState = toolState;
 
-            toolState.activeTool = m_PanPressed ? (m_ZoomPressed ? ToolType.ZoomTool:ToolType.PanTool):m_PreviousToolType ?? ToolType.None;
+            toolState.activeTool = m_PanPressed ? (m_ZoomPressed ? ToolType.ZoomTool : ToolType.PanTool) : m_PreviousToolType ?? ToolType.None;
             m_PreviousToolType = null;
             if (m_PreviousOrbitType != null)
             {
@@ -668,9 +683,9 @@ namespace Unity.Reflect.Viewer.UI
             // Reset Orbit tool type first
             navigationToolState.activeTool = m_PreviousOrbitToolType ?? ToolType.None;
             navigationToolState.orbitType = OrbitType.OrbitAtPoint;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, navigationToolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, navigationToolState));
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
         }
 
         IEnumerator DelayEndQuickTool(QuickToolData toolData)
@@ -682,7 +697,7 @@ namespace Unity.Reflect.Viewer.UI
                 m_PreviousToolType = toolState.activeTool;
             }
 
-            if (toolState.activeTool != toolData.toolType ||  (toolData.orbitType != OrbitType.None && toolState.orbitType != toolData.orbitType))
+            if (toolState.activeTool != toolData.toolType || (toolData.orbitType != OrbitType.None && toolState.orbitType != toolData.orbitType))
             {
                 if (toolState.orbitType != toolData.orbitType)
                 {
@@ -697,7 +712,7 @@ namespace Unity.Reflect.Viewer.UI
                 }
             }
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
 
             yield return new WaitForSeconds(k_ToolDebounceTime);
 
@@ -727,7 +742,7 @@ namespace Unity.Reflect.Viewer.UI
             if (CheckTreatInput(context))
             {
                 StopCoroutine(nameof(DelayEndQuickTool));
-                StartCoroutine(nameof(DelayEndQuickTool), new QuickToolData() { toolType = ToolType.PanTool, orbitType = OrbitType.None});
+                StartCoroutine(nameof(DelayEndQuickTool), new QuickToolData() { toolType = ToolType.PanTool, orbitType = OrbitType.None });
 
                 m_PanDelta.SetNewFrameDelta(context.ReadValue<Vector2>());
                 var delta = m_PanDelta.delta * -Vector2.one;
@@ -743,7 +758,7 @@ namespace Unity.Reflect.Viewer.UI
 
             StopCoroutine(nameof(DelayEndQuickTool));
             StartCoroutine(nameof(DelayEndQuickTool),
-                new QuickToolData() {toolType = ToolType.OrbitTool, orbitType = OrbitType.WorldOrbit});
+                new QuickToolData() { toolType = ToolType.OrbitTool, orbitType = OrbitType.WorldOrbit });
 
             m_WorldOrbitDelta.SetNewFrameDelta(context.ReadValue<Vector2>());
             var delta = m_WorldOrbitDelta.delta;
@@ -760,12 +775,53 @@ namespace Unity.Reflect.Viewer.UI
             m_TeleportController.TriggerTeleport(Pointer.current.position.ReadValue());
         }
 
+        public bool OnGetTeleportTarget(bool placementMeshActive, bool teleport = false)
+        {
+            Vector2 pointerPos = Pointer.current.position.ReadValue();
+            bool validTarget = MeshTargetPlacement(pointerPos);
+            m_PointMesh.SetActive(placementMeshActive);
+            if (validTarget && teleport)
+            {
+                m_TeleportController.TriggerTeleport(pointerPos);
+                isTeleportInit = false;
+            }
+
+            return validTarget;
+        }
+
+        public Vector3 GetWalkReticlePosition()
+        {
+            return m_PointMesh.transform.position;
+        }
+
+        bool MeshTargetPlacement(Vector2 pointerPos)
+        {
+            Vector3 target = m_TeleportController.GetTeleportTarget(pointerPos);
+            bool validTarget = (target != Vector3.zero);
+
+            if (!isTeleportInit)
+            {
+                m_PointMesh.SetActive(true);
+                isTeleportInit = true;
+            }
+
+#if ENABLE_VR
+            Vector3 originalpos = new Vector3(pointerPos.x, pointerPos.y, GetComponent<Canvas>().planeDistance);
+            m_PointMesh.GetComponent<BezierCurve>().StartPosition = m_Camera.camera.ScreenToWorldPoint(originalpos);
+#endif
+            m_PointMesh.transform.position = target;
+            float size = (m_Camera.transform.position - target).magnitude;
+            m_PointMesh.transform.localScale = Vector3.one * size;
+
+            return validTarget;
+        }
+
         void OnResetButtonClicked()
         {
             // Helpmode
             if (HelpDialogController.SetHelpID(HelpModeEntryID.HomeReset)) return;
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ResetHomeView, null));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ResetHomeView, null));
         }
 
         public CameraTransformInfo ResetCamera()
@@ -773,7 +829,7 @@ namespace Unity.Reflect.Viewer.UI
             m_Camera.camera.clearFlags = CameraClearFlags.Skybox;
             m_Camera.SetupInitialCameraPosition(m_InitialCameraBounds, 20.0f, 0.75f);
             var camTransform = m_Camera.camera.transform;
-            return new CameraTransformInfo {position = camTransform.position, rotation = camTransform.eulerAngles};
+            return new CameraTransformInfo { position = camTransform.position, rotation = camTransform.eulerAngles };
         }
 
         void OnRightView()

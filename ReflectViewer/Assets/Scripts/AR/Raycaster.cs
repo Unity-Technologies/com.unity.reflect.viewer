@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using Unity.MARS.MARSUtils;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using Unity.Reflect.Viewer.UI;
 using UnityEngine;
 
@@ -22,10 +23,6 @@ namespace Unity.Reflect.Viewer
         [SerializeField]
         [Tooltip("Gameobject that is set to the hit location of the raycast. Disabled when no target is available.")]
         GameObject m_Cursor;
-
-        [SerializeField]
-        [Tooltip("The object to place.")]
-        GameObject m_ObjectToPlace;
 
         [SerializeField]
         [Tooltip("Collider mask for raycast targets.")]
@@ -79,9 +76,6 @@ namespace Unity.Reflect.Viewer
                 m_CursorTransform = m_Cursor.transform;
                 m_Cursor.SetActive(false);
             }
-
-            if (m_ObjectToPlace != null)
-                m_ObjectToPlace.SetActive(false);
         }
 
         void Update()
@@ -197,7 +191,7 @@ namespace Unity.Reflect.Viewer
             yield return new WaitForSeconds(0);
             var placementData = UIStateManager.current.arStateData.placementStateData;
             placementData.validTarget = m_ValidTarget;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetPlacementState, placementData));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetPlacementState, placementData));
         }
 
         IEnumerator MoveNext()
@@ -228,85 +222,36 @@ namespace Unity.Reflect.Viewer
 
             DisableCursor();
 
-            placementRootTransform.parent = null;
             placementRootTransform.position = m_CursorTransform.position;
             placementRootTransform.rotation = Quaternion.identity;
 
-            m_ObjectToPlace.transform.SetParent(UIStateManager.current.m_PlacementRoot.transform, true);
-            m_ObjectToPlace.SetActive(true);
+            var boundingBoxRoot = UIStateManager.current.m_BoundingBoxRootNode;
+            boundingBoxRoot.SetActive(true);
+
+            var modelRootTransform = UIStateManager.current.m_RootNode.transform;
 
             if (m_ViewBasedMode)
             {
-                m_ObjectToPlace.transform.localPosition = Vector3.zero;
-                m_ObjectToPlace.transform.localRotation = Quaternion.identity;
+                boundingBoxRoot.transform.localPosition = Vector3.zero;
+                modelRootTransform.localPosition = Vector3.zero;
                 AlignViewModelWithARView(placementRootTransform);
             }
             else
             {
-                CenterBoundingBoxRoot(m_ObjectToPlace.transform);
+                var offset = GetBoundingBoxOffset();
+                boundingBoxRoot.transform.localPosition = -offset;
+                modelRootTransform.localPosition = -offset;
             }
-
-        }
-
-        /// <summary>
-        /// Sets the object that will be placed when the user holds down the input
-        /// </summary>
-        /// <param name="toPlace">The object to place</param>
-        public void SetObjectToPlace(GameObject toPlace)
-        {
-            m_ObjectToPlace = toPlace;
-
-            if (m_ObjectToPlace != null)
-            {
-                m_ObjectToPlace.SetActive(false);
-            }
-
-        }
-
-        public void SwapModel(GameObject boundingBoxes, GameObject model)
-        {
-            var boundingBoxesTransform = boundingBoxes.transform;
-
-            var modelTransform = model.transform;
-            modelTransform.parent = null;
-            modelTransform.position = boundingBoxesTransform.position;
-            modelTransform.rotation = boundingBoxesTransform.rotation;
-            modelTransform.localScale = boundingBoxesTransform.localScale;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowModel, true));
-
-            var bbTransform = boundingBoxes.transform;
-            bbTransform.parent = null;
-            bbTransform.position = Vector3.zero;
-            bbTransform.rotation = Quaternion.identity;
-            bbTransform.localScale = Vector3.one / (float) UIStateManager.current.stateData.modelScale;
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowBoundingBoxModel, false));
-
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUIState, InstructionUIState.Completed));
-        }
-
-
-        public void SwapModelToBox(GameObject model, GameObject boundingBoxes)
-        {
-            var modelTransform = model.transform;
-            var bbTransform = boundingBoxes.transform;
-            bbTransform.position = modelTransform.position;
-            bbTransform.rotation = modelTransform.rotation;
-            bbTransform.localScale = Vector3.one / (float) UIStateManager.current.stateData.modelScale;
-
-            boundingBoxes.transform.SetParent(UIStateManager.current.m_PlacementRoot.transform, true);
         }
 
         public void RestoreModel(GameObject boundingBoxes, GameObject model)
         {
             var modelTransform = model.transform;
-            modelTransform.parent = null;
             modelTransform.position = Vector3.zero;
             modelTransform.rotation = Quaternion.identity;
             modelTransform.localScale = Vector3.one;
 
             var bbTransform = boundingBoxes.transform;
-            bbTransform.parent = null;
             bbTransform.position = Vector3.zero;
             bbTransform.rotation = Quaternion.identity;
             bbTransform.localScale = Vector3.one / (float) UIStateManager.current.stateData.modelScale;
@@ -315,7 +260,6 @@ namespace Unity.Reflect.Viewer
         public void Reset()
         {
             DisableCursor();
-            m_ObjectToPlace = null;
             m_ValidTarget = false;
             m_CachedValidTarget = null;
             m_ViewBasedMode = false;
@@ -325,10 +269,7 @@ namespace Unity.Reflect.Viewer
         public void ResetTransformation()
         {
             var placementRootTransform = UIStateManager.current.m_PlacementRoot.transform;
-
-            placementRootTransform.parent = null;
             placementRootTransform.rotation = Quaternion.identity;
-
             StartCoroutine(ResetScale());
         }
 
@@ -336,7 +277,7 @@ namespace Unity.Reflect.Viewer
         {
             yield return new WaitForSeconds(0);
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, ArchitectureScale.OneToOneHundred));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, ArchitectureScale.OneToOneHundred));
         }
 
         bool m_ViewBasedMode;
@@ -370,14 +311,11 @@ namespace Unity.Reflect.Viewer
             m_CameraTransform.rotation = transformRotation;
         }
 
-        void CenterBoundingBoxRoot(Transform objectTransform)
+        Vector3 GetBoundingBoxOffset()
         {
-            var offset = Vector3.Scale(
-                new Vector3(UIStateManager.current.projectStateData.rootBounds.center.x,
-                    UIStateManager.current.projectStateData.rootBounds.min.y,
-                    UIStateManager.current.projectStateData.rootBounds.center.z), objectTransform.localScale);
-            objectTransform.position = m_CursorTransform.position - offset;
-            objectTransform.rotation = Quaternion.identity;
+            return new Vector3(UIStateManager.current.projectStateData.rootBounds.center.x,
+                UIStateManager.current.projectStateData.rootBounds.min.y,
+                UIStateManager.current.projectStateData.rootBounds.center.z);
         }
 
         public void AlignModelWithAnchor(GameObject model, Vector3 modelPlaneNormal, Vector3 arPlaneNormal, Vector3 modelAnchor, Vector3 arAnchor)
@@ -390,8 +328,8 @@ namespace Unity.Reflect.Viewer
             model.transform.RotateAround(arAnchor, Vector3.up, differenceAngle);
             if (UIStateManager.current.debugStateData.debugOptionsData.ARAxisTrackingEnabled)
             {
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithLevel,
-                    new StatusMessageData() { text=$"the AR Alignment angle is {differenceAngle}", level=StatusMessageLevel.Instruction }));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithType,
+                    new StatusMessageData { text=$"the AR Alignment angle is {differenceAngle}", type= StatusMessageType.Instruction }));
             }
         }
     }

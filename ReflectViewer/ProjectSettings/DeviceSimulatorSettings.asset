@@ -1,4 +1,6 @@
 {
-    "SystemInfoDefaultAssembly": true,
-    "SystemInfoAssemblies": []
+    "SystemInfoDefaultAssembly": false,
+    "SystemInfoAssemblies": [
+        "ReflectViewer"
+    ]
 }

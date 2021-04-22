@@ -1,5 +1,6 @@
 using SharpFlux;
 using System.Collections.Generic;
+using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -45,11 +46,11 @@ namespace Unity.Reflect.Viewer.UI
             // NOTE: this assumes carouselIndex is in the exact order as NavigationMode enum!
             var navigationState = UIStateManager.current.stateData.navigationState;
             navigationState.navigationMode = (NavigationMode)carouselIndex;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
 
             // NOTE: this assumes carouselIndex is in the exact order as ToolbarType enum!
             var toolbarType = (ToolbarType)carouselIndex;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, toolbarType));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, toolbarType));
 
         }
     }

@@ -1,5 +1,6 @@
 using System;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
@@ -10,6 +11,21 @@ namespace Unity.Reflect.Viewer.UI
     [RequireComponent(typeof(DialogWindow))]
     public class StatsInfoUIController : MonoBehaviour
     {
+        // use this to avoid GC allocation every frame
+        static readonly string[] k_StringDisplayCache = new[]
+        {
+            "00", "01", "02", "03", "04", "05", "06", "07", "08", "09",
+            "10", "11", "12", "13", "14", "15", "16", "17", "18", "19",
+            "20", "21", "22", "23", "24", "25", "26", "27", "28", "29",
+            "30", "31", "32", "33", "34", "35", "36", "37", "38", "39",
+            "40", "41", "42", "43", "44", "45", "46", "47", "48", "49",
+            "50", "51", "52", "53", "54", "55", "56", "57", "58", "59",
+            "60", "61", "62", "63", "64", "65", "66", "67", "68", "69",
+            "70", "71", "72", "73", "74", "75", "76", "77", "78", "79",
+            "80", "81", "82", "83", "84", "85", "86", "87", "88", "89",
+            "90", "91", "92", "93", "94", "95", "96", "97", "98", "99",
+        };
+
 #pragma warning disable CS0649
         [SerializeField]
         BuildState m_BuildState;
@@ -58,7 +74,8 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         int m_TargetFrameRate = 60;
 #pragma warning restore CS0649
-
+        [SerializeField]
+        DialogWindow m_DebugDialogWindow;
         DialogWindow m_DialogWindow;
         StatsInfoData m_CurrentStatsInfoData;
         DialogType m_CachedActiveDialog;
@@ -84,25 +101,25 @@ namespace Unity.Reflect.Viewer.UI
             if (m_CurrentToolState.infoType == InfoType.Info)
             {
                 var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.StatsInfo;
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
             }
             if (m_CurrentToolState.infoType == InfoType.Debug)
             {
-                var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.DebugOptions;
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+                var dialogType = m_DebugDialogWindow.open ? DialogType.None : DialogType.DebugOptions;
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
             }
         }
 
         void OnStatsButtonLongPressed()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.InfoSelect));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.InfoSelect));
         }
 
         void OnStateDataChanged(UIStateData data)
         {
             if (m_CachedActiveDialog != data.activeDialog)
             {
-                m_StatsButton.selected = data.activeDialog == DialogType.StatsInfo;
+                m_StatsButton.selected = (data.activeDialog == DialogType.StatsInfo || data.activeDialog == DialogType.DebugOptions);
                 m_CachedActiveDialog = data.activeDialog;
             }
 
@@ -132,17 +149,17 @@ namespace Unity.Reflect.Viewer.UI
             {
                 if (m_CurrentStatsInfoData.fpsMax != data.statsInfoData.fpsMax)
                 {
-                    m_FpsMaxText.text = data.statsInfoData.fpsMax.ToString();
+                    m_FpsMaxText.text = k_StringDisplayCache[data.statsInfoData.fpsMax];
                     m_FpsMaxText.color = m_ColorGradient.Evaluate((float)data.statsInfoData.fpsMax / m_TargetFrameRate);
                 }
                 if (m_CurrentStatsInfoData.fpsAvg != data.statsInfoData.fpsAvg)
                 {
-                    m_FpsAvgText.text = data.statsInfoData.fpsAvg.ToString();
+                    m_FpsAvgText.text = k_StringDisplayCache[data.statsInfoData.fpsAvg];
                     m_FpsAvgText.color = m_ColorGradient.Evaluate((float)data.statsInfoData.fpsAvg / m_TargetFrameRate);
                 }
                 if (m_CurrentStatsInfoData.fpsMin != data.statsInfoData.fpsMin)
                 {
-                    m_FpsMinText.text = data.statsInfoData.fpsMin.ToString();
+                    m_FpsMinText.text = k_StringDisplayCache[data.statsInfoData.fpsMin];
                     m_FpsMinText.color = m_ColorGradient.Evaluate((float)data.statsInfoData.fpsMin / m_TargetFrameRate);
                 }
 

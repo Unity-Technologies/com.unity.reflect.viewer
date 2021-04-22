@@ -1,5 +1,6 @@
 using System;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -12,12 +13,6 @@ namespace Unity.Reflect.Viewer.UI
 #pragma warning disable CS0649
         [SerializeField]
         RectTransform m_TapDetectorRect;
-        [SerializeField]
-        Button m_SyncButton;
-        [SerializeField]
-        Sprite m_SyncEnabledSprite;
-        [SerializeField]
-        Sprite m_SyncDisabledSprite;
 #pragma warning restore CS0649
 
         public delegate void BaseEventDataHandler(BaseEventData evt);
@@ -34,7 +29,6 @@ namespace Unity.Reflect.Viewer.UI
         public static bool isPointBlockedByUI => !s_IsPointed;
         public static bool isTouchBlockedByUI => !s_IsPressed;
 
-        bool? m_CachedSyndEnabled;
 
         void Start()
         {
@@ -48,10 +42,6 @@ namespace Unity.Reflect.Viewer.UI
             EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnDrag, EventTriggerType.Drag);
             EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnBeginDrag, EventTriggerType.BeginDrag);
             EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnEndDrag, EventTriggerType.EndDrag);
-
-
-            UIStateManager.stateChanged += OnStateDataChanged;
-            m_SyncButton.onClick.AddListener(OnSyncButtonClick);
         }
 
 
@@ -97,26 +87,6 @@ namespace Unity.Reflect.Viewer.UI
         void OnEndDrag(BaseEventData eventData)
         {
             onEndDrag?.Invoke(eventData);
-        }
-
-        void OnStateDataChanged(UIStateData data)
-        {
-            m_SyncButton.interactable = data.toolbarsEnabled;
-
-            if (m_CachedSyndEnabled != data.syncEnabled)
-            {
-                m_SyncButton.image.sprite = data.syncEnabled ? m_SyncEnabledSprite : m_SyncDisabledSprite;
-                m_CachedSyndEnabled = data.syncEnabled;
-            }
-        }
-
-        void OnSyncButtonClick()
-        {
-            // Helpmode
-            if (HelpDialogController.SetHelpID(HelpModeEntryID.Sync)) return;
-
-            var enabled = !UIStateManager.current.stateData.syncEnabled;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSync, enabled));
         }
     }
 }

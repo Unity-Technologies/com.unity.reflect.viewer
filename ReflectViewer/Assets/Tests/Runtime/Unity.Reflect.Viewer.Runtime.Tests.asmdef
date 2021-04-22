@@ -1,18 +1,28 @@
 {
     "name": "Unity.Reflect.Viewer.Runtime.Tests",
+    "rootNamespace": "",
     "references": [
         "GUID:27619889b8ba8c24980f49ee34dbb44a",
         "GUID:0acc523941302664db1f4e527237feb3",
         "GUID:74d2eea16291e475bbc857905e4d8f8e",
         "GUID:ef7f6b716a264b049993a584d963484c",
-        "GUID:b9a30ca79885842dfb9a603455a835cc"
+        "GUID:b9a30ca79885842dfb9a603455a835cc",
+        "GUID:9b97b9672aeaf426fb164203d7837d84",
+        "GUID:49fede9355492427f852ef03bae5250e",
+        "GUID:6055be8ebefd69e48b49212b09b47b2f",
+        "GUID:6cf67fea318af2844a952982933563b0",
+        "GUID:ae9bdd636697449f39e092884de2e892",
+        "GUID:c6c4e6c6d92818b4f8de2a6eacc86757",
+        "GUID:859405bd118dfcb4aa093714a0b3e337"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-        "nunit.framework.dll"
+        "nunit.framework.dll",
+        "Reflect.dll",
+        "Reflect.Multiplayer.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [

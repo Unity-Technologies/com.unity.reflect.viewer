@@ -1,22 +1,25 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
 
-public class GUIZTestAttribute : MonoBehaviour
+namespace Unity.Reflect.Viewer.UI
 {
-    public CompareFunction CompareFunction = CompareFunction.Equal;
-
-    void Start()
+    public class GUIZTestAttribute : MonoBehaviour
     {
-        var graphic = GetComponent<Graphic>();
-        if (graphic != null)
+        public CompareFunction CompareFunction = CompareFunction.Equal;
+
+        void Start()
         {
-            var material = graphic.materialForRendering;
-            if (material != null)
+            var graphic = GetComponent<Graphic>();
+            if (graphic != null)
             {
-                var materialCopy = new Material(material);
-                materialCopy.SetInt("unity_GUIZTestMode", (int) CompareFunction);
-                graphic.material = materialCopy;
+                var material = graphic.materialForRendering;
+                if (material != null)
+                {
+                    var materialCopy = new Material(material);
+                    materialCopy.SetInt("unity_GUIZTestMode", (int)CompareFunction);
+                    graphic.material = materialCopy;
+                }
             }
         }
     }

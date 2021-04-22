@@ -1,5 +1,6 @@
 ﻿using System;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using UnityEngine;
 
 namespace Unity.Reflect.Viewer.UI
@@ -84,22 +85,30 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnCancelButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Cancel, true ));
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.Cancel)) return;
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Cancel, true ));
         }
 
         void OnOkButtonClicked()
         {
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.Ok)) return;
             UIStateManager.current.arStateData.currentInstructionUI.Next();
         }
 
         void OnBackButtonClicked()
         {
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.Back)) return;
             UIStateManager.current.arStateData.currentInstructionUI.Back();
         }
 
         void OnScaleButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARScaleDial));
+            // Helpmode
+            if (HelpDialogController.SetHelpID(HelpModeEntryID.Scale)) return;
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARScaleDial));
             ARScaleRadialUIController.m_previousToolbar = ToolbarType.ARInstructionSidebar;
 
             var radialPosition = m_ScaleRadial.transform.position;

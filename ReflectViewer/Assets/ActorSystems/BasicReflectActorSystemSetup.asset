@@ -1,0 +1,2181 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f0f635a83723454091343c7342b036b, type: 3}
+  m_Name: BasicReflectActorSystemSetup
+  m_EditorClassIdentifier: 
+  ComponentConfigs:
+  - id: 0
+  - id: 1
+  - id: 2
+  ActorConfigs:
+  - id: 3
+  - id: 4
+  - id: 5
+  - id: 6
+  - id: 7
+  - id: 8
+  - id: 9
+  - id: 10
+  - id: 11
+  - id: 12
+  - id: 13
+  - id: 14
+  - id: 15
+  - id: 16
+  - id: 17
+  - id: 18
+  - id: 19
+  - id: 20
+  - id: 21
+  ActorSetups:
+  - id: 22
+  - id: 23
+  - id: 24
+  - id: 25
+  - id: 26
+  - id: 27
+  - id: 28
+  - id: 29
+  - id: 30
+  - id: 31
+  - id: 32
+  - id: 33
+  - id: 34
+  - id: 35
+  - id: 36
+  - id: 37
+  - id: 38
+  - id: 39
+  - id: 40
+  references:
+    version: 1
+    00000000:
+      type: {class: ComponentConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: e3d44751-f1c4-464f-874a-2c3d88deaccd
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Actor.NetComponent
+        InputMultiplicity: 0
+        OutputMultiplicity: 3
+        DisplayName: NetComponent
+        IsRemoved: 0
+    00000001:
+      type: {class: ComponentConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: b767980e-db95-4476-a47a-1c8410bd03a7
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcComponent
+        InputMultiplicity: 0
+        OutputMultiplicity: 2
+        DisplayName: RpcComponent
+        IsRemoved: 0
+    00000002:
+      type: {class: ComponentConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 87b451e5-2dbb-4200-931f-16117e1ef4f1
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Actor.EventComponent
+        InputMultiplicity: 4
+        OutputMultiplicity: 4
+        DisplayName: EventComponent
+        IsRemoved: 0
+    00000003:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 376ba3f0-ccc6-4c28-b5b7-ebb1787160d6
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.BoundingBoxActor
+        InputConfigs:
+        - m_Id: a771104d-5bfe-4119-afa8-62d4606387bd
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.SpatialDataChanged]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.SpatialDataChanged
+          m_MemberName: OnSpatialDataChanged
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: SpatialDataChanged
+          IsRemoved: 0
+        - m_Id: 8e822e8d-9a6b-4565-8a30-8b3204f01173
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.GameObjectCreated]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GameObjectCreated
+          m_MemberName: OnGameObjectCreated
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: GameObjectCreated
+          IsRemoved: 0
+        - m_Id: 6fba83b5-38c5-4026-b2a0-975b0c79d37e
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.UpdateVisibility]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.UpdateVisibility
+          m_MemberName: UpdateVisibility
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: UpdateVisibility
+          IsRemoved: 0
+        - m_Id: c294aeb7-b8ee-4277-9c81-265a7559592b
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.EventContext`1[Unity.Reflect.Streaming.UpdateSetting`1[Unity.Reflect.Streaming.BoundingBoxActor+Settings]]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.UpdateSetting`1[Unity.Reflect.Streaming.BoundingBoxActor+Settings]
+          m_MemberName: OnUpdateSetting
+          PortType: 0
+          ComponentConfigId: 87b451e5-2dbb-4200-931f-16117e1ef4f1
+          DisplayName: UpdateSetting
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: b699ec66-4347-489f-aa9b-adc943e26d8c
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.EventOutput`1[Unity.Reflect.Streaming.GlobalBoundsUpdated]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GlobalBoundsUpdated
+          m_MemberName: m_GlobalBoundsUpdatedOutput
+          PortType: 1
+          ComponentConfigId: 87b451e5-2dbb-4200-931f-16117e1ef4f1
+          DisplayName: GlobalBoundsUpdated
+          IsRemoved: 0
+        IsBoundToMainThread: 1
+        GroupName: Others
+        DisplayName: BoundingBoxActor
+        IsRemoved: 0
+    00000004:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: b8915b90-89da-46a4-a497-f584fd743fe3
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.BridgeActor
+        InputConfigs: []
+        OutputConfigs:
+        - m_Id: 30a3ddd0-4c72-460b-bd82-8db82af4deda
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.UpdateManifests]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.UpdateManifests
+          m_MemberName: m_UpdateManifestsOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: UpdateManifests
+          IsRemoved: 0
+        - m_Id: 006af50d-a458-4376-89e1-96767c572ffc
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.SetHighlightVisibility]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.SetHighlightVisibility
+          m_MemberName: m_SetHighlightVisibilityOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: SetHighlightVisibility
+          IsRemoved: 0
+        - m_Id: 58103bfe-8b91-435b-898b-c318c21482e7
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.GetFilterStates]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GetFilterStates
+          m_MemberName: m_GetFilterStatesOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: GetFilterStates
+          IsRemoved: 0
+        - m_Id: ae8d784d-5d92-4dc6-b41f-874bad328b70
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.SetHighlightFilter]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.SetHighlightFilter
+          m_MemberName: m_SetHighlightFilterOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: SetHighlightFilter
+          IsRemoved: 0
+        - m_Id: f9828011-e4fc-478d-8f20-b2f1be97094b
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.PickFromRay]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.PickFromRay
+          m_MemberName: m_PickFromRayOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: PickFromRay
+          IsRemoved: 0
+        - m_Id: d7450f40-8c9f-4317-a5ed-4ac99f3a373c
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.PickFromSamplePoints]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.PickFromSamplePoints
+          m_MemberName: m_PickFromSamplePointsOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: PickFromSamplePoints
+          IsRemoved: 0
+        - m_Id: ee6ce3be-9f1c-4292-8361-ad1fc6cad9f3
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.PickFromDistance]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.PickFromDistance
+          m_MemberName: m_PickFromDistanceOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: PickFromDistance
+          IsRemoved: 0
+        IsBoundToMainThread: 1
+        GroupName: Others
+        DisplayName: BridgeActor
+        IsRemoved: 0
+    00000005:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: b21f1053-f462-4e12-9b0e-27112a6b32f7
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.MeshConverterActor
+        InputConfigs:
+        - m_Id: 30e8a966-e6dd-40db-b128-8ccf44fa5e84
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncMesh]]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncMesh]
+          m_MemberName: OnConvert
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: Convert
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: ee39d758-3c20-41f0-bb8c-569a83ecc4a5
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.DelegateJob]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.DelegateJob
+          m_MemberName: m_DelegateJobOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: DelegateJob
+          IsRemoved: 0
+        IsBoundToMainThread: 0
+        GroupName: Others
+        DisplayName: MeshConverterActor
+        IsRemoved: 0
+    00000006:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: f9487602-b5ee-4fd6-8041-220b7e84b11e
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.TextureConverterActor
+        InputConfigs:
+        - m_Id: d650153c-ba3d-40f2-a08f-2d33f2c3368c
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncTexture]]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncTexture]
+          m_MemberName: OnConvert
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: Convert
+          IsRemoved: 0
+        OutputConfigs: []
+        IsBoundToMainThread: 1
+        GroupName: Others
+        DisplayName: TextureConverterActor
+        IsRemoved: 0
+    00000007:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 7f70fde2-34b7-479c-aff2-d24fa06f118d
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.MaterialConverterActor
+        InputConfigs:
+        - m_Id: 1c4fd662-508d-4b3b-90f3-316d54f94f63
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncMaterial]]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncMaterial]
+          m_MemberName: OnConvert
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: Convert
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: 409e3cc4-cc02-491a-8aaf-374c0f811828
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.ReleaseUnityResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ReleaseUnityResource
+          m_MemberName: m_ReleaseUnityResourceOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: ReleaseUnityResource
+          IsRemoved: 0
+        - m_Id: b9c202ff-6943-4302-bd1a-e753e4f68b4f
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.ReleaseEntryData]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ReleaseEntryData
+          m_MemberName: m_ReleaseEntryDataOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: ReleaseEntryData
+          IsRemoved: 0
+        - m_Id: e093dbbc-c89a-4272-8813-42715330279f
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.AcquireEntryDataFromModelData]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireEntryDataFromModelData
+          m_MemberName: m_AcquireEntryDataFromModelDataOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireEntryDataFromModelData
+          IsRemoved: 0
+        - m_Id: f83ae686-7c64-439e-ada7-53d12adb111f
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.AcquireUnityResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireUnityResource
+          m_MemberName: m_AcquireUnityResourceOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireUnityResource
+          IsRemoved: 0
+        IsBoundToMainThread: 1
+        GroupName: Others
+        DisplayName: MaterialConverterActor
+        IsRemoved: 0
+    00000008:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 1e5ef57e-3201-4a24-9619-37da13f13a1f
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.GameObjectBuilderActor
+        InputConfigs:
+        - m_Id: 9b084d5a-ee73-478e-b564-75adfa9264be
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.BuildGameObject]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.BuildGameObject
+          m_MemberName: OnBuildGameObject
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: BuildGameObject
+          IsRemoved: 0
+        OutputConfigs: []
+        IsBoundToMainThread: 1
+        GroupName: Others
+        DisplayName: GameObjectBuilderActor
+        IsRemoved: 0
+    00000009:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 4f351d8d-fe4c-485d-89ce-000759224a5c
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.GameObjectConverterActor
+        InputConfigs:
+        - m_Id: 423332ff-7aa3-45fe-8652-579c2e8b372f
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.ConvertToGameObject]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ConvertToGameObject
+          m_MemberName: OnConvertToGameObject
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: ConvertToGameObject
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: 44d7d856-b384-49e0-a4af-915e65152325
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.ReleaseUnityResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ReleaseUnityResource
+          m_MemberName: m_ReleaseUnityResourceOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: ReleaseUnityResource
+          IsRemoved: 0
+        - m_Id: 85c02e6c-e6fa-4b7e-b1c7-d8478491d41a
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.ReleaseEntryData]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ReleaseEntryData
+          m_MemberName: m_ReleaseEntryDataOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: ReleaseEntryData
+          IsRemoved: 0
+        - m_Id: 8f651bff-a793-48bf-9933-e67324f5ffc4
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.AcquireEntryDataFromModelData]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireEntryDataFromModelData
+          m_MemberName: m_AcquireEntryDataFromModelOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireEntryDataFromModel
+          IsRemoved: 0
+        - m_Id: 0fddd1e0-1d35-4c72-bc50-512e63c0e9b7
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.AcquireUnityResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireUnityResource
+          m_MemberName: m_AcquireUnityResourceOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireUnityResource
+          IsRemoved: 0
+        - m_Id: d4f2e115-f3c1-45ed-9ab9-81dfd4058448
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.BuildGameObject]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.BuildGameObject
+          m_MemberName: m_BuildGameObjectOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: BuildGameObject
+          IsRemoved: 0
+        IsBoundToMainThread: 0
+        GroupName: Others
+        DisplayName: GameObjectConverterActor
+        IsRemoved: 0
+    0000000A:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 06621c63-bb6b-4607-951f-ebcffef2d639
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.GameObjectCreatorActor
+        InputConfigs:
+        - m_Id: 54a5884f-c368-4eaa-bbb4-c35ef87c77cf
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.CreateGameObject]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.CreateGameObject
+          m_MemberName: OnCreateGameObject
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: CreateGameObject
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: 19da8d43-861e-4ab9-bead-5a9fa0441ee1
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.ReleaseEntryData]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ReleaseEntryData
+          m_MemberName: m_ReleaseEntryDataOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: ReleaseEntryData
+          IsRemoved: 0
+        - m_Id: 482573a0-53e6-4e68-97fc-90e3adcf0b07
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.ReleaseResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ReleaseResource
+          m_MemberName: m_ReleaseResourceOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: ReleaseResource
+          IsRemoved: 0
+        - m_Id: b1b0de66-7063-485d-ae15-ba77d6da44f0
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.AcquireEntryData]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireEntryData
+          m_MemberName: m_AcquireEntryDataOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireEntryData
+          IsRemoved: 0
+        - m_Id: d2fdc757-4eee-441c-89f5-517a1fd444a0
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.AcquireResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireResource
+          m_MemberName: m_AcquireResourceOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireResource
+          IsRemoved: 0
+        - m_Id: 4a2b5131-b79a-438a-86d7-2963325a6b0c
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.AcquireEntryDataFromModelData]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireEntryDataFromModelData
+          m_MemberName: m_AcquireEntryDataFromModelDataOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireEntryDataFromModelData
+          IsRemoved: 0
+        - m_Id: 82625189-acfc-4d14-8cc5-541e8dfd0f8d
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.ConvertToGameObject]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ConvertToGameObject
+          m_MemberName: m_ConvertToGameObjectOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: ConvertToGameObject
+          IsRemoved: 0
+        IsBoundToMainThread: 0
+        GroupName: Others
+        DisplayName: GameObjectCreatorActor
+        IsRemoved: 0
+    0000000B:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 1c22a4b6-4093-423c-a4c6-b4631bd08465
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.HighlightActor
+        InputConfigs:
+        - m_Id: 5b07edb3-e672-4c68-980e-02bb65fe18b9
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.GameObjectCreated]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GameObjectCreated
+          m_MemberName: OnGameObjectCreated
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: GameObjectCreated
+          IsRemoved: 0
+        - m_Id: 2b2a29ad-f816-4af2-9dd4-438f53e87c94
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.SetHighlightVisibility]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.SetHighlightVisibility
+          m_MemberName: OnSetHighlightVisibility
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: SetHighlightVisibility
+          IsRemoved: 0
+        - m_Id: 027478e3-decc-4c04-b892-ab998c582159
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.GetFilterStates]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GetFilterStates
+          m_MemberName: OnGetFilterStates
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: GetFilterStates
+          IsRemoved: 0
+        - m_Id: 72f755fa-ef2d-4bf0-90e3-0e7c2b31e0d2
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.SetHighlightFilter]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.SetHighlightFilter
+          m_MemberName: OnSetHighlightFilter
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: SetHighlightFilter
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: 073e204a-9d01-478a-95d7-a66ccbbcaff3
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.EventOutput`1[Unity.Reflect.Streaming.MetadataCategoriesChanged]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.MetadataCategoriesChanged
+          m_MemberName: m_MetadataCategoriesChangedOutput
+          PortType: 1
+          ComponentConfigId: 87b451e5-2dbb-4200-931f-16117e1ef4f1
+          DisplayName: MetadataCategoriesChanged
+          IsRemoved: 0
+        - m_Id: 067971ec-ef21-4618-abe8-ba8e45f1c85d
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.EventOutput`1[Unity.Reflect.Streaming.MetadataGroupsChanged]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.MetadataGroupsChanged
+          m_MemberName: m_MetadataGroupsChangedOutput
+          PortType: 1
+          ComponentConfigId: 87b451e5-2dbb-4200-931f-16117e1ef4f1
+          DisplayName: MetadataGroupsChanged
+          IsRemoved: 0
+        IsBoundToMainThread: 1
+        GroupName: Others
+        DisplayName: HighlightActor
+        IsRemoved: 0
+    0000000C:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 3eec8f6c-1834-4528-9b5b-271b51626538
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.IndicatorActor
+        InputConfigs:
+        - m_Id: e565b07a-a4bf-43dd-9cbf-8ee31bbe432b
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.EntryDataChanged]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.EntryDataChanged
+          m_MemberName: OnEntryDataChanged
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: EntryDataChanged
+          IsRemoved: 0
+        - m_Id: 61eb96e9-015b-4023-b925-e8ec5f54ece1
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.SpatialDataChanged]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.SpatialDataChanged
+          m_MemberName: OnSpatialDataChanged
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: SpatialDataChanged
+          IsRemoved: 0
+        - m_Id: f009b434-2bbc-42ee-9486-6746f8f1228f
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.GameObjectCreated]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GameObjectCreated
+          m_MemberName: OnGameObjectCreated
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: GameObjectCreated
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: 615f90de-afc1-4870-a354-a1983d801995
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.EventOutput`1[Unity.Reflect.Streaming.AssetCountChanged]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AssetCountChanged
+          m_MemberName: m_AssetCountChangedOutput
+          PortType: 1
+          ComponentConfigId: 87b451e5-2dbb-4200-931f-16117e1ef4f1
+          DisplayName: AssetCountChanged
+          IsRemoved: 0
+        - m_Id: 2dae595c-ac2a-452a-bc25-4bfd66a0d113
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.EventOutput`1[Unity.Reflect.Streaming.InstanceCountChanged]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.InstanceCountChanged
+          m_MemberName: m_InstanceCountChangedOutput
+          PortType: 1
+          ComponentConfigId: 87b451e5-2dbb-4200-931f-16117e1ef4f1
+          DisplayName: InstanceCountChanged
+          IsRemoved: 0
+        - m_Id: 9315cbeb-602e-475a-a705-4fa2d749fad5
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.EventOutput`1[Unity.Reflect.Streaming.GameObjectCountChanged]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GameObjectCountChanged
+          m_MemberName: m_GameObjectCountChangedOutput
+          PortType: 1
+          ComponentConfigId: 87b451e5-2dbb-4200-931f-16117e1ef4f1
+          DisplayName: GameObjectCountChanged
+          IsRemoved: 0
+        - m_Id: fb7c8270-ec13-4b4a-b39e-33d6f325ded7
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.EventOutput`1[Unity.Reflect.Streaming.StreamingProgressed]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.StreamingProgressed
+          m_MemberName: m_StreamingProgressedOutput
+          PortType: 1
+          ComponentConfigId: 87b451e5-2dbb-4200-931f-16117e1ef4f1
+          DisplayName: StreamingProgressed
+          IsRemoved: 0
+        IsBoundToMainThread: 0
+        GroupName: Others
+        DisplayName: IndicatorActor
+        IsRemoved: 0
+    0000000D:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 87f1a6c1-8fe7-45ba-9182-5cf9052dc8c7
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.InstanceStreamingActor
+        InputConfigs:
+        - m_Id: 948e7420-a3e3-4a40-92f7-344abeb184f5
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.UpdateStreaming]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.UpdateStreaming
+          m_MemberName: OnUpdateStreaming
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: UpdateStreaming
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: 85683621-00c0-44b1-9511-45a188ab4bee
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.GameObjectCreated]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GameObjectCreated
+          m_MemberName: m_GameObjectCreatedOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: GameObjectCreated
+          IsRemoved: 0
+        - m_Id: ff4f40b6-c6ec-4adf-a853-094caba23381
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.CreateGameObject]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.CreateGameObject
+          m_MemberName: m_CreateGameObjectOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: CreateGameObject
+          IsRemoved: 0
+        IsBoundToMainThread: 0
+        GroupName: Others
+        DisplayName: InstanceStreamingActor
+        IsRemoved: 0
+    0000000E:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: dff0d51b-f7b4-4597-99c9-4257f2f7a944
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.JobActor
+        InputConfigs:
+        - m_Id: e925ab73-006e-4c93-af93-d51beec8811b
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.DelegateJob]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.DelegateJob
+          m_MemberName: OnDelegateJob
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: DelegateJob
+          IsRemoved: 0
+        OutputConfigs: []
+        IsBoundToMainThread: 1
+        GroupName: Others
+        DisplayName: JobActor
+        IsRemoved: 0
+    0000000F:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 2d3cdc3b-7d33-4760-aaa7-f4685d06fa64
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.LightActor
+        InputConfigs:
+        - m_Id: acfd5680-9b9d-4194-b3b3-31305e5dccd4
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.GameObjectCreated]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GameObjectCreated
+          m_MemberName: OnGameObjectCreated
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: GameObjectCreated
+          IsRemoved: 0
+        - m_Id: 6cccea88-c60b-4591-bac2-0afada27d7b6
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.EventContext`1[Unity.Reflect.Streaming.UpdateSetting`1[Unity.Reflect.Streaming.LightActor+Settings]]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.UpdateSetting`1[Unity.Reflect.Streaming.LightActor+Settings]
+          m_MemberName: OnUpdateSettings
+          PortType: 0
+          ComponentConfigId: 87b451e5-2dbb-4200-931f-16117e1ef4f1
+          DisplayName: UpdateSettings
+          IsRemoved: 0
+        OutputConfigs: []
+        IsBoundToMainThread: 1
+        GroupName: Others
+        DisplayName: LightActor
+        IsRemoved: 0
+    00000010:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: d0e47eaf-9ac3-4016-a8ea-855871859e25
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.ManifestActor
+        InputConfigs:
+        - m_Id: 9ee02aac-f8c5-4c90-bd4a-6d2aa043f5d3
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.UpdateManifests]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.UpdateManifests
+          m_MemberName: OnUpdateManifests
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: UpdateManifests
+          IsRemoved: 0
+        - m_Id: 357e61af-78e3-47a4-86ab-0771be13b517
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.AcquireEntryData]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireEntryData
+          m_MemberName: OnAcquireEntryData
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireEntryData
+          IsRemoved: 0
+        - m_Id: 41bfffad-f939-4ed5-b823-69aba55c6904
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.AcquireEntryDataFromModelData]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireEntryDataFromModelData
+          m_MemberName: OnAcquireEntryDataFromModelData
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireEntryDataFromModelData
+          IsRemoved: 0
+        - m_Id: b03c46ee-b93a-4f1b-8715-97a88c2f2263
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.ReleaseEntryData]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ReleaseEntryData
+          m_MemberName: OnReleaseEntryData
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: ReleaseEntryData
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: 6dc99df0-eae2-4ec8-9528-a17850c3f4af
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.EntryDataChanged]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.EntryDataChanged
+          m_MemberName: m_EntryDataChangedOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: EntryDataChanged
+          IsRemoved: 0
+        - m_Id: 849fbd4e-36c1-49fd-8de4-9343734d5921
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.SpatialDataChanged]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.SpatialDataChanged
+          m_MemberName: m_SpatialDataChangedOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: SpatialDataChanged
+          IsRemoved: 0
+        - m_Id: 69d26fee-9877-4497-ab33-13c0344d38ef
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.GetManifests]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GetManifests
+          m_MemberName: m_GetManifestsOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: GetManifests
+          IsRemoved: 0
+        IsBoundToMainThread: 0
+        GroupName: Others
+        DisplayName: ManifestActor
+        IsRemoved: 0
+    00000011:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: ffd87152-e46c-45f5-8214-9d7a32bd633c
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.ModelResourceActor
+        InputConfigs:
+        - m_Id: adbe27aa-93b2-4bd2-a749-91c7377d003b
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.AcquireResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireResource
+          m_MemberName: OnAcquireResource
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireResource
+          IsRemoved: 0
+        - m_Id: 3660346c-4b4d-4105-ba0a-51fbd07b3afe
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.ReleaseResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ReleaseResource
+          m_MemberName: OnReleaseResource
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: ReleaseResource
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: c6a26f49-9015-4756-8dba-6d48f9c7a9d8
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.GetSyncModel]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GetSyncModel
+          m_MemberName: m_GetSyncModelOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: GetSyncModel
+          IsRemoved: 0
+        IsBoundToMainThread: 0
+        GroupName: Others
+        DisplayName: ModelResourceActor
+        IsRemoved: 0
+    00000012:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 141dc785-32f7-4f7b-ab9f-990702ce8d1d
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.SpatialActor
+        InputConfigs:
+        - m_Id: a5d1d76f-256b-4e49-b44e-d8508ae0f323
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.SpatialDataChanged]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.SpatialDataChanged
+          m_MemberName: OnSpatialDataChanged
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: SpatialDataChanged
+          IsRemoved: 0
+        - m_Id: 228ef8f1-f93d-46ec-aff2-ce88242194b1
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.GameObjectCreated]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GameObjectCreated
+          m_MemberName: OnGameObjectCreated
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: GameObjectCreated
+          IsRemoved: 0
+        - m_Id: 049c00c6-51f4-464d-918c-c44277e57794
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.PickFromRay]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.PickFromRay
+          m_MemberName: OnPickFromRay
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: PickFromRay
+          IsRemoved: 0
+        - m_Id: 451d5188-0389-49f4-82aa-0d5aa2650974
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.PickFromDistance]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.PickFromDistance
+          m_MemberName: OnPickFromDistance
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: PickFromDistance
+          IsRemoved: 0
+        - m_Id: 23de304c-4724-4391-8353-9917756c4508
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.PickFromSamplePoints]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.PickFromSamplePoints
+          m_MemberName: OnPickFromSamplePoints
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: PickFromSamplePoints
+          IsRemoved: 0
+        - m_Id: 209826ce-fc15-4ff1-bcd4-99ac73a82a58
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.EventContext`1[Unity.Reflect.Streaming.UpdateSetting`1[Unity.Reflect.Streaming.SpatialActor+Settings]]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.UpdateSetting`1[Unity.Reflect.Streaming.SpatialActor+Settings]
+          m_MemberName: OnUpdateSetting
+          PortType: 0
+          ComponentConfigId: 87b451e5-2dbb-4200-931f-16117e1ef4f1
+          DisplayName: UpdateSetting
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: 920ddf61-0d2d-45a0-abce-b129d97f3ddb
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.UpdateStreaming]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.UpdateStreaming
+          m_MemberName: m_UpdateStreamingOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: UpdateStreaming
+          IsRemoved: 0
+        - m_Id: 6de29097-4e37-40ea-bcb4-b4dab5d6c342
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.UpdateVisibility]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.UpdateVisibility
+          m_MemberName: m_UpdateVisibilityOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: UpdateVisibility
+          IsRemoved: 0
+        IsBoundToMainThread: 1
+        GroupName: Others
+        DisplayName: SpatialActor
+        IsRemoved: 0
+    00000013:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: 2ec3e959-e3b6-43ae-a85b-93630a862215
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.UnityResourceActor
+        InputConfigs:
+        - m_Id: 84f3105a-400e-491e-9309-5c7009f76a3c
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.AcquireUnityResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireUnityResource
+          m_MemberName: OnAcquireUnityResource
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireUnityResource
+          IsRemoved: 0
+        - m_Id: b1f9faf9-cc88-4fbb-8f01-fc379b8272df
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetContext`1[Unity.Reflect.Streaming.ReleaseUnityResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ReleaseUnityResource
+          m_MemberName: OnReleaseUnityResource
+          PortType: 0
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: ReleaseUnityResource
+          IsRemoved: 0
+        OutputConfigs:
+        - m_Id: 6164be3e-a013-47f4-baae-e22b8f54091e
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.AcquireResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.AcquireResource
+          m_MemberName: m_AcquireResourceOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: AcquireResource
+          IsRemoved: 0
+        - m_Id: 73815bcb-eb29-4718-bb39-947efc6a8965
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.NetOutput`1[Unity.Reflect.Streaming.ReleaseResource]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ReleaseResource
+          m_MemberName: m_ReleaseResourceOutput
+          PortType: 1
+          ComponentConfigId: e3d44751-f1c4-464f-874a-2c3d88deaccd
+          DisplayName: ReleaseResource
+          IsRemoved: 0
+        - m_Id: bdf90677-974a-4999-b843-3a8f122e62b1
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncMesh]]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncMesh]
+          m_MemberName: m_ConvertMeshOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: ConvertMesh
+          IsRemoved: 0
+        - m_Id: 05efe345-fa3d-4467-b56f-33b18b976f49
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncMaterial]]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncMaterial]
+          m_MemberName: m_ConvertMaterialOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: ConvertMaterial
+          IsRemoved: 0
+        - m_Id: f2608763-7231-4f3f-a039-0dece163cdc4
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcOutput`1[Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncTexture]]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.ConvertResource`1[Unity.Reflect.Model.SyncTexture]
+          m_MemberName: m_ConvertTextureOutput
+          PortType: 1
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: ConvertTexture
+          IsRemoved: 0
+        IsBoundToMainThread: 0
+        GroupName: Others
+        DisplayName: UnityResourceActor
+        IsRemoved: 0
+    00000014:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: d933b32c-b090-4a7c-b483-9f0c925de6d6
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Actor.PubSubActor
+        InputConfigs: []
+        OutputConfigs: []
+        IsBoundToMainThread: 0
+        GroupName: Others
+        DisplayName: PubSubActor
+        IsRemoved: 0
+    00000015:
+      type: {class: ActorConfig, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        m_Id: d35da300-0382-4db5-b402-19152cc2fb69
+        m_IsGeneratedId: 1
+        m_TypeNormalizedFullName: Unity.Reflect.Streaming.DataProviderActor
+        InputConfigs:
+        - m_Id: ca8d8c3f-1a88-4b68-8ade-2bfa27b29a2f
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.GetSyncModel]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GetSyncModel
+          m_MemberName: OnGetSyncModel
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: GetSyncModel
+          IsRemoved: 0
+        - m_Id: 26f5bcca-43af-405f-b476-7c3ffe23e544
+          m_IsGeneratedId: 1
+          m_TypeNormalizedFullName: Unity.Reflect.Actor.RpcContext`1[Unity.Reflect.Streaming.GetManifests]
+          m_MessageTypeNormalizedFullName: Unity.Reflect.Streaming.GetManifests
+          m_MemberName: OnGetManifests
+          PortType: 0
+          ComponentConfigId: b767980e-db95-4476-a47a-1c8410bd03a7
+          DisplayName: GetManifests
+          IsRemoved: 0
+        OutputConfigs: []
+        IsBoundToMainThread: 0
+        GroupName: Others
+        DisplayName: DataProviderActor
+        IsRemoved: 0
+    00000016:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 784d2474-f9cc-4d3f-b827-a82aa63cdddf
+        ConfigId: 376ba3f0-ccc6-4c28-b5b7-ebb1787160d6
+        Settings:
+          id: 41
+        Inputs:
+        - Id: 5c15527c-1341-4e35-9d40-ed29f569e0ff
+          ConfigId: a771104d-5bfe-4119-afa8-62d4606387bd
+          Links:
+          - id: 42
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 4e03d421-c1fe-4717-a265-eef80c22e36b
+          ConfigId: 8e822e8d-9a6b-4565-8a30-8b3204f01173
+          Links:
+          - id: 43
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 88be7118-ee76-4d58-91e0-535139683626
+          ConfigId: 6fba83b5-38c5-4026-b2a0-975b0c79d37e
+          Links:
+          - id: 44
+          IsValid: 1
+          IsRemoved: 0
+        - Id: f4279894-d000-4e16-b61d-15928c507224
+          ConfigId: c294aeb7-b8ee-4277-9c81-265a7559592b
+          Links: []
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: eb0ae77c-b23a-4821-978f-6cea68acd79a
+          ConfigId: b699ec66-4347-489f-aa9b-adc943e26d8c
+          Links: []
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: BoundingBoxActor
+        Position: {x: 142, y: 389}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000017:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: ab018f49-14cf-4dc6-9bb4-da715ea29dae
+        ConfigId: b8915b90-89da-46a4-a497-f584fd743fe3
+        Settings:
+          id: 45
+        Inputs: []
+        Outputs:
+        - Id: 7d1429a7-3f15-4243-acd2-9127eea4bc29
+          ConfigId: 30a3ddd0-4c72-460b-bd82-8db82af4deda
+          Links:
+          - id: 46
+          IsValid: 1
+          IsRemoved: 0
+        - Id: d7b586a7-f5f1-45ec-a1fa-7e062dfc8eda
+          ConfigId: 006af50d-a458-4376-89e1-96767c572ffc
+          Links:
+          - id: 47
+          IsValid: 1
+          IsRemoved: 0
+        - Id: fa46efef-b7fb-4199-aa09-2d4c10ddc659
+          ConfigId: 58103bfe-8b91-435b-898b-c318c21482e7
+          Links:
+          - id: 48
+          IsValid: 1
+          IsRemoved: 0
+        - Id: cdaaed48-ac72-4731-989e-29b284153a10
+          ConfigId: ae8d784d-5d92-4dc6-b41f-874bad328b70
+          Links:
+          - id: 49
+          IsValid: 1
+          IsRemoved: 0
+        - Id: b9aef6af-0844-47a9-b652-f3dacdda1523
+          ConfigId: f9828011-e4fc-478d-8f20-b2f1be97094b
+          Links:
+          - id: 50
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 7a65d333-19c1-4080-8b75-b5450a8a25f5
+          ConfigId: d7450f40-8c9f-4317-a5ed-4ac99f3a373c
+          Links:
+          - id: 51
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 1a564590-280e-4150-a3b4-388e1d0191b6
+          ConfigId: ee6ce3be-9f1c-4292-8361-ad1fc6cad9f3
+          Links:
+          - id: 52
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: BridgeActor
+        Position: {x: 1487, y: 773}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000018:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 8b0a76db-5398-450d-8a23-60834d48c635
+        ConfigId: 1e5ef57e-3201-4a24-9619-37da13f13a1f
+        Settings:
+          id: 53
+        Inputs:
+        - Id: bd9fc9be-5d3a-4b86-83de-c8337dc2673e
+          ConfigId: 9b084d5a-ee73-478e-b564-75adfa9264be
+          Links:
+          - id: 54
+          IsValid: 1
+          IsRemoved: 0
+        Outputs: []
+        DisplayName: GameObjectBuilderActor
+        Position: {x: 1287, y: 776}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000019:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 5c68c8f6-1c72-4192-b577-bb37acc8ed7c
+        ConfigId: 4f351d8d-fe4c-485d-89ce-000759224a5c
+        Settings:
+          id: 55
+        Inputs:
+        - Id: c9d26d92-141c-4adf-aa33-11951ded83ab
+          ConfigId: 423332ff-7aa3-45fe-8652-579c2e8b372f
+          Links:
+          - id: 56
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: 2b4d3895-95fc-427c-add4-30a6512ad006
+          ConfigId: 44d7d856-b384-49e0-a4af-915e65152325
+          Links:
+          - id: 57
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 63d767bd-0eca-4590-a1f2-a01c5079490a
+          ConfigId: 85c02e6c-e6fa-4b7e-b1c7-d8478491d41a
+          Links:
+          - id: 58
+          IsValid: 1
+          IsRemoved: 0
+        - Id: b696b0a6-71e2-4fa6-9579-a452474e4063
+          ConfigId: 8f651bff-a793-48bf-9933-e67324f5ffc4
+          Links:
+          - id: 59
+          IsValid: 1
+          IsRemoved: 0
+        - Id: ab77c1e8-5856-4b2d-9337-03ce6c68a44a
+          ConfigId: 0fddd1e0-1d35-4c72-bc50-512e63c0e9b7
+          Links:
+          - id: 60
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 3dcdb13a-a34e-4ac1-bb08-cb3c5b11bc68
+          ConfigId: d4f2e115-f3c1-45ed-9ab9-81dfd4058448
+          Links:
+          - id: 54
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: GameObjectConverterActor
+        Position: {x: 857, y: 608}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    0000001A:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 15618604-3ee5-4965-9814-4e7ae0657014
+        ConfigId: 06621c63-bb6b-4607-951f-ebcffef2d639
+        Settings:
+          id: 61
+        Inputs:
+        - Id: 6596e292-8d2c-4832-83a8-392868658bdc
+          ConfigId: 54a5884f-c368-4eaa-bbb4-c35ef87c77cf
+          Links:
+          - id: 62
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: 50ab24d4-da7f-4c9f-b979-8ec02e0a61bb
+          ConfigId: 19da8d43-861e-4ab9-bead-5a9fa0441ee1
+          Links:
+          - id: 63
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 2e5b0819-97bb-4a9a-8c49-26fe88e43842
+          ConfigId: 482573a0-53e6-4e68-97fc-90e3adcf0b07
+          Links:
+          - id: 64
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 3f0a1692-3a3c-4be9-b417-0096ea2a0774
+          ConfigId: b1b0de66-7063-485d-ae15-ba77d6da44f0
+          Links:
+          - id: 65
+          IsValid: 1
+          IsRemoved: 0
+        - Id: ccfa7e43-36ea-4e4c-820a-10741e75319c
+          ConfigId: d2fdc757-4eee-441c-89f5-517a1fd444a0
+          Links:
+          - id: 66
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 7a1de23f-1bbb-4441-a2da-540b5620b59b
+          ConfigId: 4a2b5131-b79a-438a-86d7-2963325a6b0c
+          Links:
+          - id: 67
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 4ded5047-671d-40c2-bb1e-00d476807d25
+          ConfigId: 82625189-acfc-4d14-8cc5-541e8dfd0f8d
+          Links:
+          - id: 56
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: GameObjectCreatorActor
+        Position: {x: 479, y: 336}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    0000001B:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 0aa77e04-a99e-4a2e-b2c3-f4b47e2842a4
+        ConfigId: 1c22a4b6-4093-423c-a4c6-b4631bd08465
+        Settings:
+          id: 68
+        Inputs:
+        - Id: d019666e-fb15-4b3d-a1dc-87d0e6918a46
+          ConfigId: 5b07edb3-e672-4c68-980e-02bb65fe18b9
+          Links:
+          - id: 69
+          IsValid: 1
+          IsRemoved: 0
+        - Id: ceb56879-d8a4-43ca-a30d-860f6c32c330
+          ConfigId: 2b2a29ad-f816-4af2-9dd4-438f53e87c94
+          Links:
+          - id: 47
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 2201346b-c1ef-4b7f-a684-7b5f14fed1af
+          ConfigId: 027478e3-decc-4c04-b892-ab998c582159
+          Links:
+          - id: 48
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 4d8bf412-6e8f-4ddb-bf7e-de9e0800884c
+          ConfigId: 72f755fa-ef2d-4bf0-90e3-0e7c2b31e0d2
+          Links:
+          - id: 49
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: e9b06fdb-866e-4919-9e61-ed31e9a4044a
+          ConfigId: 073e204a-9d01-478a-95d7-a66ccbbcaff3
+          Links: []
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 322c5642-0fab-4cf8-9944-eed9a25fcc2d
+          ConfigId: 067971ec-ef21-4618-abe8-ba8e45f1c85d
+          Links: []
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: HighlightActor
+        Position: {x: 893, y: 41}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    0000001C:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 7e15f81a-1cce-44fe-be80-97ee4e2cfd07
+        ConfigId: 3eec8f6c-1834-4528-9b5b-271b51626538
+        Settings:
+          id: 70
+        Inputs:
+        - Id: 7184e0d0-da5c-4d11-b6b4-4bdeedb1b99c
+          ConfigId: e565b07a-a4bf-43dd-9cbf-8ee31bbe432b
+          Links:
+          - id: 71
+          IsValid: 1
+          IsRemoved: 0
+        - Id: c6cd8689-d5fd-481c-a1fe-23f424db680c
+          ConfigId: 61eb96e9-015b-4023-b925-e8ec5f54ece1
+          Links:
+          - id: 72
+          IsValid: 1
+          IsRemoved: 0
+        - Id: d1b47662-2aca-40dd-a6b7-a218ecbbf4b4
+          ConfigId: f009b434-2bbc-42ee-9486-6746f8f1228f
+          Links:
+          - id: 73
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: 3cfc6c30-901d-4562-8f84-dce4ce65f23e
+          ConfigId: 615f90de-afc1-4870-a354-a1983d801995
+          Links: []
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 2d26f356-5dbf-44de-976d-56c42a0e8504
+          ConfigId: 2dae595c-ac2a-452a-bc25-4bfd66a0d113
+          Links: []
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 5753c809-5f94-4c15-b904-7f351afd8117
+          ConfigId: 9315cbeb-602e-475a-a705-4fa2d749fad5
+          Links: []
+          IsValid: 1
+          IsRemoved: 0
+        - Id: fea54a33-6183-4acb-a401-69b77610e1c9
+          ConfigId: fb7c8270-ec13-4b4a-b39e-33d6f325ded7
+          Links: []
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: IndicatorActor
+        Position: {x: 581, y: 137}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    0000001D:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 84f591b5-a0e9-45b5-92b3-cb100b70c414
+        ConfigId: 87f1a6c1-8fe7-45ba-9182-5cf9052dc8c7
+        Settings:
+          id: 74
+        Inputs:
+        - Id: a28e3338-8d22-49ab-9df8-fe272a83c9ee
+          ConfigId: 948e7420-a3e3-4a40-92f7-344abeb184f5
+          Links:
+          - id: 75
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: f3f54ba7-a4fb-46a6-9068-8a7a3011bb64
+          ConfigId: 85683621-00c0-44b1-9511-45a188ab4bee
+          Links:
+          - id: 73
+          - id: 69
+          - id: 76
+          - id: 43
+          - id: 77
+          IsValid: 1
+          IsRemoved: 0
+        - Id: db7e8bf1-9fe3-4aee-8635-5d8331d8d0d5
+          ConfigId: ff4f40b6-c6ec-4adf-a853-094caba23381
+          Links:
+          - id: 62
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: InstanceStreamingActor
+        Position: {x: 158, y: 245}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    0000001E:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 436727e2-de36-4baf-9aa8-93d075a4cdab
+        ConfigId: dff0d51b-f7b4-4597-99c9-4257f2f7a944
+        Settings:
+          id: 78
+        Inputs:
+        - Id: 763432e5-a58d-4b00-953b-3b9a524f8a66
+          ConfigId: e925ab73-006e-4c93-af93-d51beec8811b
+          Links:
+          - id: 79
+          IsValid: 1
+          IsRemoved: 0
+        Outputs: []
+        DisplayName: JobActor
+        Position: {x: 2114, y: 233}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    0000001F:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: eb646e1b-d024-4d6e-adec-07296dba64fa
+        ConfigId: 2d3cdc3b-7d33-4760-aaa7-f4685d06fa64
+        Settings:
+          id: 80
+        Inputs:
+        - Id: dfd27315-a818-4153-8f93-e01e510f01e8
+          ConfigId: acfd5680-9b9d-4194-b3b3-31305e5dccd4
+          Links:
+          - id: 76
+          IsValid: 1
+          IsRemoved: 0
+        - Id: e96f7a06-1908-4311-a98e-a2301382aaf1
+          ConfigId: 6cccea88-c60b-4591-bac2-0afada27d7b6
+          Links: []
+          IsValid: 1
+          IsRemoved: 0
+        Outputs: []
+        DisplayName: LightActor
+        Position: {x: 576, y: -50}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000020:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 07069646-68dd-4719-a071-4c89c0a9aa4e
+        ConfigId: d0e47eaf-9ac3-4016-a8ea-855871859e25
+        Settings:
+          id: 81
+        Inputs:
+        - Id: 89cf757a-3af4-4d2e-ad4f-a4f2598f850a
+          ConfigId: 9ee02aac-f8c5-4c90-bd4a-6d2aa043f5d3
+          Links:
+          - id: 46
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 5ce889ce-959a-4361-b0ea-12aaa18238f7
+          ConfigId: 357e61af-78e3-47a4-86ab-0771be13b517
+          Links:
+          - id: 65
+          IsValid: 1
+          IsRemoved: 0
+        - Id: b43ab104-d3af-4d95-a47e-c9e4f29779ce
+          ConfigId: 41bfffad-f939-4ed5-b823-69aba55c6904
+          Links:
+          - id: 67
+          - id: 82
+          - id: 59
+          IsValid: 1
+          IsRemoved: 0
+        - Id: bb5843a5-ff2c-4dce-b4fa-f13a4f4ce013
+          ConfigId: b03c46ee-b93a-4f1b-8715-97a88c2f2263
+          Links:
+          - id: 63
+          - id: 83
+          - id: 58
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: d22b95be-1de3-46d9-b320-211c4329a49a
+          ConfigId: 6dc99df0-eae2-4ec8-9528-a17850c3f4af
+          Links:
+          - id: 71
+          IsValid: 1
+          IsRemoved: 0
+        - Id: d0494dc1-0c92-4f60-9be8-ec42f886ca3a
+          ConfigId: 849fbd4e-36c1-49fd-8de4-9343734d5921
+          Links:
+          - id: 84
+          - id: 72
+          - id: 42
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 0595c155-d048-4d94-ad8b-111374c5013d
+          ConfigId: 69d26fee-9877-4497-ab33-13c0344d38ef
+          Links:
+          - id: 85
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: ManifestActor
+        Position: {x: 1682, y: 622}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000021:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 4a4180fc-5918-4ecc-9dd2-e9899ab4adb6
+        ConfigId: 7f70fde2-34b7-479c-aff2-d24fa06f118d
+        Settings:
+          id: 86
+        Inputs:
+        - Id: 0df296a9-cbee-44cb-89aa-466c38472bc5
+          ConfigId: 1c4fd662-508d-4b3b-90f3-316d54f94f63
+          Links:
+          - id: 87
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: 55c83ca8-6d2b-488f-99c7-3e32aab06a2e
+          ConfigId: 409e3cc4-cc02-491a-8aaf-374c0f811828
+          Links:
+          - id: 88
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 1ee24141-7055-45e7-9ec1-c4a2060d60e8
+          ConfigId: b9c202ff-6943-4302-bd1a-e753e4f68b4f
+          Links:
+          - id: 83
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 42ebe976-36c5-40fb-9162-af49a1a2cf31
+          ConfigId: e093dbbc-c89a-4272-8813-42715330279f
+          Links:
+          - id: 82
+          IsValid: 1
+          IsRemoved: 0
+        - Id: ccf409fd-b4a6-4fd7-b63c-d513944210c9
+          ConfigId: f83ae686-7c64-439e-ada7-53d12adb111f
+          Links:
+          - id: 89
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: MaterialConverterActor
+        Position: {x: 1270, y: 431}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000022:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 7d9e220f-f7a5-4ec1-891c-c9763c296a59
+        ConfigId: b21f1053-f462-4e12-9b0e-27112a6b32f7
+        Settings:
+          id: 90
+        Inputs:
+        - Id: 87985a1a-1082-4bd5-a240-47e9f7df5ac0
+          ConfigId: 30e8a966-e6dd-40db-b128-8ccf44fa5e84
+          Links:
+          - id: 91
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: eef6c2a2-c8f6-4ea0-85c4-a2748fdb9089
+          ConfigId: ee39d758-3c20-41f0-bb8c-569a83ecc4a5
+          Links:
+          - id: 79
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: MeshConverterActor
+        Position: {x: 1754, y: 231}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000023:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: fa2b087d-2bd4-4abc-b881-262502181d69
+        ConfigId: ffd87152-e46c-45f5-8214-9d7a32bd633c
+        Settings:
+          id: 92
+        Inputs:
+        - Id: fcbdd830-5578-41ac-bd0e-e054d21d394e
+          ConfigId: adbe27aa-93b2-4bd2-a749-91c7377d003b
+          Links:
+          - id: 93
+          - id: 66
+          IsValid: 1
+          IsRemoved: 0
+        - Id: c440cc40-da3c-44f8-9b34-20ad1f912ca2
+          ConfigId: 3660346c-4b4d-4105-ba0a-51fbd07b3afe
+          Links:
+          - id: 94
+          - id: 64
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: 3170cc17-c899-4e85-9ed2-2d1f98546af1
+          ConfigId: c6a26f49-9015-4756-8dba-6d48f9c7a9d8
+          Links:
+          - id: 95
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: ModelResourceActor
+        Position: {x: 1750, y: 445}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000024:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 300f0e87-3d61-44c1-b2cf-1541ca543a71
+        ConfigId: 141dc785-32f7-4f7b-ab9f-990702ce8d1d
+        Settings:
+          id: 96
+        Inputs:
+        - Id: 43c1876b-73d7-4935-94dc-7f9cd3d3556c
+          ConfigId: a5d1d76f-256b-4e49-b44e-d8508ae0f323
+          Links:
+          - id: 84
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 375ac2b9-98e9-4a02-a814-2860599b0816
+          ConfigId: 228ef8f1-f93d-46ec-aff2-ce88242194b1
+          Links:
+          - id: 77
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 9280670b-6498-4d1e-830d-ca49f875cf55
+          ConfigId: 049c00c6-51f4-464d-918c-c44277e57794
+          Links:
+          - id: 50
+          IsValid: 1
+          IsRemoved: 0
+        - Id: edc4d2f0-b694-4f46-ab7a-06fb19757e1a
+          ConfigId: 451d5188-0389-49f4-82aa-0d5aa2650974
+          Links:
+          - id: 52
+          IsValid: 1
+          IsRemoved: 0
+        - Id: ef452900-f051-4425-b672-a9ac92d15954
+          ConfigId: 23de304c-4724-4391-8353-9917756c4508
+          Links:
+          - id: 51
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 31f339a4-57cf-4e98-9909-4c7514d549e8
+          ConfigId: 209826ce-fc15-4ff1-bcd4-99ac73a82a58
+          Links: []
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: 26e7a164-71fd-449b-ae39-1e120a48da50
+          ConfigId: 920ddf61-0d2d-45a0-abce-b129d97f3ddb
+          Links:
+          - id: 75
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 7e4eb247-4f90-4bc1-8c40-188531783c28
+          ConfigId: 6de29097-4e37-40ea-bcb4-b4dab5d6c342
+          Links:
+          - id: 44
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: SpatialActor
+        Position: {x: -225, y: 257}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000025:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: c0851b4d-fa8a-4053-a21d-303fa382a227
+        ConfigId: f9487602-b5ee-4fd6-8041-220b7e84b11e
+        Settings:
+          id: 97
+        Inputs:
+        - Id: 7ec172d0-e192-47d0-a325-fa02995b89a2
+          ConfigId: d650153c-ba3d-40f2-a08f-2d33f2c3368c
+          Links:
+          - id: 98
+          IsValid: 1
+          IsRemoved: 0
+        Outputs: []
+        DisplayName: TextureConverterActor
+        Position: {x: 1749, y: 342}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000026:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: bed909d3-ea9f-4383-83c3-d068b6cf2881
+        ConfigId: 2ec3e959-e3b6-43ae-a85b-93630a862215
+        Settings:
+          id: 99
+        Inputs:
+        - Id: 927bbb5c-9332-4500-957d-d451bac2d9d5
+          ConfigId: 84f3105a-400e-491e-9309-5c7009f76a3c
+          Links:
+          - id: 89
+          - id: 60
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 39a83eb9-5d12-4499-8f02-c8d33ba74a31
+          ConfigId: b1f9faf9-cc88-4fbb-8f01-fc379b8272df
+          Links:
+          - id: 88
+          - id: 57
+          IsValid: 1
+          IsRemoved: 0
+        Outputs:
+        - Id: 2b6183a7-5377-4a22-acc9-8d8733e29454
+          ConfigId: 6164be3e-a013-47f4-baae-e22b8f54091e
+          Links:
+          - id: 93
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 0f04cb87-2a01-4cb5-8ac1-be596d8520d7
+          ConfigId: 73815bcb-eb29-4718-bb39-947efc6a8965
+          Links:
+          - id: 94
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 8b6aad65-39ae-426f-81f4-ab06c05b14df
+          ConfigId: bdf90677-974a-4999-b843-3a8f122e62b1
+          Links:
+          - id: 91
+          IsValid: 1
+          IsRemoved: 0
+        - Id: fd987edd-1dc5-4fe2-b76b-02cff5ca4ff9
+          ConfigId: 05efe345-fa3d-4467-b56f-33b18b976f49
+          Links:
+          - id: 87
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 99a86bed-1a9d-47ad-9b80-01a6af853fd7
+          ConfigId: f2608763-7231-4f3f-a039-0dece163cdc4
+          Links:
+          - id: 98
+          IsValid: 1
+          IsRemoved: 0
+        DisplayName: UnityResourceActor
+        Position: {x: 1249, y: 222}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000027:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 3d0cb239-8545-478a-b312-71356f2806bf
+        ConfigId: d933b32c-b090-4a7c-b483-9f0c925de6d6
+        Settings:
+          id: 100
+        Inputs: []
+        Outputs: []
+        DisplayName: PubSubActor
+        Position: {x: 314, y: 85}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000028:
+      type: {class: ActorSetup, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 440a5b6e-1bbd-4b72-aca1-f4c192f4e6a5
+        ConfigId: d35da300-0382-4db5-b402-19152cc2fb69
+        Settings:
+          id: 101
+        Inputs:
+        - Id: e49a78c8-1399-4113-a917-74abe8b60af5
+          ConfigId: ca8d8c3f-1a88-4b68-8ade-2bfa27b29a2f
+          Links:
+          - id: 95
+          IsValid: 1
+          IsRemoved: 0
+        - Id: 563aacd7-3fd5-4174-b703-7d71f905ff9e
+          ConfigId: 26f5bcca-43af-405f-b476-7c3ffe23e544
+          Links:
+          - id: 85
+          IsValid: 1
+          IsRemoved: 0
+        Outputs: []
+        DisplayName: DataProviderActor
+        Position: {x: 2195, y: 521}
+        IsRemoved: 0
+        HasSettingsTypeChanged: 0
+    00000029:
+      type: {class: BoundingBoxActor/Settings, ns: Unity.Reflect.Streaming, asm: Unity.Reflect}
+      data:
+        Id: cf8c1f0a-b4a3-4cdc-a29a-794b67b49632
+        InitialBoundingBoxPoolSize: 10000
+        BoundingBoxPrefab: {fileID: 6188160024377136411, guid: 222a70283ef344a7996531a982646737,
+          type: 3}
+        m_BoundingBoxRoot:
+          exposedName: 02b00a13e90776c44a24b3de17858789
+          defaultValue: {fileID: 0}
+        DefaultBoundingBoxMaterials:
+        - streamState: 0
+          material: {fileID: 2100000, guid: 2d68a0b1783fa49978410683ed0e3cb1, type: 2}
+        - streamState: 1
+          material: {fileID: 2100000, guid: 2d68a0b1783fa49978410683ed0e3cb1, type: 2}
+        - streamState: 2
+          material: {fileID: 2100000, guid: 2d68a0b1783fa49978410683ed0e3cb1, type: 2}
+        - streamState: 3
+          material: {fileID: 2100000, guid: 2d68a0b1783fa49978410683ed0e3cb1, type: 2}
+        - streamState: 4
+          material: {fileID: 2100000, guid: 2d68a0b1783fa49978410683ed0e3cb1, type: 2}
+        - streamState: 5
+          material: {fileID: 2100000, guid: 2d68a0b1783fa49978410683ed0e3cb1, type: 2}
+        - streamState: 6
+          material: {fileID: 2100000, guid: 2d68a0b1783fa49978410683ed0e3cb1, type: 2}
+        DebugBoundingBoxMaterials:
+        - streamState: 0
+          material: {fileID: 2100000, guid: 2d68a0b1783fa49978410683ed0e3cb1, type: 2}
+        - streamState: 1
+          material: {fileID: 2100000, guid: 9686744f35e74d441bcf80d0eff00843, type: 2}
+        - streamState: 2
+          material: {fileID: 2100000, guid: 8657f76049af3c149b38160760ec9d71, type: 2}
+        - streamState: 3
+          material: {fileID: 2100000, guid: 9d38b56140606a6459143a719e423597, type: 2}
+        - streamState: 4
+          material: {fileID: 2100000, guid: cf3ec68f88c7da6438e3b3b4063f4f25, type: 2}
+        - streamState: 5
+          material: {fileID: 2100000, guid: 4b93f36b5822b8342810ef90aa698ade, type: 2}
+        - streamState: 6
+          material: {fileID: 2100000, guid: cd440d4232f114b42bc0ec835f13baf8, type: 2}
+        DisplayOnlyBoundingBoxes: 0
+        UseDebugMaterials: 0
+        UseStaticBatching: 0
+    0000002A:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: d0494dc1-0c92-4f60-9be8-ec42f886ca3a
+        InputId: 5c15527c-1341-4e35-9d40-ed29f569e0ff
+        IsRemoved: 0
+    0000002B:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: f3f54ba7-a4fb-46a6-9068-8a7a3011bb64
+        InputId: 4e03d421-c1fe-4717-a265-eef80c22e36b
+        IsRemoved: 0
+    0000002C:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 7e4eb247-4f90-4bc1-8c40-188531783c28
+        InputId: 88be7118-ee76-4d58-91e0-535139683626
+        IsRemoved: 0
+    0000002D:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: e3cd37c7-f025-4ebb-8b0a-3d4b2c40d6d6
+    0000002E:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 7d1429a7-3f15-4243-acd2-9127eea4bc29
+        InputId: 89cf757a-3af4-4d2e-ad4f-a4f2598f850a
+        IsRemoved: 0
+    0000002F:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: d7b586a7-f5f1-45ec-a1fa-7e062dfc8eda
+        InputId: ceb56879-d8a4-43ca-a30d-860f6c32c330
+        IsRemoved: 0
+    00000030:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: fa46efef-b7fb-4199-aa09-2d4c10ddc659
+        InputId: 2201346b-c1ef-4b7f-a684-7b5f14fed1af
+        IsRemoved: 0
+    00000031:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: cdaaed48-ac72-4731-989e-29b284153a10
+        InputId: 4d8bf412-6e8f-4ddb-bf7e-de9e0800884c
+        IsRemoved: 0
+    00000032:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: b9aef6af-0844-47a9-b652-f3dacdda1523
+        InputId: 9280670b-6498-4d1e-830d-ca49f875cf55
+        IsRemoved: 0
+    00000033:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 7a65d333-19c1-4080-8b75-b5450a8a25f5
+        InputId: ef452900-f051-4425-b672-a9ac92d15954
+        IsRemoved: 0
+    00000034:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 1a564590-280e-4150-a3b4-388e1d0191b6
+        InputId: edc4d2f0-b694-4f46-ab7a-06fb19757e1a
+        IsRemoved: 0
+    00000035:
+      type: {class: GameObjectBuilderActor/Settings, ns: Unity.Reflect.Streaming,
+        asm: Unity.Reflect}
+      data:
+        Id: f69c6ab4-e9bb-4363-a70a-e08790d2ad8b
+        m_Root:
+          exposedName: ce239e16b3bc4c84c9e30101a74bc1f0
+          defaultValue: {fileID: 0}
+    00000036:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 3dcdb13a-a34e-4ac1-bb08-cb3c5b11bc68
+        InputId: bd9fc9be-5d3a-4b86-83de-c8337dc2673e
+        IsRemoved: 0
+    00000037:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 
+    00000038:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 4ded5047-671d-40c2-bb1e-00d476807d25
+        InputId: c9d26d92-141c-4adf-aa33-11951ded83ab
+        IsRemoved: 0
+    00000039:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 2b4d3895-95fc-427c-add4-30a6512ad006
+        InputId: 39a83eb9-5d12-4499-8f02-c8d33ba74a31
+        IsRemoved: 0
+    0000003A:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 63d767bd-0eca-4590-a1f2-a01c5079490a
+        InputId: bb5843a5-ff2c-4dce-b4fa-f13a4f4ce013
+        IsRemoved: 0
+    0000003B:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: b696b0a6-71e2-4fa6-9579-a452474e4063
+        InputId: b43ab104-d3af-4d95-a47e-c9e4f29779ce
+        IsRemoved: 0
+    0000003C:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: ab77c1e8-5856-4b2d-9337-03ce6c68a44a
+        InputId: 927bbb5c-9332-4500-957d-d451bac2d9d5
+        IsRemoved: 0
+    0000003D:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 
+    0000003E:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: db7e8bf1-9fe3-4aee-8635-5d8331d8d0d5
+        InputId: 6596e292-8d2c-4832-83a8-392868658bdc
+        IsRemoved: 0
+    0000003F:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 50ab24d4-da7f-4c9f-b979-8ec02e0a61bb
+        InputId: bb5843a5-ff2c-4dce-b4fa-f13a4f4ce013
+        IsRemoved: 0
+    00000040:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 2e5b0819-97bb-4a9a-8c49-26fe88e43842
+        InputId: c440cc40-da3c-44f8-9b34-20ad1f912ca2
+        IsRemoved: 0
+    00000041:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 3f0a1692-3a3c-4be9-b417-0096ea2a0774
+        InputId: 5ce889ce-959a-4361-b0ea-12aaa18238f7
+        IsRemoved: 0
+    00000042:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: ccfa7e43-36ea-4e4c-820a-10741e75319c
+        InputId: fcbdd830-5578-41ac-bd0e-e054d21d394e
+        IsRemoved: 0
+    00000043:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 7a1de23f-1bbb-4441-a2da-540b5620b59b
+        InputId: b43ab104-d3af-4d95-a47e-c9e4f29779ce
+        IsRemoved: 0
+    00000044:
+      type: {class: HighlightActor/Settings, ns: Unity.Reflect.Streaming, asm: Unity.Reflect}
+      data:
+        Id: 3aca347d-61f5-496a-ac04-ea6c0bb1db4b
+        Safelist:
+        - Category
+        - Family
+        - Document
+        - System Classification
+        - Type
+        - Manufacturer
+        - Phase Created
+        - Phase Demolished
+        - Layer
+    00000045:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: f3f54ba7-a4fb-46a6-9068-8a7a3011bb64
+        InputId: d019666e-fb15-4b3d-a1dc-87d0e6918a46
+        IsRemoved: 0
+    00000046:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 
+    00000047:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: d22b95be-1de3-46d9-b320-211c4329a49a
+        InputId: 7184e0d0-da5c-4d11-b6b4-4bdeedb1b99c
+        IsRemoved: 0
+    00000048:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: d0494dc1-0c92-4f60-9be8-ec42f886ca3a
+        InputId: c6cd8689-d5fd-481c-a1fe-23f424db680c
+        IsRemoved: 0
+    00000049:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: f3f54ba7-a4fb-46a6-9068-8a7a3011bb64
+        InputId: d1b47662-2aca-40dd-a6b7-a218ecbbf4b4
+        IsRemoved: 0
+    0000004A:
+      type: {class: InstanceStreamingActor/Settings, ns: Unity.Reflect.Streaming,
+        asm: Unity.Reflect}
+      data:
+        Id: 857c3f26-ff6e-4e34-a17c-a0e32f303781
+        MaxBatchSize: 128
+    0000004B:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 26e7a164-71fd-449b-ae39-1e120a48da50
+        InputId: a28e3338-8d22-49ab-9df8-fe272a83c9ee
+        IsRemoved: 0
+    0000004C:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: f3f54ba7-a4fb-46a6-9068-8a7a3011bb64
+        InputId: dfd27315-a818-4153-8f93-e01e510f01e8
+        IsRemoved: 0
+    0000004D:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: f3f54ba7-a4fb-46a6-9068-8a7a3011bb64
+        InputId: 375ac2b9-98e9-4a02-a814-2860599b0816
+        IsRemoved: 0
+    0000004E:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 
+    0000004F:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: eef6c2a2-c8f6-4ea0-85c4-a2748fdb9089
+        InputId: 763432e5-a58d-4b00-953b-3b9a524f8a66
+        IsRemoved: 0
+    00000050:
+      type: {class: LightActor/Settings, ns: Unity.Reflect.Streaming, asm: Unity.Reflect}
+      data:
+        Id: a47a49e5-dd69-4eea-b715-74af0448d6cc
+        EnableLights: 0
+    00000051:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 
+    00000052:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 42ebe976-36c5-40fb-9162-af49a1a2cf31
+        InputId: b43ab104-d3af-4d95-a47e-c9e4f29779ce
+        IsRemoved: 0
+    00000053:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 1ee24141-7055-45e7-9ec1-c4a2060d60e8
+        InputId: bb5843a5-ff2c-4dce-b4fa-f13a4f4ce013
+        IsRemoved: 0
+    00000054:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: d0494dc1-0c92-4f60-9be8-ec42f886ca3a
+        InputId: 43c1876b-73d7-4935-94dc-7f9cd3d3556c
+        IsRemoved: 0
+    00000055:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 0595c155-d048-4d94-ad8b-111374c5013d
+        InputId: 563aacd7-3fd5-4174-b703-7d71f905ff9e
+        IsRemoved: 0
+    00000056:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 
+    00000057:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: fd987edd-1dc5-4fe2-b76b-02cff5ca4ff9
+        InputId: 0df296a9-cbee-44cb-89aa-466c38472bc5
+        IsRemoved: 0
+    00000058:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 55c83ca8-6d2b-488f-99c7-3e32aab06a2e
+        InputId: 39a83eb9-5d12-4499-8f02-c8d33ba74a31
+        IsRemoved: 0
+    00000059:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: ccf409fd-b4a6-4fd7-b63c-d513944210c9
+        InputId: 927bbb5c-9332-4500-957d-d451bac2d9d5
+        IsRemoved: 0
+    0000005A:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 
+    0000005B:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 8b6aad65-39ae-426f-81f4-ab06c05b14df
+        InputId: 87985a1a-1082-4bd5-a240-47e9f7df5ac0
+        IsRemoved: 0
+    0000005C:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 
+    0000005D:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 2b6183a7-5377-4a22-acc9-8d8733e29454
+        InputId: fcbdd830-5578-41ac-bd0e-e054d21d394e
+        IsRemoved: 0
+    0000005E:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 0f04cb87-2a01-4cb5-8ac1-be596d8520d7
+        InputId: c440cc40-da3c-44f8-9b34-20ad1f912ca2
+        IsRemoved: 0
+    0000005F:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 3170cc17-c899-4e85-9ed2-2d1f98546af1
+        InputId: e49a78c8-1399-4113-a917-74abe8b60af5
+        IsRemoved: 0
+    00000060:
+      type: {class: SpatialActor/Settings, ns: Unity.Reflect.Streaming, asm: Unity.Reflect}
+      data:
+        Id: d22ccaf4-f8fb-464a-857a-391ef6a69e48
+        MaxPerNode: 16
+        MinPerNode: 6
+        m_DirectionalLight:
+          exposedName: 5c2a97f5129275447901a373ff0f0332
+          defaultValue: {fileID: 0}
+        DepthRenderTexture: {fileID: 8400000, guid: 43e2d91056ed7ec4a91097111aa831bd,
+          type: 2}
+        DepthRenderTextureNoAsync: {fileID: 8400000, guid: 66f21db1740bd9b4a8c81635d3853f55,
+          type: 2}
+        DepthRenderMaterial: {fileID: 2100000, guid: 865d419dfadc3114cb551005184e1c77,
+          type: 2}
+        IsActive: 1
+        PriorityWeightAngle: 5.571261
+        PriorityWeightDistance: 10
+        PriorityWeightSize: 5
+        VisibleObjectsMax: 100000
+        UseCulling: 1
+        CameraFrustumNormalOffset: 10
+        UseDistanceCullingAvoidance: 1
+        AvoidCullingWithinDistance: 5
+        UseShadowCullingAvoidance: 1
+        ShadowDistanceFactor: 3
+        UseSizeCulling: 1
+        MinimumScreenAreaRatioMesh: 4
+        UseDepthCulling: 1
+        DepthOffset: 0.005
+        SelectedObjectsMax: 10
+        ColliderObjectsMaxDistance: 25
+    00000061:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 
+    00000062:
+      type: {class: ActorLink, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        OutputId: 99a86bed-1a9d-47ad-9b80-01a6af853fd7
+        InputId: 7ec172d0-e192-47d0-a325-fa02995b89a2
+        IsRemoved: 0
+    00000063:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 
+    00000064:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 
+    00000065:
+      type: {class: ActorSettings, ns: Unity.Reflect.Actor, asm: Unity.Reflect}
+      data:
+        Id: 52d85280-3dff-40d6-900f-2754ce7e0af5

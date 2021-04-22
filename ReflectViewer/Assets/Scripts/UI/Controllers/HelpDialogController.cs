@@ -4,6 +4,7 @@ using UnityEngine.Assertions;
 using Unity.Reflect.Viewer.Data;
 using TMPro;
 using SharpFlux;
+using SharpFlux.Dispatching;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -93,12 +94,12 @@ namespace Unity.Reflect.Viewer.UI
         {
             if (isDialogType)
             {
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
             }
             else
             {
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetHelpModeID, HelpModeEntryID.None));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetHelpModeID, HelpModeEntryID.None));
             }
         }
 
@@ -106,7 +107,7 @@ namespace Unity.Reflect.Viewer.UI
         {
             if (UIStateManager.current.stateData.dialogMode == DialogMode.Help)
             {
-                UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetHelpModeID, entryId));
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetHelpModeID, entryId));
                 return true;
             }
             return false;

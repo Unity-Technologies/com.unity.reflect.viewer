@@ -5,17 +5,7 @@ namespace UnityEngine.Reflect
 {
     public static class GameObjectExtension
     {
-        const float s_Tolerance = 1e-6f;
-
-        public static void SetLayerRecursively(this GameObject obj, int layer)
-        {
-            obj.layer = layer;
-
-            foreach (Transform child in obj.transform)
-            {
-                child.gameObject.SetLayerRecursively(layer);
-            }
-        }
+        const float s_Tolerance = 1e-5f;
 
         public static Bounds? CalculateBoundsInChildren(this GameObject obj)
         {
@@ -97,6 +87,7 @@ namespace UnityEngine.Reflect
                     for (var pointIndex = 0; pointIndex < 3; pointIndex++)
                     {
                         Vector3 point = vertices[subMeshTriangles[index * 3 + pointIndex]];
+                        point = obj.transform.TransformPoint(point);
                         if (Mathf.Abs(wall.GetDistanceToPoint(point)) > s_Tolerance)
                         {
                             coplanar = false;

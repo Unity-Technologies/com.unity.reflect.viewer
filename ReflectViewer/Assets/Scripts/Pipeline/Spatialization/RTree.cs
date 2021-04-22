@@ -105,9 +105,6 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
 		readonly object m_Lock = new object();
 
-		float m_MinPriority = float.MaxValue;
-		float m_MaxPriority = float.MinValue;
-
 		Bounds m_Bounds = new Bounds();
 
 		public int objectCount { get; private set; }
@@ -529,17 +526,17 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 			       (obj.center.z <= node.center.z ? 0 : k_Z);
 		}
 
-		public void DrawDebug(Gradient nodeGradient, Gradient objectGradient, int maxDepth)
+		public void DrawDebug(Gradient nodeGradient, Gradient objectGradient, float maxPriority, int maxDepth)
 		{
 			lock (m_Lock)
 			{
 				var originalColor = Gizmos.color;
-				DrawDebugRecursive(m_RootNode, nodeGradient, objectGradient, maxDepth);
+				DrawDebugRecursive(m_RootNode, nodeGradient, objectGradient, maxPriority, maxDepth);
 				Gizmos.color = originalColor;
 			}
 		}
 
-		void DrawDebugRecursive(ISpatialObject obj, Gradient nodeGradient, Gradient objectGradient, int maxDepth, float currentDepth = 0f)
+		void DrawDebugRecursive(ISpatialObject obj, Gradient nodeGradient, Gradient objectGradient, float maxPriority, int maxDepth, float currentDepth = 0f)
 		{
 			if (maxDepth < currentDepth)
 				return;
@@ -553,7 +550,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 				}
 				foreach (var child in node.children)
 				{
-					DrawDebugRecursive(child, nodeGradient, objectGradient, maxDepth, currentDepth + 1f);
+					DrawDebugRecursive(child, nodeGradient, objectGradient, maxPriority, maxDepth, currentDepth + 1f);
 				}
 				return;
 			}
@@ -561,15 +558,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 			if (objectGradient == null)
 				return;
 
-			var priority = Mathf.Log10(obj.priority);
-
-			if (m_MinPriority > priority)
-				m_MinPriority = priority;
-
-			if (m_MaxPriority < priority)
-				m_MaxPriority = priority;
-
-			Gizmos.color = objectGradient.Evaluate(Mathf.Clamp01(Mathf.InverseLerp(-5, 5, priority)));
+			Gizmos.color = objectGradient.Evaluate(maxPriority > 0 ? Math.Abs(obj.priority / maxPriority) : 0);
 			Gizmos.DrawCube(obj.center, obj.max - obj.min);
 		}
 

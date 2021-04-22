@@ -1,0 +1,11 @@
+{
+    "name": "Unity.Reflect.Viewer.Core.Tests",
+    "references": [
+        "Unity.Reflect.Viewer.Core"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": []
+}

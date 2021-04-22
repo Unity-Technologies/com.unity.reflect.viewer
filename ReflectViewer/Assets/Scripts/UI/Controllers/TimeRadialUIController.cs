@@ -1,5 +1,6 @@
 using SharpFlux;
 using System;
+using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.UI;
@@ -72,14 +73,14 @@ namespace Unity.Reflect.Viewer.UI
         {
             var data = UIStateManager.current.stateData.sunStudyData;
             data.timeOfYear = GetDayFromFloat(value);
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
         }
 
         void OnHourDialValueChanged(float value)
         {
             var data = UIStateManager.current.stateData.sunStudyData;
             data.timeOfDay = GetMinFromFloat(value);
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
         }
 
         void OnResetButtonClicked()
@@ -87,28 +88,28 @@ namespace Unity.Reflect.Viewer.UI
             var data = UIStateManager.current.stateData.sunStudyData;
             data.timeOfDay = m_DefaultHour;
             data.timeOfYear = m_DefaultMonth;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
         }
 
         void OnMainButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, m_previousToolbar));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, false));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, m_previousToolbar));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, false));
             var toolState = UIStateManager.current.stateData.toolState;
             toolState.activeTool = ToolType.None;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, ""));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
         }
 
         void OnSecondaryButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, true));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.AltitudeAzimuthDial));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, true));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.AltitudeAzimuthDial));
             var toolState = UIStateManager.current.stateData.toolState;
             toolState.activeTool = ToolType.SunstudyTool;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
             var sunStudyData = UIStateManager.current.stateData.sunStudyData;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatus, AltitudeAzimuthRadialUIController.GetAltAzStatusMessage(sunStudyData)));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, AltitudeAzimuthRadialUIController.GetAltAzStatusMessage(sunStudyData)));
         }
 
         public static string GetTimeStatusMessage(SunStudyData sunStudyData)

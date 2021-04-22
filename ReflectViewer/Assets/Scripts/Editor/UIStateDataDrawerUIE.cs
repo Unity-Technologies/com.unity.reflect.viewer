@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using Unity.Reflect.Viewer.UI;
 using UnityEditor;
 using UnityEngine;

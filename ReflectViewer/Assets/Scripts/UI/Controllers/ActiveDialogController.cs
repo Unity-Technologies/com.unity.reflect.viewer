@@ -20,9 +20,6 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField, Tooltip("Reference to the ClippingTool Dialog")]
         DialogWindow m_ClippingToolDialog;
 
-        [SerializeField, Tooltip("Reference to the MeasureTool Dialog")]
-        DialogWindow m_MeasureToolDialog;
-
         [SerializeField, Tooltip("Reference to the Filters Dialog")]
         DialogWindow m_FiltersDialog;
 
@@ -41,8 +38,8 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField, Tooltip("Reference to the Account Dialog")]
         DialogWindow m_AccountDialog;
 
-        [SerializeField, Tooltip("Reference to the Status Dialog")]
-        DialogWindow m_StatusDialog;
+        [SerializeField, Tooltip("Reference to the Link Sharing Dialog")]
+        DialogWindow m_LinkSharingDialog;
 
         [SerializeField]
         DialogWindow m_ProgressIndicatorDialog;
@@ -71,6 +68,15 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         DialogWindow m_ARCardSelectionDialog;
 
+        [SerializeField, Tooltip("Reference to the Collaboration Vertical User List")]
+        DialogWindow m_CollaborationUserListDialog;
+
+        [SerializeField, Tooltip("Reference to the Collaboration Vertical User List")]
+        DialogWindow m_CollaborationUserInfoDialog;
+
+        [SerializeField]
+        DialogWindow m_LoginScreenDialog;
+
 #pragma warning restore CS0649
 
         DialogType m_CurrentActiveDialog = DialogType.None;
@@ -92,7 +98,6 @@ namespace Unity.Reflect.Viewer.UI
                 m_FiltersDialog.Close();
                 m_OrbitSelectDialog.Close();
                 m_ClippingToolDialog.Close();
-                m_MeasureToolDialog.Close();
                 m_CameraOptionsDialog.Close();
                 m_SceneOptionsDialog.Close();
                 m_SunStudyDialog.Close();
@@ -104,6 +109,9 @@ namespace Unity.Reflect.Viewer.UI
                 m_InfoSelectDialog.Close();
                 m_DebugOptionsDialog.Close();
                 m_ARCardSelectionDialog.Close();
+                m_CollaborationUserListDialog.Close();
+                m_CollaborationUserInfoDialog.Close();
+                m_LoginScreenDialog.Close();
 
                 if (stateData.dialogMode == DialogMode.Help)
                 {
@@ -127,9 +135,6 @@ namespace Unity.Reflect.Viewer.UI
                         break;
                     case DialogType.ClippingTool:
                         m_ClippingToolDialog.Open();
-                        break;
-                    case DialogType.MeasureTool:
-                        m_MeasureToolDialog.Open();
                         break;
                     case DialogType.CameraOptions:
                         m_CameraOptionsDialog.Open();
@@ -167,6 +172,15 @@ namespace Unity.Reflect.Viewer.UI
                     case DialogType.ARCardSelection:
                         m_ARCardSelectionDialog.Open();
                         break;
+                    case DialogType.CollaborationUserList:
+                        m_CollaborationUserListDialog.Open();
+                        break;
+                    case DialogType.CollaborationUserInfo:
+                        m_CollaborationUserInfoDialog.Open();
+                        break;
+                    case DialogType.LoginScreen:
+                        m_LoginScreenDialog.Open();
+                        break;
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
@@ -179,6 +193,7 @@ namespace Unity.Reflect.Viewer.UI
                 m_NavigationModeFanOut.Close();
                 m_BimDialog.Close();
                 m_AccountDialog.Close();
+                m_LinkSharingDialog.Close();
 
                 if (stateData.dialogMode == DialogMode.Help)
                 {
@@ -193,6 +208,9 @@ namespace Unity.Reflect.Viewer.UI
                         break;
                     case DialogType.Account:
                         m_AccountDialog.Open();
+                        break;
+                    case DialogType.LinkSharing:
+                        m_LinkSharingDialog.Open();
                         break;
                 }
             }
@@ -209,15 +227,6 @@ namespace Unity.Reflect.Viewer.UI
                         throw new ArgumentOutOfRangeException();
                 }
                 m_CurrentActiveOptionDialog = stateData.activeOptionDialog;
-            }
-
-            if (stateData.statusMessage != String.Empty)
-            {
-                m_StatusDialog.Open();
-            }
-            else
-            {
-                m_StatusDialog.Close();
             }
 
             if (m_CurrentProgressData != stateData.progressData)

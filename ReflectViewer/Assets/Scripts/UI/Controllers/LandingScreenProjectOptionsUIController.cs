@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using TMPro;
-using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.Reflect;
 using UnityEngine.Reflect.Pipeline;
@@ -15,11 +15,11 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         TextMeshProUGUI m_NameText;
         [SerializeField]
-        TextMeshProUGUI m_StatusText;
+        TextMeshProUGUI m_ServerText;
+        [SerializeField]
+        TextMeshProUGUI m_OrganizationText;
         [SerializeField]
         TextMeshProUGUI m_DateText;
-        [SerializeField]
-        TextMeshProUGUI m_ServerText;
         [SerializeField]
         Button m_DownloadButton;
         [SerializeField]
@@ -40,7 +40,7 @@ namespace Unity.Reflect.Viewer.UI
             if (project == Project.Empty)
             {
                 m_NameText.text = String.Empty;
-                m_StatusText.text = String.Empty;
+                m_OrganizationText.text = String.Empty;
                 m_DateText.text = String.Empty;
                 m_ServerText.text = String.Empty;
 
@@ -49,22 +49,27 @@ namespace Unity.Reflect.Viewer.UI
                 return;
             }
 
+            var organizationName = project.UnityProject.Organization?.Name;
+            if (string.IsNullOrEmpty(organizationName))
+                organizationName = "None";
+
             m_NameText.text = project.name;
-            m_StatusText.text = string.Empty; // TODO
-            m_DateText.text =  project.lastPublished.ToShortDateString();
             m_ServerText.text = project.description;
+            m_OrganizationText.text = organizationName;
+            m_DateText.text =  project.lastPublished.ToShortDateString();
             m_DownloadButton.interactable = project.isAvailableOnline;
             m_DeleteButton.interactable = ReflectPipelineFactory.HasLocalData(project);
         }
 
         void OnDownloadButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.DownloadProject, m_CurrentProject));
+            m_CurrentProject.SetLocal(true);
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.DownloadProject, m_CurrentProject));
         }
 
         void OnDeleteButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.RemoveProject, m_CurrentProject));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.RemoveProject, m_CurrentProject));
         }
     }
 }

@@ -11,30 +11,22 @@ using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    /// <summary>
-    /// Select new active project, download projects, manage projects
-    /// </summary>
     [RequireComponent(typeof(DialogWindow))]
     public class StatusUIController : MonoBehaviour
     {
 #pragma warning disable CS0649
         [SerializeField]
-        public TextMeshProUGUI m_MessageText;
+        Image m_Icon;
+        [SerializeField]
+        TextMeshProUGUI m_MessageText;
 #pragma warning restore CS0649
 
-        string m_CurrentMessage = String.Empty;
-
-        void Awake()
+        public string message
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-        }
-
-        void OnStateDataChanged(UIStateData data)
-        {
-            if (data.statusMessage != String.Empty && !data.statusMessage.Equals(m_CurrentMessage))
+            get => m_MessageText.text;
+            set
             {
-                m_MessageText.text = data.statusMessage;
-                m_CurrentMessage = data.statusMessage;
+                m_MessageText.text = value;
             }
         }
     }

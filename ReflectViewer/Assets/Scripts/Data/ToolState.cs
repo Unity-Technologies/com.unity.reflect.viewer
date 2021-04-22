@@ -38,16 +38,16 @@ namespace Unity.Reflect.Viewer.UI
         public ToolType activeTool;
         public OrbitType orbitType;
         public ClippingTool clippingTool;
-        public MeasureTool measureTool;
         public InfoType infoType;
+        public FollowUserTool followUserTool;
 
         public bool Equals(ToolState other)
         {
             return activeTool == other.activeTool &&
                 orbitType == other.orbitType &&
                 clippingTool == other.clippingTool &&
-                measureTool == other.measureTool &&
-                infoType == other.infoType;
+                infoType == other.infoType &&
+                followUserTool == other.followUserTool;
         }
 
         public override bool Equals(object obj)
@@ -62,8 +62,8 @@ namespace Unity.Reflect.Viewer.UI
                 var hashCode = (int) activeTool;
                 hashCode = (hashCode * 397) ^ (int) orbitType;
                 hashCode = (hashCode * 397) ^ (int) clippingTool;
-                hashCode = (hashCode * 397) ^ (int) measureTool;
                 hashCode = (hashCode * 397) ^ (int) infoType;
+                hashCode = (hashCode * 397) ^ followUserTool.GetHashCode();
                 return hashCode;
             }
         }

@@ -81,9 +81,11 @@ namespace UnityEngine.Reflect.Viewer
 
         public void Unload()
         {
-            // restore anchors
-            foreach (var anchor in m_VrAnchors)
-                anchor.Restore();
+            // restore anchors backward to avoid misalignment
+            for (int i = m_VrAnchors.Count - 1; i >= 0; i--)
+            {
+                m_VrAnchors[i].Restore();
+            }
 
             // restore original canvas parent
             m_RootCanvas.renderMode = RenderMode.ScreenSpaceOverlay;

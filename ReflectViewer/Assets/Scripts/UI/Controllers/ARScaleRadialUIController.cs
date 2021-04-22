@@ -1,5 +1,6 @@
 using SharpFlux;
 using System;
+using SharpFlux.Dispatching;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
@@ -61,17 +62,17 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnScaleDialValueChanged(float value)
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, GetScaleFromFloat(value)));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, GetScaleFromFloat(value)));
         }
 
         void OnResetButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, m_DefaultScale));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, m_DefaultScale));
         }
 
         void OnMainButtonClicked()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, m_previousToolbar));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, m_previousToolbar));
             // TODO AR scale message (text)
         }
 

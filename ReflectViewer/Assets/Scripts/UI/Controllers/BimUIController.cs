@@ -1,8 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
@@ -19,8 +19,9 @@ namespace Unity.Reflect.Viewer.UI
     [RequireComponent(typeof(DialogWindow)), RequireComponent(typeof(FoldoutRect))]
     public class BimUIController : MonoBehaviour
     {
-        public const string allBimOptionName = "All Information";
-        private static readonly OptionData k_AllInfoOption = new OptionData(allBimOptionName);
+        public const string k_AllBimOptionName = "All Information";
+        public const string k_DefaultNoSelectionText = "Select an object to see its BIM information.";
+        static readonly OptionData k_AllInfoOption = new OptionData(k_AllBimOptionName);
 
 #pragma warning disable CS0649
         [SerializeField, Tooltip("Reference to the button prefab.")]
@@ -34,6 +35,15 @@ namespace Unity.Reflect.Viewer.UI
 
         [SerializeField]
         ButtonControl m_FoldoutToggle;
+
+        [SerializeField]
+        TMP_InputField m_SearchInput;
+
+        [SerializeField]
+        Button m_CancelButton;
+
+        [SerializeField]
+        TextMeshProUGUI m_NoSelectionText;
 #pragma warning restore CS0649
 
         DialogWindow m_DialogWindow;
@@ -41,6 +51,9 @@ namespace Unity.Reflect.Viewer.UI
 
         ObjectSelectionInfo m_CurrentObjectSelectionInfo;
         string m_CurrentBimGroup;
+        string m_CachedSearchString;
+        string m_CurrentUserId;
+        DialogType m_currentActiveSubDialog;
 
         Stack<BimListItem> m_BimListItemPool = new Stack<BimListItem>();
         List<BimListItem> m_ActiveBimListItem = new List<BimListItem>();
@@ -49,6 +62,7 @@ namespace Unity.Reflect.Viewer.UI
         {
             UIStateManager.stateChanged += OnStateDataChanged;
             UIStateManager.projectStateChanged += OnProjectStateDataChanged;
+            UIStateManager.sessionStateChanged += OnSessionStateChanged;
 
             m_DialogWindow = GetComponent<DialogWindow>();
             m_FoldoutRect = GetComponent<FoldoutRect>();
@@ -64,9 +78,18 @@ namespace Unity.Reflect.Viewer.UI
 
             m_BimGroupDropdown.onValueChanged.AddListener(OnBimGroupChanged);
             m_BimGroupDropdown.options.Add(k_AllInfoOption);
+
+            m_SearchInput.onValueChanged.AddListener(OnSearchInputTextChanged);
+            m_SearchInput.onDeselect.AddListener(OnSearchInputDeselected);
+            m_SearchInput.onSelect.AddListener(OnSearchInputSelected);
+
+            m_CancelButton.onClick.AddListener(OnCancelButtonClicked);
+
+            m_NoSelectionText.text = k_DefaultNoSelectionText;
+            m_NoSelectionText.gameObject.SetActive(true);
         }
 
-        private void OnFoldoutToggle(BaseEventData eventData)
+        void OnFoldoutToggle(BaseEventData eventData)
         {
             if(m_FoldoutRect.isFolded)
             {
@@ -76,6 +99,11 @@ namespace Unity.Reflect.Viewer.UI
             {
                 m_FoldoutRect.Fold();
             }
+        }
+
+        void OnSessionStateChanged(UISessionStateData data)
+        {
+            m_CurrentUserId = data.sessionState.user?.UserId;
         }
 
         void CreateBimListItem(string group, string category, string value)
@@ -101,6 +129,15 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnStateDataChanged(UIStateData data)
         {
+            if (m_currentActiveSubDialog != data.activeSubDialog)
+            {
+                m_currentActiveSubDialog = data.activeSubDialog;
+                if (m_currentActiveSubDialog == DialogType.BimInfo)
+                {
+                    m_SearchInput.text = null;
+                }
+            }
+
             if (data.bimGroup == m_CurrentBimGroup)
                 return;
 
@@ -114,7 +151,8 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnProjectStateDataChanged(UIProjectStateData data)
         {
-            if (data.objectSelectionInfo != m_CurrentObjectSelectionInfo)
+            if (data.objectSelectionInfo != m_CurrentObjectSelectionInfo
+            && (data.objectSelectionInfo.userId == m_CurrentUserId || data.objectSelectionInfo.userId == UIStateManager.current.roomConnectionStateData.localUser.matchmakerId))
             {
                 var oldSelectedObject = m_CurrentObjectSelectionInfo.CurrentSelectedObject();
                 var currentSelectedObject = data.objectSelectionInfo.CurrentSelectedObject();
@@ -127,7 +165,9 @@ namespace Unity.Reflect.Viewer.UI
                     m_BimGroupDropdown.options.Add(k_AllInfoOption);
                 }
 
-                if(currentSelectedObject != null)
+                var isSelected = currentSelectedObject != null;
+                m_NoSelectionText.gameObject.SetActive(!isSelected);
+                if (isSelected)
                 {
                     var metadata = currentSelectedObject.GetComponentInParent<Metadata>();
                     foreach (var group in metadata.SortedByGroup())
@@ -149,24 +189,85 @@ namespace Unity.Reflect.Viewer.UI
                     RefreshShownBimItems();
                 }
             }
+
+            if (data.bimSearchString != m_CachedSearchString)
+            {
+                SearchBimItem(data.bimSearchString);
+                m_CachedSearchString = data.bimSearchString;
+            }
         }
 
         void RefreshShownBimItems()
         {
             foreach (var parameter in m_ActiveBimListItem)
-                parameter.gameObject.SetActive(parameter.Group.Equals(m_CurrentBimGroup) || m_CurrentBimGroup == allBimOptionName);
+                parameter.gameObject.SetActive(parameter.groupKey.Equals(m_CurrentBimGroup) || m_CurrentBimGroup == k_AllBimOptionName);
+
+            SearchBimItem(m_SearchInput.text);
         }
 
         void OnBimGroupChanged(int index)
         {
             var groupKey = m_BimGroupDropdown.options[index].text;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetBimGroup, groupKey));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetBimGroup, groupKey));
         }
 
-        void OnDialogButtonClicked()
+        void OnCancelButtonClicked()
         {
-            var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.BimInfo;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+            m_SearchInput.text = "";
+        }
+
+        Coroutine m_SearchCoroutine;
+        void OnSearchInputTextChanged(string search)
+        {
+            if (m_SearchCoroutine != null)
+            {
+                StopCoroutine(m_SearchCoroutine);
+                m_SearchCoroutine = null;
+            }
+            m_SearchCoroutine = StartCoroutine(SearchStringChanged(search));
+        }
+
+        IEnumerator SearchStringChanged(string search)
+        {
+            yield return new WaitForSeconds(0.2f);
+
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetBimSearch, search));
+        }
+
+        void SearchBimItem(string search)
+        {
+            foreach (var bimListItem in m_ActiveBimListItem)
+            {
+                if (bimListItem.groupKey.Equals(m_CurrentBimGroup) || m_CurrentBimGroup == k_AllBimOptionName)
+                {
+                    if (bimListItem.category.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        bimListItem.value.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        bimListItem.gameObject.SetActive(true);
+                    }
+                    else
+                    {
+                        bimListItem.gameObject.SetActive(false);
+                    }
+                }
+            }
+        }
+
+        void OnSearchInputSelected(string input)
+        {
+            DisableMovementMapping(true);
+        }
+
+        void OnSearchInputDeselected(string input)
+        {
+            DisableMovementMapping(false);
+        }
+
+        public static void DisableMovementMapping(bool disableWASD)
+        {
+            var navigationState = UIStateManager.current.stateData.navigationState;
+            navigationState.moveEnabled = !disableWASD;
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
         }
     }
 }

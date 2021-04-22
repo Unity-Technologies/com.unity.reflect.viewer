@@ -1,7 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using Unity.Reflect;
 using Unity.Reflect.IO;
+using Unity.Reflect.Viewer.UI;
 using UnityEngine.Reflect.Pipeline;
 
 namespace UnityEngine.Reflect.Viewer.Pipeline
@@ -27,6 +27,8 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         {
             return m_ReflectPipeline.TryGetNode(out node);
         }
+
+        public bool HasPipelineAsset => m_ReflectPipeline != null && m_ReflectPipeline.pipelineAsset != null;
 
         // Streaming Events
         public void OpenProject(Project project)
@@ -54,8 +56,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             // TODO : SaveProjectData(project) saves "project.data" for the offline project.
             // Maybe we need to move/remove this code depends on the design.
             // "project.data" file is using to get "Offline Project List" and "Enable Delete Button" in the project option dialog now
-            var storage = new PlayerStorage();
-            storage.SetEnvironment(ProjectServer.ProjectDataPath, true, false);
+            var storage = new PlayerStorage(ProjectServer.ProjectDataPath, true,false);
             storage.SaveProjectData(project);
         }
 
@@ -108,8 +109,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             }
 
             // Storage
-            var storage = new PlayerStorage();
-            storage.SetEnvironment(ProjectServer.ProjectDataPath, true, false);
+            var storage = new PlayerStorage(ProjectServer.ProjectDataPath, true, false);
 
             // Client
             m_AuthClient = new AuthClient(user, storage);
@@ -122,12 +122,32 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             ReflectPipelineFactory.ClearUser();
         }
 
+        void OnEnable()
+        {
+            m_ReflectPipeline.onException += OnPipelineException;
+        }
+
         void OnDisable()
         {
             ClearUser();
             CloseProject();
             m_ReflectPipeline.ShutdownPipeline();
+            m_ReflectPipeline.onException -= OnPipelineException;
             update = null;
+        }
+
+        static void OnPipelineException(Exception exception)
+        {
+            var ex = ExtractInnerException(exception);
+            var errorMessage = UIStateManager.current.popUpManager.GetModalPopUpData();
+            errorMessage.title = "Processing Error";
+            errorMessage.text = $"An error occured while processing the Reflect model: {ex.Message}";
+            UIStateManager.current.popUpManager.DisplayModalPopUp(errorMessage);
+        }
+
+        static Exception ExtractInnerException(Exception exception)
+        {
+            return exception.InnerException == null ? exception : ExtractInnerException(exception.InnerException);
         }
 
         void Update()

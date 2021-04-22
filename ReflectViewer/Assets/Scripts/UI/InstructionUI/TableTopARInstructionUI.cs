@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using UnityEngine;
+using UnityEngine.Reflect.MeasureTool;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -72,11 +74,14 @@ namespace Unity.Reflect.Viewer.UI
         private IEnumerator AcknowledgeCancel()
         {
             yield return new WaitForSeconds(0);
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Cancel, false));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Cancel, false));
         }
 
         public void Next()
         {
+            if(!CurrentInstructionStep.CheckValidations())
+                return;
+
             var transition = m_States[++m_TableTopInstructionUI].onNext;
             if (transition != null)
                 transition();
@@ -98,34 +103,34 @@ namespace Unity.Reflect.Viewer.UI
 
         void StartInstruction()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowModel, false));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUIState, InstructionUIState.Init));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUI, this));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableAR, true));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowModel, false));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUIState, InstructionUIState.Init));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUI, this));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableAR, true));
             var navigationState = UIStateManager.current.stateData.navigationState;
             navigationState.EnableAllNavigation(false);
             navigationState.showScaleReference = true;
 
             m_Raycaster.Reset();
-            m_Raycaster.SetObjectToPlace(UIStateManager.current.m_BoundingBoxRootNode.gameObject);
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetPlacementRules, PlacementRule.TableTopPlacementRule));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetPlacementRules, PlacementRule.TableTopPlacementRule));
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARInstructionSidebar));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARInstructionSidebar));
 
             // default scale 1:100
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, ArchitectureScale.OneToOneHundred));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, ArchitectureScale.OneToOneHundred));
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusLevel,
-                StatusMessageLevel.Instruction));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusInstructionMode, true));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
 
 
             SettingsToolStateData settingsToolState = SettingsToolStateData.defaultData;
             settingsToolState.bimFilterEnabled = false;
             settingsToolState.sceneOptionEnabled = false;
             settingsToolState.sunStudyEnabled = false;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSettingsToolState, settingsToolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSettingsToolState, settingsToolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetMeasureToolOptions, MeasureToolStateData.defaultData));
+
             Next();
         }
 
@@ -143,21 +148,22 @@ namespace Unity.Reflect.Viewer.UI
         {
             UIStateManager.current.m_PlacementRules.SetActive(true);
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From( ActionTypes.EnablePlacement, false));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithLevel,
-                new StatusMessageData() { text=m_InstructionFindAPlaneText, level=StatusMessageLevel.Instruction }));
+
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithType,
+                new StatusMessageData() {text = m_InstructionFindAPlaneText, type = StatusMessageType.Instruction}));
 
             m_Raycaster.ActiveScanning = true;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowBoundingBoxModel, false));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowBoundingBoxModel, false));
             ARToolStateData toolState = ARToolStateData.defaultData;
             toolState.okButtonValidator = this;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetARToolState, toolState));
+            toolState.scaleEnabled = false;
+            toolState.rotateEnabled = false;
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetARToolState, toolState));
 
         }
 
         void ConfirmPlacementNext()
         {
-            m_Raycaster.SetObjectToPlace(UIStateManager.current.m_BoundingBoxRootNode.gameObject);
             m_Raycaster.PlaceObject();
 
             ConfirmPlacement();
@@ -165,8 +171,7 @@ namespace Unity.Reflect.Viewer.UI
 
         void ConfirmPlacementBack()
         {
-            m_Raycaster.SwapModelToBox(UIStateManager.current.m_RootNode, UIStateManager.current.m_BoundingBoxRootNode);
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
             ConfirmPlacement();
         }
 
@@ -175,14 +180,13 @@ namespace Unity.Reflect.Viewer.UI
             UIStateManager.current.m_PlacementRules.SetActive(false);
             m_Raycaster.ActiveScanning = false;
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowBoundingBoxModel, true));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowModel, false));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From( ActionTypes.EnablePlacement, true));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowBoundingBoxModel, true));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowModel, false));
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARInstructionSidebar));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARInstructionSidebar));
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithLevel,
-                new StatusMessageData() { text=m_InstructionConfirmPlacementText, level=StatusMessageLevel.Instruction }));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithType,
+                new StatusMessageData() { text=m_InstructionConfirmPlacementText, type = StatusMessageType.Instruction}));
 
             ARToolStateData toolState = ARToolStateData.defaultData;
             toolState.okButtonValidator = null;
@@ -190,36 +194,41 @@ namespace Unity.Reflect.Viewer.UI
             toolState.previousStepEnabled = true;
             toolState.cancelEnabled = true;
             toolState.scaleEnabled = true;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetARToolState, toolState));
+            toolState.rotateEnabled = true;
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetARToolState, toolState));
 
             SettingsToolStateData settingsToolState = SettingsToolStateData.defaultData;
             settingsToolState.bimFilterEnabled = false;
             settingsToolState.sceneOptionEnabled = false;
             settingsToolState.sunStudyEnabled = false;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSettingsToolState, settingsToolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSettingsToolState, settingsToolState));
         }
 
         void OnBoardingCompleteNext()
         {
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusLevel, StatusMessageLevel.Info));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARSidebar));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusInstructionMode, false));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARSidebar));
 
-            m_Raycaster.SwapModel(UIStateManager.current.m_BoundingBoxRootNode, UIStateManager.current.m_RootNode);
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowModel, true));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowBoundingBoxModel, false));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUIState, InstructionUIState.Completed));
 
             ARToolStateData toolState = ARToolStateData.defaultData;
             toolState.okEnabled = true;
             toolState.previousStepEnabled = true;
             toolState.cancelEnabled = true;
             toolState.scaleEnabled = true;
+            toolState.rotateEnabled = false;
             toolState.selectionEnabled = true;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetARToolState, toolState));
+            toolState.measureToolEnabled = false;
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetARToolState, toolState));
 
             SettingsToolStateData settingsToolState = SettingsToolStateData.defaultData;
             settingsToolState.bimFilterEnabled = true;
             settingsToolState.sceneOptionEnabled = true;
             settingsToolState.sunStudyEnabled = false;
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSettingsToolState, settingsToolState));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSettingsToolState, settingsToolState));
         }
 
         public bool ButtonValidate()

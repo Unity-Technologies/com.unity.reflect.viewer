@@ -8,14 +8,28 @@ using UnityEngine;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    public interface IInstructionUI
+    public interface IWalkInstructionUI:IInstructionUIIterable, IInstructionUICancelable
+    {
+        void Reset(Vector3 offset);
+    }
+
+    public interface IInstructionUIIterable
+    {
+        void Next();
+        void Back();
+    }
+
+    public interface IInstructionUICancelable
+    {
+        void Cancel();
+    }
+
+    // TODO:Rename IInstructionUI to IARInstructionUI
+    public interface IInstructionUI: IInstructionUIIterable, IInstructionUICancelable
     {
         void Initialize(ARModeUIController resolver);
         void Restart();
-        void Cancel();
         ARMode arMode { get; }
-        void Next();
-        void Back();
         InstructionUIStep CurrentInstructionStep { get; }
     }
 
@@ -28,5 +42,24 @@ namespace Unity.Reflect.Viewer.UI
         public transition onBack;
 
         public IPlacementValidation[] validations;
+    }
+
+    public static class InstructionExtensions
+    {
+        public static bool CheckValidations(this InstructionUIStep step)
+        {
+            if (step.validations != null)
+            {
+                foreach (var validation in step.validations)
+                {
+                    if (!validation.IsValid(UIStateManager.current.arStateData.placementStateData, out var message))
+                    {
+                        UIStateManager.current.popUpManager.DisplayModalPopUp(message);
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
     }
 }

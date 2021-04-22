@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using SharpFlux;
+using SharpFlux.Dispatching;
 using Unity.Reflect.Viewer.UI;
 using UnityEngine.Reflect.Viewer.Pipeline;
 
@@ -72,6 +73,12 @@ namespace UnityEngine.Reflect.Viewer
             m_IsTeleporting = false;
             Destroy(m_IndicatorInstance);
 
+            if (UIStateManager.current.walkStateData.walkEnabled)
+            {
+                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.FinishTeleport, true));
+                UIStateManager.current.walkStateData.instruction.Next();
+            }
+
             // reset and enable free fly camera
             if (m_FreeFlyCamera == null)
                 return;
@@ -130,7 +137,22 @@ namespace UnityEngine.Reflect.Viewer
                 m_ArrivalOffsetNormal * normal +
                 m_ArrivalOffsetRelative * (m_Source - point).normalized;
 
-            UIStateManager.current.Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Teleport, target));
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Teleport, target));
+        }
+
+        public Vector3 GetTeleportTarget(Vector2 position)
+        {
+            m_TeleportPicker?.Pick(m_Camera.ScreenPointToRay(position), m_Results);
+            if (m_Results.Count == 0)
+                return Vector3.zero;
+
+            var hitInfo = m_Results[0].Item2;
+
+            var point = hitInfo.point;
+            var target = point;
+            target.y += 0.001f;
+
+            return target;
         }
     }
 }

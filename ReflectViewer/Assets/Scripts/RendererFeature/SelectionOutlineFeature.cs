@@ -1,3 +1,4 @@
+#if URP_AVAILABLE
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -71,7 +72,6 @@ namespace Unity.Reflect.Viewer.UI
 
         RenderTargetHandle m_maskTexture;
         RenderTargetHandle m_blurTexture;
-
         public RenderTargetIdentifier source { get; set; }
 
         public SelectionOutlineRenderPass(string profilerTag,
@@ -87,7 +87,7 @@ namespace Unity.Reflect.Viewer.UI
             m_ShaderTagIdList.Add(new ShaderTagId("UniversalForward"));
             m_ShaderTagIdList.Add(new ShaderTagId("SRPDefaultUnlit"));
 
-            m_blurTexture.Init("_MaskTexture");
+            m_maskTexture.Init("_MaskTexture");
             m_blurTexture.Init("_BlurTexture");
         }
 
@@ -104,17 +104,16 @@ namespace Unity.Reflect.Viewer.UI
             CommandBuffer cmd = CommandBufferPool.Get(profilerTag);
             cmd.Clear();
 
+            SortingCriteria sortingCriteria = renderingData.cameraData.defaultOpaqueSortFlags;
+            DrawingSettings drawingSettings = CreateDrawingSettings(m_ShaderTagIdList, ref renderingData, sortingCriteria);
+            drawingSettings.overrideMaterial = materialToBlit;
+            drawingSettings.overrideMaterialPassIndex = (int)PassId.SelectionPassVisible;
+
             CoreUtils.SetRenderTarget(cmd, m_maskTexture.Identifier(), ClearFlag.All, Color.clear);
 
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-            SortingCriteria sortingCriteria = renderingData.cameraData.defaultOpaqueSortFlags;
-            DrawingSettings drawingSettings = CreateDrawingSettings(m_ShaderTagIdList, ref renderingData, sortingCriteria);
-            drawingSettings.overrideMaterial = materialToBlit;
-
-            // Mask visible
-            drawingSettings.overrideMaterialPassIndex = (int)PassId.SelectionPassVisible;
             context.DrawRenderers(renderingData.cullResults,
                 ref drawingSettings,
                 ref m_FilteringSettingsOpaque,
@@ -133,6 +132,21 @@ namespace Unity.Reflect.Viewer.UI
 
             cmd.Blit(m_maskTexture.id, source, materialToBlit, (int)PassId.SelectionPassOutline);
 
+            // Add the following code snippet after calling cmd.Blit
+            // in 2020.2+URP, cmd.Blit has a bug to turn off stereo shader keyword. Enable keyword again manually.
+            if(renderingData.cameraData.isStereoEnabled)
+            {
+                if (SystemInfo.supportsMultiview)
+                    cmd.EnableShaderKeyword("STEREO_MULTIVIEW_ON");
+                else
+                    cmd.EnableShaderKeyword("STEREO_INSTANCING_ON");
+            }
+            else
+            {
+                cmd.DisableShaderKeyword("STEREO_MULTIVIEW_ON");
+                cmd.DisableShaderKeyword("STEREO_INSTANCING_ON");
+            }
+
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
@@ -146,3 +160,4 @@ namespace Unity.Reflect.Viewer.UI
         }
     }
 }
+#endif

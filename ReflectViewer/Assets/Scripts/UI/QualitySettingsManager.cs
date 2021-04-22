@@ -2,6 +2,7 @@ using SharpFlux;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using SharpFlux.Dispatching;
 using Unity.Reflect.Viewer.UI;
 using UnityEngine;
 using UnityEngine.Reflect;
@@ -15,10 +16,12 @@ namespace Unity.Reflect.Viewer
         FrameCalculator m_FrameCalculator;
 
         QualityState m_CachedQualityStateData;
+        int m_MaxQualityLevel;
 
         public void Start()
         {
             m_CachedQualityStateData = UIStateManager.current.applicationStateData.qualityStateData;
+            m_MaxQualityLevel = QualitySettings.names.Length - 1;
 
             if (m_FrameCalculator == null)
                 m_FrameCalculator = FindObjectOfType<FrameCalculator>();
@@ -30,34 +33,40 @@ namespace Unity.Reflect.Viewer
 
         void OnApplicationStateChanged(ApplicationStateData data)
         {
-            if(data.qualityStateData != m_CachedQualityStateData)
-            {
-                m_CachedQualityStateData = data.qualityStateData;
-            }
+            if (data.qualityStateData == m_CachedQualityStateData)
+                return;
+
+            if (m_CachedQualityStateData.qualityLevel != data.qualityStateData.qualityLevel)
+                QualitySettings.SetQualityLevel(data.qualityStateData.qualityLevel);
+
+            m_CachedQualityStateData = data.qualityStateData;
         }
 
         void OnFpsChanged(float fps)
         {
-            if (Time.unscaledTime > m_CachedQualityStateData.lastQualityChangeTimestamp + qualityChangeWaitInterval)
+            if (m_CachedQualityStateData.isAutomatic && Time.unscaledTime > m_CachedQualityStateData.lastQualityChangeTimestamp + qualityChangeWaitInterval)
             {
                 if (fps < m_CachedQualityStateData.fpsThresholdQualityDecrease)
                     ChangeQuality(-1);
                 else if (fps > m_CachedQualityStateData.fpsThresholdQualityIncrease)
                     ChangeQuality(+1);
+
+                m_CachedQualityStateData.lastQualityChangeTimestamp = Time.unscaledTime;
             }
         }
 
         void ChangeQuality(int modifier)
         {
-            var oldQuality = QualitySettings.GetQualityLevel();
-            QualitySettings.SetQualityLevel(oldQuality + modifier);
-            var newQuality = QualitySettings.GetQualityLevel();
+            var qualityStateData = m_CachedQualityStateData;
+            var newQuality = Mathf.Clamp(qualityStateData.qualityLevel + modifier, 0, m_MaxQualityLevel);
 
-            if(newQuality != oldQuality)
-            {
-                m_CachedQualityStateData.lastQualityChangeTimestamp = Time.unscaledTime;
-                m_CachedQualityStateData.qualityLevel = newQuality;
-            }
+            if (newQuality == qualityStateData.qualityLevel)
+                return;
+
+            qualityStateData.lastQualityChangeTimestamp = Time.unscaledTime;
+            qualityStateData.qualityLevel = newQuality;
+            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetQuality,
+                qualityStateData));
         }
     }
 
