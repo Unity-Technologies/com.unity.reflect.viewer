@@ -67,13 +67,7 @@ namespace Unity.Reflect.Viewer.Builder
             if (commandLineArgsByKey.ContainsKey(BuilderConstants.OUTPUT_PATH))
             {
                 buildDirectory = commandLineArgsByKey[BuilderConstants.OUTPUT_PATH];
-            }
-            Debug.Log("[BSP] ABOUT TO CHECK IF THE DELTADNAOPTIOSN ARE THERE");
-            if(AllDeltaDNAArgsPresent())
-            {
-                Debug.Log("[BSP] DELTADNA OPTIONS ARE THERE");
-                SetDeltaDNASettings();
-            }
+            }            
         }
 
         private void SwitchToRespectiveBuildTarget(string buildTarget)
@@ -123,11 +117,6 @@ namespace Unity.Reflect.Viewer.Builder
                 Debug.LogWarning("[BuildSettingsParser] Could not parse a valid version. Forcing a development build.");
                 EditorUserBuildSettings.development = true;
             }
-        }
-
-        private void SetDeltaDNASettings()
-        {
-            UCB.SetDDNAURL(commandLineArgsByKey[BuilderConstants.DELTA_DNA_BASE_URL] + commandLineArgsByKey[BuilderConstants.DELTA_DNA_LIVE_URL]);
         }
 
         private int GetBundleVersionFromVersionString(string version)
