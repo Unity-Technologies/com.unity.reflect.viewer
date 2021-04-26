@@ -10,7 +10,7 @@ This is a repository for all publicly released packages, tests, and demo project
 ## Contents
 
 ### Supported Unity Versions
-This project supports the latest LTS version of Unity 2019.
+This project supports the latest LTS version of Unity 2020.
 
 <a name="Installation"></a>
 ## Installation
