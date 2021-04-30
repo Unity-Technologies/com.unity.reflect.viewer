@@ -7,21 +7,21 @@ using UnityEngine.UI;
 public class GenerateTiles : MonoBehaviour
 {
     Material compMat = null;
-    public Slider sliderWidth1;
+    public Slider sliderWidth1; //These are all sliders of type float or double, mortar size in cm(?)
     public Slider sliderHeight1;
     public Slider sliderWidth2;
     public Slider sliderHeight2;
-    public int resolutionTexture;
-    public Color tileColor;
-    public Color mortarColor;
-    public Texture2D tileTexture;
+    public int resolutionTexture; //1024 is good as a standard
+    public Color tileColor; //Color of tile
+    public Color mortarColor; //Color of mortar
+    Texture2D tileTexture;
     Texture2D tileTextureNormal;
-    public Text textW1;
+    public Text textW1; //These texts are to be made empty, only used for output
     public Text textH1;
     public Text textW2;
-    public Dropdown matDropdown;
+    public Dropdown matDropdown; //Dropdown with two options, for now 'Tiles' and 'Bricks' for a normal tiled or brick tiled pattern. These options can be changed but also have to be changed in the GenerateTiles() function
 
-    public void generateTiles() //Generates a material of tiles according to sizes given and mortar size as well, including normal texture
+    public void GenerateTilesFunction() //Generates a material of tiles according to sizes given and mortar size as well, including normal texture
     {
         float tileWidth = sliderWidth1.value; //These are the dimensions from the sliders
         float tileHeight = sliderHeight1.value;
@@ -109,7 +109,7 @@ public class GenerateTiles : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        generateTiles(); //Generate it at the start of the program, to have one available
+        GenerateTilesFunction(); //Generate it at the start of the program, to have one available
     }
 
     // Update is called once per frame

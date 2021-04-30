@@ -7,21 +7,20 @@ using System.IO;
 
 public class FaceMerging : MonoBehaviour
 {
-    public GameObject selectedObject;
+    public GameObject selectedObject; //Leave empty as usual
     List<Material> matPoss; //
     List<string> namePoss;
-    public Text textCosts;
+    public Text textCosts; //Empty text object
     int curScenario1 = 1;
     double curCost1 = 0.00;
     double totArea1 = 0;
     GameObject root;
     ChangeMaterial changeMatScript;
-    public Material defMat;
-    public Material defMatWhite;
+    public Material defMat; //default material that gets used when adding/removing objects from merged list
 
-    public List<GameObject> listCustom;
-    public List<List<GameObject>> listOfListCustom; //The list of all merged lists, starts empty but is built upon automatically
-    public int curList; //The index of the current list in listOfListCustom (yes, kinda confusing...)
+    public List<GameObject> listCustom; //To be left empty
+    public List<List<GameObject>> listOfListCustom; //The list of all merged lists, starts empty but is built upon automatically, start empty
+    public int curList; //The index of the current list in listOfListCustom (yes, kinda confusing...), start empty too or at 0
 
     // Start is called before the first frame update
     void Start()

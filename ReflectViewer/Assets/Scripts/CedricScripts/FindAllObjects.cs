@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine.UI;
 using System.Linq;
 
@@ -8,27 +8,24 @@ namespace UnityEngine.Reflect
     {
 
         Transform[] transformArr;
-        public List<Transform> transformList; //List of all the transforms of all objects imported by Reflect
-        public List<GameObject> objList; //List of all objects imported
-        public List<Metadata> metaList; //List of all metadata
-        public List<string> phases; //List of all phasing info
-        public int numPhases = 0; //Number of phases
-        public Dropdown dropDownPhases; //
+        List<Transform> transformList; //List of all the transforms of all objects imported by Reflect
+        List<GameObject> objList; //List of all objects imported
+        List<Metadata> metaList; //List of all metadata
+        List<string> phases; //List of all phasing info
+        int numPhases = 0; //Number of phases
+        public Dropdown dropDownPhases; //An EMPTY dropdown menu, gets populated with the detected phases
 
-        public Slider slider; //Slider to go between phases
+        public Slider slider; //EMPTY slider to go between phases
         public Text sliderVal; //Name of current phase shown
-        public Toggle prevToggle; //To select if to show phase alone or include previous phases as well
+        public Toggle prevToggle; //To select if to show phase alone or include previous phases as well, toggles between off and on
 
-        public InputField sortBy;
-        public Dropdown sortByDrop;
-        //public Text sortCats;
-        public Dropdown showOnly;
+        public InputField sortBy; //EMPTY inputfield, gets populated automatically
+        public Dropdown sortByDrop; //Empty dropdown, auto populated
+        public Dropdown showOnly; //Empty dropdown
 
         List<string> keyList;
         List<string> keyList2;
         GameObject root; //GameObject under which all imported gameobjects are stored
-
-        public float alpha;
 
 
         public void FindAll(InputField strInput)

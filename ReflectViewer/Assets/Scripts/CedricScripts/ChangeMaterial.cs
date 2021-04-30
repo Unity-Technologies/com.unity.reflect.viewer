@@ -6,38 +6,34 @@ namespace UnityEngine.Reflect
 {
     public class ChangeMaterial : MonoBehaviour
     {
-        public Toggle toggle;
-        public Text showText;
-        public GameObject selectedObject;
+        public Toggle toggle; //Initially 'on' toggle, defines if material replacement can happen
+        public Text showText; //Empty text file, shows name of selected object
+        public GameObject selectedObject; //Leave empty, gets populated
 
-        public Material newMaterial;
         Material newMaterialCopy;
-        public Image newMaterialCopyImage;
+        public Image newMaterialCopyImage; //Just create a new empty Image, this is to show current material? It's bugged I think
 
-        public Text floatName;
-        public Camera mainCam;
-        public float[] floatNameOffset;
-        public float[] floatImgOffset;
+        public Text floatName; //Empty text
+        public Camera mainCam; //This has to be linked to the main camera of the player
+        public float[] floatNameOffset; //[x, y, z] offset of image selection name, can be [0,0,0]
+        public float[] floatImgOffset; //[x,y,z] offset of image selection images, can be [0,0,0]
         private Vector3 hitPoint;
 
-        public List<Material> matPoss;
-        public List<Texture> texPossible;
-        public List<Image> materialImages;
+        List<Material> matPoss;
+        List<Image> materialImages;
 
         float timeClick;
 
         GameObject root;// = GameObject.Find("Root");
 
-        public int mortarWidth = 4;
-        public Color mortarColor;
+        public int mortarWidth = 4; //Mortar width, in pixels, standard = 4
+        public Color mortarColor; //Color of the mortar
 
-        public Color32[] pix;
+        public Dropdown mortarSizeDrop; //Empty dropdown, gets populated
 
-        public Dropdown mortarSizeDrop;
+        public GameObject replacementTest; //Gameobject to be used to replace objects, currently unused
 
-        public GameObject replacementTest;
-
-        public bool functionReplaceCalled;
+        public bool functionReplaceCalled; //Exists only to give to FaceMerging script
 
         // Start is called before the first frame update
         void Start() //Initializes time, root, the images for the right click menu...
@@ -49,7 +45,7 @@ namespace UnityEngine.Reflect
                 materialImages.Add(tempImg);
             }
             root = GameObject.Find("Root");
-            newMaterialCopy = newMaterial;
+            //newMaterialCopy = newMaterial;
             if (root != null)
             {
                 Debug.Log("success");
@@ -78,7 +74,6 @@ namespace UnityEngine.Reflect
                 {
                     selectedObject = ClickObjects();
                     var selectedMeta = selectedObject.GetComponent<Metadata>();
-                    string selectedCostString = selectedMeta.GetParameter("Cost");
                     showText.text = selectedObject.name;
                     newMaterialCopy = new Material(selectedObject.GetComponent<Renderer>().material);
                     newMaterialCopy.shader = Shader.Find("Unlit/Texture");
@@ -96,8 +91,7 @@ namespace UnityEngine.Reflect
                     selectedObject = ClickObjects();
                     Debug.Log(selectedObject.name);
                     var selectedMeta = selectedObject.GetComponent<Metadata>();
-                    string selectedCostString = selectedMeta.GetParameter("Cost");
-                    showText.text = selectedObject.name + " with cost: " + selectedCostString;
+                    showText.text = selectedObject.name;// + " with cost: " + selectedCostString;
                     newMaterialCopy = new Material(selectedObject.GetComponent<Renderer>().material);
                     newMaterialCopy.shader = Shader.Find("Unlit/Texture");
                     newMaterialCopyImage.material = newMaterialCopy;
