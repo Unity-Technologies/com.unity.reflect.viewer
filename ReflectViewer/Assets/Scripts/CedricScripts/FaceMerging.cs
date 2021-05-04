@@ -8,7 +8,7 @@ using System.IO;
 public class FaceMerging : MonoBehaviour
 {
     public GameObject selectedObject; //Leave empty as usual
-    List<Material> matPoss; //
+    List<Material> matPoss;
     List<string> namePoss;
     public Text textCosts; //Empty text object
     int curScenario1 = 1;
