@@ -1,0 +1,5 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement style="height: 5%; width: 10%; background-color: rgba(164, 164, 164, 0.28); top: 1%;">
+        <ui:Button text="Valider" display-tooltip-when-elided="true" name="ok-button" style="width: 75%; top: 25%; height: 50%; margin-left: 0; margin-right: 0; margin-top: 0; margin-bottom: 0; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0; font-size: 10%; background-color: rgb(81, 140, 96); left: 12.5%;" />
+    </ui:VisualElement>
+</ui:UXML>

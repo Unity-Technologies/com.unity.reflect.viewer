@@ -25,6 +25,8 @@
     "com.unity.textmeshpro": "3.0.4",
     "com.unity.timeline": "1.4.7",
     "com.unity.ugui": "1.0.0",
+    "com.unity.ui": "1.0.0-preview.14",
+    "com.unity.ui.builder": "1.0.0-preview.14",
     "com.unity.xr.arcore": "4.1.7",
     "com.unity.xr.arfoundation": "4.2.0-pre.2",
     "com.unity.xr.arkit": "4.1.7",

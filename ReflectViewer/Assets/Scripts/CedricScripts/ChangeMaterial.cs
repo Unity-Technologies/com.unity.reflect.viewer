@@ -38,11 +38,18 @@ namespace UnityEngine.Reflect
         // Start is called before the first frame update
         void Start() //Initializes time, root, the images for the right click menu...
         {
+            //Added by Arnaud, 05/05/21 because FindAllObjects-->FindAll-->transformList is null otherwise
+            FindAllObjects findAllObjectsScript = GameObject.Find("Root").GetComponent<FindAllObjects>();
+            findAllObjectsScript.ClearLists();
+
+            //Added by Arnaud, 05/05/21 because it is null otherwise and thus materialImages.Add(tempImg) crashes
+            materialImages = new List<Image>();
+
             timeClick = Time.time;
             for (int i = 1; i < 300; i++)
             {
-                Image tempImg = Instantiate(newMaterialCopyImage, newMaterialCopyImage.transform.parent);
-                materialImages.Add(tempImg);
+               Image tempImg = Instantiate(newMaterialCopyImage, newMaterialCopyImage.transform.parent);
+               materialImages.Add(tempImg);
             }
             root = GameObject.Find("Root");
             //newMaterialCopy = newMaterial;

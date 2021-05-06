@@ -1,0 +1,18 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="USS/testVE.uss" />
+    <Style src="USS/selectionMenus.uss" />
+    <ui:VisualElement style="height: 50%; width: 80%; background-color: rgba(130, 130, 130, 0.39); left: 10%; right: 10%; top: 25%; flex-shrink: 0; border-left-color: rgb(255, 8, 8); border-right-color: rgb(255, 8, 8); border-top-color: rgb(255, 8, 8); border-bottom-color: rgb(255, 8, 8); border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; flex-wrap: wrap; align-items: flex-start; flex-grow: 0; max-height: none; min-height: auto; max-width: 80%; min-width: auto;">
+        <ui:Label text="Présélection des carrelages" display-tooltip-when-elided="true" enable-rich-text="true" style="color: rgb(0, 0, 0); -unity-font-style: bold; -unity-font: url(&apos;/Packages/com.unity.ui/PackageResources/Images/Roboto-Regular.ttf&apos;); font-size: 19px; height: 7%; top: 2%; justify-content: center; align-items: center; flex-wrap: wrap; -unity-text-align: middle-center; white-space: normal; width: 50%; left: 25%;" />
+        <ui:VisualElement style="width: 20%; height: auto; flex-grow: 0; flex-wrap: wrap; flex-shrink: 0; align-items: flex-start; left: 1%; position: relative; background-color: rgb(202, 206, 206); top: auto; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; border-top-left-radius: 0; border-bottom-left-radius: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; border-left-color: rgb(0, 0, 0); border-right-color: rgb(0, 0, 0); border-top-color: rgb(0, 0, 0); border-bottom-color: rgb(0, 0, 0);">
+            <ui:Toggle label="Murs" value="false" name="wallToggle" class="myToggle" style="align-items: stretch; justify-content: flex-start;" />
+            <ui:Toggle label="Sols" value="false" name="slabToggle" class="myToggle" style="flex-wrap: wrap; font-size: 12px; align-items: stretch; color: rgb(0, 0, 0); flex-shrink: 0;" />
+        </ui:VisualElement>
+        <ui:VisualElement style="width: 76%; flex-grow: 1; flex-direction: row; flex-wrap: nowrap; left: 22%; top: -10%; align-items: flex-start;">
+            <ui:VisualElement name="myscroll" style="height: 100%;">
+                <ui:Scroller high-value="100" direction="Vertical" value="100" style="flex-direction: row; flex-grow: 0; height: 100%;" />
+            </ui:VisualElement>
+            <ui:VisualElement name="img-container" style="flex-direction: row; flex-wrap: wrap; flex-grow: 0; height: 100%; align-items: flex-start;" />
+        </ui:VisualElement>
+        <ui:Button text="OK" display-tooltip-when-elided="true" name="ok-button" style="left: 50%; bottom: 1%;" />
+    </ui:VisualElement>
+</ui:UXML>

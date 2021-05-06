@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="menu" style="right: 1%; bottom: 5%; width: 25%; height: 50%; left: 74%; top: 45%; background-color: rgb(166, 152, 35); border-top-left-radius: 20px; border-bottom-left-radius: 20px; border-top-right-radius: 20px; border-bottom-right-radius: 20px; align-items: flex-start;">
+        <ui:Label text="Choix Carrelage" display-tooltip-when-elided="true" name="menu-title" />
+        <ui:VisualElement name="img-container" />
+        <ui:Button text="Ok" display-tooltip-when-elided="true" name="ok-button" />
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,7 @@
+.myToggle {
+    flex-wrap: wrap;
+    font-size: 12px;
+    align-items: stretch;
+    color: rgb(0, 0, 0);
+    flex-shrink: 0;
+}

@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement style="width: 50%; height: 50%; left: 25%; top: 25%; align-items: flex-start;">
+        <ui:Label text="Commentaires" display-tooltip-when-elided="true" style="flex-grow: 0; width: 100%; -unity-text-align: upper-center; font-size: 20px; -unity-font-style: bold;" />
+        <ui:TextField picking-mode="Ignore" label="CommentField" value="comment" text="..." multiline="true" name="txtField" style="flex-grow: 1; justify-content: flex-start; align-items: stretch;" />
+        <ui:Button text="OK&#10;" display-tooltip-when-elided="true" name="ok-button" style="flex-grow: 0; left: 45%;" />
+    </ui:VisualElement>
+</ui:UXML>
