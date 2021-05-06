@@ -13,6 +13,7 @@ public class Web : MonoBehaviour
         string csvDir = Directory.GetParent(currentDir).Parent.Parent.FullName;
         string csvPath = csvDir + "\\DB_Carrelages_Demo.csv";
         csvPath = csvPath.Replace("\\", "/");                   //SQL needs forwards slashes...
+        Debug.Log(csvPath);
         StartCoroutine(CreateTableFromCSV(csvPath, "tptiles"));
     }
 

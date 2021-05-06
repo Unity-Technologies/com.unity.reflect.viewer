@@ -125,7 +125,7 @@ public class FaceMerging : MonoBehaviour
     void CreateCSV(string fileName) //Create CSV file: path, attributes. Reset file and fill it
     {
 
-        string path = "C:/Users/aca/Documents" + "/" + fileName + ".csv";
+        string path = "C:/Users/cdri/Documents" + "/" + fileName + ".csv";
         File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly);  // to put in try/catch if file doesn't exist
         if (File.Exists(path))
         {
