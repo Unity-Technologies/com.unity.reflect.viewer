@@ -1,15 +1,19 @@
 using System.Collections;
+using System.IO;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.Networking;
 
 public class Web : MonoBehaviour
 {
-    // Start is called before the first frame update
     void Start()
     {
         // !! YOU NEED TO HAVE SET UP A VRITUALHOST NAMED 'bimexpo', pointing to the 'PHP' folder
-        //StartCoroutine(ExecutePHPScript("http://bimexpo/CreateTableFromCSV.php"));
-        StartCoroutine(CreateTableFromCSV("C:/Users/aca/Documents/Projects/BIMEXPO/DB_Carrelages_Demo.csv", "tptiles"));
+        string currentDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        string csvDir = Directory.GetParent(currentDir).Parent.Parent.FullName;
+        string csvPath = csvDir + "\\DB_Carrelages_Demo.csv";
+        csvPath = csvPath.Replace("\\", "/");                   //SQL needs forwards slashes...
+        StartCoroutine(CreateTableFromCSV(csvPath, "tptiles"));
     }
 
     IEnumerator CreateTableFromCSV(string csvPath, string tableName)
