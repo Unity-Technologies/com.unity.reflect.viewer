@@ -20,8 +20,8 @@
     "com.unity.reflect.viewer-core": "file:../../Packages/com.unity.reflect.viewer-core",
     "com.unity.render-pipelines.universal": "10.4.0",
     "com.unity.spatial-framework": "file:../../Packages/com.unity.spatial-framework",
-    "com.unity.spatial-framework-core": "file:../../Packages/com.unity.spatial-framework-core",
-    "com.unity.test-framework": "1.1.24",
+    "com.unity.spatial-framework-core": "file:../../Packages/com.unity.spatial-framework-core",    
+    "com.unity.test-framework": "1.1.18",
     "com.unity.textmeshpro": "3.0.4",
     "com.unity.timeline": "1.4.7",
     "com.unity.ugui": "1.0.0",
@@ -62,5 +62,9 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
-  }
+  },
+  "registry": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates",
+  "testables": [
+    "com.unity.reflect.viewer-core"
+  ]
 }
