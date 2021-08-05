@@ -14,6 +14,7 @@
     "com.unity.mars-nav-mesh": "1.1.1",
     "com.unity.purchasing": "2.2.2",
     "com.unity.reflect": "file:../../Packages/com.unity.reflect-2.1.0-preview.106.tgz",
+    "com.unity.reflect.annotations": "file:../../Packages/com.unity.reflect.annotations-0.0.1-preview.89.tgz",
     "com.unity.reflect.measure-tool": "file:../../Packages/com.unity.reflect.measure-tool",
     "com.unity.reflect.multiplayer": "file:../../Packages/com.unity.reflect.multiplayer-0.0.1-preview.57.tgz",
     "com.unity.reflect.touch-framework": "file:../../Packages/com.unity.reflect.touch-framework",
