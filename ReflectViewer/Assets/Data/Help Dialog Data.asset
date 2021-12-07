@@ -1,0 +1,110 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 267943c3a4c14601a69f725ade47d3e0, type: 3}
+  m_Name: Help Dialog Data
+  m_EditorClassIdentifier: 
+  m_Entries:
+  - dialogTypeId: 1
+    helpModeEntryId: 0
+    title: Account Dialog
+    content: Log in to your Unity account or visit the BIM360 Dashboard
+  - dialogTypeId: 0
+    helpModeEntryId: 12
+    title: Projects (Landing Screen)
+    content: See all the projects linked to your account
+  - dialogTypeId: 0
+    helpModeEntryId: 1
+    title: Sync
+    content: When enabled, syncs model from original source file
+  - dialogTypeId: 3
+    helpModeEntryId: 0
+    title: Filters Dialog
+    content: Filter models by selecting, enabling or disabling objects based on BIM
+      information
+  - dialogTypeId: 8
+    helpModeEntryId: 0
+    title: Settings
+    content: Access general project settings from here.
+  - dialogTypeId: 11
+    helpModeEntryId: 0
+    title: Sun Study Dialog
+    content: Adjust sun's location and time of day settings
+  - dialogTypeId: 18
+    helpModeEntryId: 0
+    title: Stats Info
+    content: View the statistics and processing information
+  - dialogTypeId: 17
+    helpModeEntryId: 2
+    title: Navigation Cube
+    content: Tap to view different camera angles or reset your position
+  - dialogTypeId: 14
+    helpModeEntryId: 0
+    title: Navigation Mode
+    content: Switch between different viewing modes
+  - dialogTypeId: 12
+    helpModeEntryId: 0
+    title: Bim Info
+    content: View and filter detailed BIM information
+  - dialogTypeId: 0
+    helpModeEntryId: 3
+    title: Back
+    content: Go to previous instruction
+  - dialogTypeId: 0
+    helpModeEntryId: 4
+    title: Scale
+    content: Increase or decrease the model scale
+  - dialogTypeId: 0
+    helpModeEntryId: 5
+    title: Target
+    content: dummy text
+  - dialogTypeId: 0
+    helpModeEntryId: 6
+    title: Ok
+    content: dummy text
+  - dialogTypeId: 0
+    helpModeEntryId: 7
+    title: Cancel
+    content: dummy text
+  - dialogTypeId: 10
+    helpModeEntryId: 0
+    title: Select
+    content: dummy text (select tool for model alignment, doesn't open subdialog)
+  - dialogTypeId: 0
+    helpModeEntryId: 9
+    title: Measure Tool
+    content: Select anchors to get distance in between
+  - dialogTypeId: 0
+    helpModeEntryId: 10
+    title: Microphone
+    content: Turn microphone on/off for online chat
+  - dialogTypeId: 0
+    helpModeEntryId: 11
+    title: Link Sharing
+    content: Share this project
+  - dialogTypeId: 26
+    helpModeEntryId: 0
+    title: Markers
+    content: Use this tool to place AR markers on the 3D scene. These markers can
+      be scanned in AR for an accurate placement of the AR model
+  - dialogTypeId: 25
+    helpModeEntryId: 0
+    title: Scene Settings
+    content: Adjust scene options like backgrounds and cameras
+  - dialogTypeId: 30
+    helpModeEntryId: 0
+    title: More Tools
+    content: Access to other available tools
+  - dialogTypeId: 29
+    helpModeEntryId: 0
+    title: Markers
+    content: s can be scanned in AR for an accurate placement of the AR model can
+      be scanned in AR for an accurate placement of the AR model

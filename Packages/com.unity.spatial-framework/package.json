@@ -1,0 +1,11 @@
+{
+	"name": "com.unity.spatial-framework",
+	"displayName":"Spatial Framework",
+	"version": "0.1.0-preview",
+	"unity": "2019.3",
+	"description": "A collection of assets and prefabs for spatial applications.",
+	"dependencies": {
+		"com.unity.spatial-framework-core": "0.1.0-preview"
+	},
+	"keywords": ["spatial", "design", "XR", "VR", "AR" ]
+}

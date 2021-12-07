@@ -1,0 +1,137 @@
+fileFormatVersion: 2
+guid: 0052c117fe957824cb2b68159f7a96fa
+timeCreated: 1506808458
+licenseType: Pro
+ModelImporter:
+  serializedVersion: 21
+  fileIDToRecycleName:
+    100000: ' Extrusion [3043]'
+    100002: ' Extrusion [3395]'
+    100004: ' Extrusion [3608]'
+    100006: ' Extrusion [4446]'
+    100008: ' Extrusion [4497]'
+    100010: ' Extrusion [4504]'
+    100012: ' Extrusion [4791]'
+    100014: ' Extrusion [5336]'
+    100016: '3D View: {3D}'
+    100018: Floor Floor 1 [70]
+    100020: //RootNode
+    100022: Model Text Model Text 1 [4523]
+    400000: ' Extrusion [3043]'
+    400002: ' Extrusion [3395]'
+    400004: ' Extrusion [3608]'
+    400006: ' Extrusion [4446]'
+    400008: ' Extrusion [4497]'
+    400010: ' Extrusion [4504]'
+    400012: ' Extrusion [4791]'
+    400014: ' Extrusion [5336]'
+    400016: '3D View: {3D}'
+    400018: Floor Floor 1 [70]
+    400020: //RootNode
+    400022: Model Text Model Text 1 [4523]
+    2000000: '3D View: {3D}'
+    2300000: ' Extrusion [3043]'
+    2300002: ' Extrusion [3395]'
+    2300004: ' Extrusion [3608]'
+    2300006: ' Extrusion [4446]'
+    2300008: ' Extrusion [4497]'
+    2300010: ' Extrusion [4504]'
+    2300012: ' Extrusion [4791]'
+    2300014: ' Extrusion [5336]'
+    2300016: Floor Floor 1 [70]
+    2300018: Model Text Model Text 1 [4523]
+    3300000: ' Extrusion [3043]'
+    3300002: ' Extrusion [3395]'
+    3300004: ' Extrusion [3608]'
+    3300006: ' Extrusion [4446]'
+    3300008: ' Extrusion [4497]'
+    3300010: ' Extrusion [4504]'
+    3300012: ' Extrusion [4791]'
+    3300014: ' Extrusion [5336]'
+    3300016: Floor Floor 1 [70]
+    3300018: Model Text Model Text 1 [4523]
+    4300000: Floor Floor 1 [70]
+    4300002: ' Extrusion [3043]'
+    4300004: ' Extrusion [3395]'
+    4300006: ' Extrusion [3608]'
+    4300008: ' Extrusion [4446]'
+    4300010: ' Extrusion [4497]'
+    4300012: ' Extrusion [4504]'
+    4300014: Model Text Model Text 1 [4523]
+    4300016: ' Extrusion [4791]'
+    4300018: ' Extrusion [5336]'
+  materials:
+    importMaterials: 1
+    materialName: 0
+    materialSearch: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    motionNodeName: 
+    rigImportErrors: 
+    rigImportWarnings: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    extraUserProperties: []
+    clipAnimations: []
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    importVisibility: 1
+    importBlendShapes: 1
+    importCameras: 1
+    importLights: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    keepQuads: 0
+    weldVertices: 1
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+    normalCalculationMode: 4
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    serializedVersion: 2
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    rootMotionBoneName: 
+    rootMotionBoneRotation: {x: 0, y: 0, z: 0, w: 1}
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 0
+  humanoidOversampling: 1
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

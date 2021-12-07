@@ -1,0 +1,22 @@
+{
+    "name": "Unity.Properties.CodeGen.IntegrationTests",
+    "references": [
+        "Unity.Properties",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "Unity.Properties.CodeGen.IntegrationTests.Types"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

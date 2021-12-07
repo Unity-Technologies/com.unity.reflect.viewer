@@ -1,0 +1,28 @@
+{
+    "name": "BenchmarkAssembly",
+    "rootNamespace": "",
+    "references": [
+        "Unity.PerformanceTesting",
+        "UnityEditor.TestRunner",
+        "UnityEngine.TestRunner",
+        "ReflectViewer",
+        "Unity.Reflect",
+        "Unity.Reflect.Viewer.Core",
+        "Unity.Reflect.Pipeline",
+        "Unity.RenderPipelines.Core.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll",
+        "Reflect.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

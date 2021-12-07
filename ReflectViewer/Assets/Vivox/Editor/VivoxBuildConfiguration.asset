@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0118c415f94245bca5e18d26f480ac6, type: 3}
+  m_Name: VivoxBuildConfiguration
+  m_EditorClassIdentifier: 
+  BasePath: /Builds
+  Win64:
+    BuildPath: /StandaloneWindows64
+    IncludedInBuildAll: 1
+    shouldRunAfterBuild: 1
+    OverrideGroup: 1
+  Win:
+    BuildPath: /StandaloneWindows
+    IncludedInBuildAll: 1
+    shouldRunAfterBuild: 1
+    OverrideGroup: 1
+  MacOS:
+    BuildPath: /StandaloneOSX
+    IncludedInBuildAll: 1
+    shouldRunAfterBuild: 1
+    OverrideGroup: 1
+  IOS:
+    BuildPath: /iOS
+    IncludedInBuildAll: 1
+    shouldRunAfterBuild: 1
+    OverrideGroup: 2
+  Android:
+    BuildPath: /Android
+    IncludedInBuildAll: 1
+    shouldRunAfterBuild: 1
+    OverrideGroup: 2
+  XboxOne:
+    BuildPath: /XboxOne
+    IncludedInBuildAll: 0
+    shouldRunAfterBuild: 1
+    OverrideGroup: 3
+  PS4:
+    BuildPath: /PS4
+    IncludedInBuildAll: 0
+    shouldRunAfterBuild: 1
+    OverrideGroup: 3
+  Switch:
+    BuildPath: /Switch
+    IncludedInBuildAll: 0
+    shouldRunAfterBuild: 1
+    OverrideGroup: 3

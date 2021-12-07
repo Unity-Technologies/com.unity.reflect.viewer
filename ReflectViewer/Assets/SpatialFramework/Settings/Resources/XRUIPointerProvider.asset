@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64c5c149e3c8fbe4e8f8456fdce3fd18, type: 3}
+  m_Name: XRUIPointerProvider
+  m_EditorClassIdentifier: 
+  m_UIActionMap: {fileID: -944628639613478452, guid: d03c7cf65fc952444ab0ae6b6e912000,
+    type: 3}

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 315e7a64e803fad42bb68a030c571b48
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - m_TrackedObjectActionMap: {fileID: -944628639613478452, guid: a6340dd4d85de3e4098d222abc991cad,
+      type: 3}
+  - m_StandardToolActionMap: {fileID: -944628639613478452, guid: 831f9124600276442ab6a907b43ef9a1,
+      type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,0 +1,60 @@
+{
+    "name": "ReflectViewer",
+    "rootNamespace": "",
+    "references": [
+        "Unity.Reflect.Pipeline",
+        "Unity.InputSystem",
+        "Unity.Reflect",
+        "Unity.Reflect.Editor",
+        "Unity.TouchFramework",
+        "Unity.TextMeshPro",
+        "Unity.SunStudy",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.MARS.Interfaces",
+        "Unity.MARS",
+        "Unity.MARS.Providers.ARFoundation",
+        "Unity.XRTools.ModuleLoader.Interfaces",
+        "Unity.XRTools.Utils",
+        "Unity.XR.Management",
+        "Unity.XR.Interaction.Toolkit",
+        "Unity.XR.OpenXR",
+        "Unity.MARS.Editor",
+        "Unity.XRTools.Utils.Editor",
+        "Unity.XRTools.ModuleLoader",
+        "Unity.XR.ARFoundation",
+        "Unity.Reflect.Viewer.Core",
+        "Unity.Reflect.Multiplayer",
+        "Unity.Reflect.Viewer.MeasureTool",
+        "Unity.SpatialFrameworkCore",
+        "VivoxUnity",
+        "com.unity.reflect.markers.runtime",
+        "Unity.Properties",
+        "Unity.Reflect.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Reflect.dll",
+        "MLAPI.dll",
+        "Reflect.Multiplayer.dll",
+        "Reflect.Utils.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.render-pipelines.universal",
+            "expression": "10.2.2",
+            "define": "URP_AVAILABLE"
+        },
+        {
+            "name": "com.unity.render-pipelines.high-definition",
+            "expression": "10.2.2",
+            "define": "HDRP_AVAILABLE"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -1,0 +1,16 @@
+<UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xmlns:props="Unity.Properties.UI" id="PropertyBagList">
+    <ui:VisualElement
+            class="unity-properties__column unity-properties__expand unity-properties__property-bag-list__container"
+    >
+        <props:SearchElement 
+                class="unity-properties__property-bag-list__search-element"
+                search-data="Name FullName"
+                search-filters="c:PropertyCount ns:Namespace pbt:PropertyBagType is:TypeTraits pn:PropertyNames pt:PropertyTypes has:Extensions"
+                search-delay="0"
+        />
+        <ui:ListView
+                class="unity-properties__expand unity-properties__property-bag-list__list-view"
+                item-height="18"
+        />
+    </ui:VisualElement>
+</UXML>

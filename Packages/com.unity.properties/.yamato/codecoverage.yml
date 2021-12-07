@@ -1,0 +1,25 @@
+{% metadata_file .yamato/environments.metadata %}
+---
+# This file defines the code coverage jobs
+# It will run code coverage on package tests
+{% for package in packages %}
+{% for editor in test_editors %}
+{% for platform in test_platforms %}
+codecoverage_{{ package.name }}_{{ platform.name }}_{{ editor.version }}:
+  name : Code coverage {{ package.name }}  {{ editor.version }} on {{ platform.name }}
+  agent:
+    type: {{ platform.type }}
+    image: {{ platform.image }}
+    flavor: {{ platform.flavor}}
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci project test --unity-version {{ editor.version }} --project-path ./Properties --package-filter {{ package.name }} --enable-code-coverage --code-coverage-options "generateHtmlReport;generateBadgeReport;assemblyFilters:+{{ package.assemblyname }}*"
+  artifacts:
+    ResultsAndLogs:
+      paths:
+        - "upm-ci~/test-results/**"
+  dependencies:
+    - .yamato/pack.yml#pack_project
+{% endfor %}
+{% endfor %}
+{% endfor %}

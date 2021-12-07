@@ -1,0 +1,228 @@
+{% metadata_file .yamato/environments.metadata %}
+---
+# This YML file contains all job definitions that relate to tests and publish to the candidates repository
+{% for editor in test_editors %}
+{% for platform in test_platforms %}
+# Runs validation suite, playmode, and editmode tests in isolation for Properties
+test_com.unity.properties_{{ platform.name }}_{{ editor.version }}:
+  name : Test com.unity.properties {{ editor.version }} on {{ platform.name }}
+  agent:
+    type: {{ platform.type }}
+    image: {{ platform.image }}
+    flavor: {{ platform.flavor}}
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci package test --unity-version {{ editor.version }} --package-path Properties/Packages/com.unity.properties
+  artifacts:
+    logs:
+      paths:
+        - "upm-ci~/test-results/**/*"
+  dependencies:
+    - .yamato/pack.yml#pack_com.unity.properties
+
+# Project test for package testing not using candidates
+projecttest_com.unity.properties_{{ platform.name }}_{{ editor.version }}:
+  name : Project Test com.unity.properties {{ editor.version }} on {{ platform.name }}
+  agent:
+    type: {{ platform.type }}
+    image: {{ platform.image }}
+    flavor: {{ platform.flavor}}
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci project test --unity-version {{ editor.version }} --project-path ./Properties --package-filter com.unity.properties
+  artifacts:
+    logs:
+      paths:
+        - "upm-ci~/test-results/**/*"
+  dependencies:
+    # we pack with serialization job because we pack the whole project 
+    - .yamato/pack.yml#pack_project
+
+# Runs validation suite, playmode, and editmode tests in isolation for Properties.UI
+test_com.unity.properties.ui_{{ platform.name }}_{{ editor.version }}:
+  name : Test com.unity.properties.ui {{ editor.version }} on {{ platform.name }}
+  agent:
+    type: {{ platform.type }}
+    image: {{ platform.image }}
+    flavor: {{ platform.flavor}}
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci package test --unity-version {{ editor.version }} --package-path Properties/Packages/com.unity.properties.ui
+  artifacts:
+    logs:
+      paths:
+        - "upm-ci~/test-results/**/*"
+  dependencies:
+    - .yamato/pack.yml#pack_com.unity.properties.ui
+
+# Project test for package testing not using candidates
+projecttest_com.unity.properties.ui_{{ platform.name }}_{{ editor.version }}:
+  name : Project Test com.unity.properties.ui {{ editor.version }} on {{ platform.name }}
+  agent:
+    type: {{ platform.type }}
+    image: {{ platform.image }}
+    flavor: {{ platform.flavor}}
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci project test --unity-version {{ editor.version }} --project-path ./Properties --package-filter com.unity.properties.ui
+  artifacts:
+    logs:
+      paths:
+        - "upm-ci~/test-results/**/*"
+  dependencies:
+    # we pack with serialization job because we pack the whole project 
+    - .yamato/pack.yml#pack_project
+
+# Runs validation suite, playmode, and editmode tests in isolation for Serialization
+# Serialization needs to be packed and run in this way to allow properties package as a part of the tests
+test_com.unity.serialization_{{ platform.name }}_{{ editor.version }}:
+  name : Test com.unity.serialization {{ editor.version }} on {{ platform.name }}
+  agent:
+    type: {{ platform.type }}
+    image: {{ platform.image }}
+    flavor: {{ platform.flavor}}
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci project test --unity-version {{ editor.version }} --project-path ./Properties --package-filter com.unity.serialization
+  artifacts:
+    logs:
+      paths:
+        - "upm-ci~/test-results/**/*"
+  dependencies:
+    - .yamato/pack.yml#pack_project
+
+# IL2CPP tests for IL2CPP tests do not apply to the properties.UI package.
+test_il2cpp_com.unity.properties_{{ platform.name }}_{{ editor.version }}:
+  name : Test il2cpp com.unity.properties {{ editor.version }} on {{ platform.name }}
+  agent:
+    type: {{ platform.type }}
+    image: {{ platform.image }}
+    flavor: {{ platform.flavor}}
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci package test --unity-version {{ editor.version }} --package-path Properties/Packages/com.unity.properties --type package-tests --platform standalone --backend il2cpp
+  artifacts:
+    logs:
+      paths:
+        - "upm-ci~/test-results/**/*"
+  dependencies:
+    - .yamato/pack.yml#pack_com.unity.properties
+
+
+# Project test for com.unity.properties IL2CPP tests for package testing not using candidates
+projecttest_il2cpp_com.unity.properties_{{ platform.name }}_{{ editor.version }}:
+  name : Project Test il2cpp com.unity.properties {{ editor.version }} on {{ platform.name }}
+  agent:
+    type: {{ platform.type }}
+    image: {{ platform.image }}
+    flavor: {{ platform.flavor}}
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci project test --unity-version {{ editor.version }} --project-path ./Properties --package-filter com.unity.properties --backend il2cpp
+  artifacts:
+    logs:
+      paths:
+        - "upm-ci~/test-results/**/*"
+  dependencies:
+    # we pack with serialization job because we pack the whole project 
+    - .yamato/pack.yml#pack_project
+
+# IL2CPP tests for Serialization package. Serialization needs to be
+# packed and run in this way to allow properties package as a part of the tests
+test_il2cpp_com.unity.serialization_{{ platform.name }}_{{ editor.version }}:
+  name : Test il2cpp com.unity.serialization {{ editor.version }} on {{ platform.name }}
+  agent:
+    type: {{ platform.type }}
+    image: {{ platform.image }}
+    flavor: {{ platform.flavor}}
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci project test --unity-version {{ editor.version }} --project-path ./Properties --package-filter com.unity.serialization --backend il2cpp
+  artifacts:
+    logs:
+      paths:
+        - "upm-ci~/test-results/**/*"
+  dependencies:
+    - .yamato/pack.yml#pack_project
+
+{% endfor %} #end for editors
+{% endfor %} #end for packages
+
+
+{% for package in packages %}
+# This job will push to package to the internal candidates registry
+# Will also execute package tests on all editors and platforms
+publish_{{ package.name }}:
+  name: Publish {{ package.name }} to Internal Registry
+  agent:
+    type: Unity::VM
+    image: package-ci/win10:stable
+    flavor: b1.large
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci package publish --package-path {{ package.path }}
+  artifacts:
+    artifacts:
+      paths:
+        - "upm-ci~/packages/*.tgz"
+  dependencies:
+    - .yamato/pack.yml#pack_{{ package.name }}
+    {% for editor in test_editors %}
+    {% for platform in test_platforms %}
+    - .yamato/testandpublish.yml#test_{{ package.name }}_{{ platform.name }}_{{ editor.version }}
+    {% if package.name != 'com.unity.properties.ui' %}
+    - .yamato/testandpublish.yml#test_il2cpp_{{ package.name }}_{{platform.name}}_{{editor.version}}
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+
+# Dry run to push package to the internal candidates registry
+dryrun_publish_{{ package.name }}:
+  name: Dry Run Publish {{ package.name }} to Internal Registry
+  agent:
+    type: Unity::VM
+    image: package-ci/win10:stable
+    flavor: b1.large
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci package publish --dry-run --package-path {{ package.path }}
+  artifacts:
+    artifacts:
+      paths:
+        - "upm-ci~/packages/*.tgz"
+  dependencies:
+    - .yamato/pack.yml#pack_{{ package.name }}
+    {% for editor in test_editors %}
+    - .yamato/testandpublish.yml#test_{{ package.name }}_proddependency_check_{{ editor.version }}
+    {% for platform in test_platforms %}
+    - .yamato/testandpublish.yml#test_{{ package.name }}_{{ platform.name }}_{{ editor.version }}
+    {% if package.name != 'com.unity.properties.ui' %}
+    - .yamato/testandpublish.yml#test_il2cpp_{{ package.name }}_{{platform.name}}_{{editor.version}}
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+
+{% for editor in test_editors %}
+# Verifies if project works with Production Repository. This is to test if all of the packages are 
+# available on the Production repository.
+test_{{ package.name }}_proddependency_check_{{ editor.version }}:
+  name : Test {{ package.name }} dependencies in Prod Repo on {{ editor.version }}
+  agent:
+    type: Unity::VM::osx
+    image: package-ci/mac:stable
+    flavor: m1.mac
+  commands:
+    - perl -i -ne 'print unless m/registry/ or m/com.unity.devmode/' ./Properties/Packages/manifest.json
+    - perl -pi -e 's/\],/\]/g' ./Properties/Packages/manifest.json
+    - cat ./Properties/Packages/manifest.json
+    - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple
+    - unity-downloader-cli -c editor -r {{ editor.version }} --wait
+    - .Editor/Unity.app/Contents/MacOS/Unity -projectPath "./Properties" -logFile "testlogfile.log" -testResults "testresultsfile.xml" -forgetProjectPath -runEditorTests -batchmode
+  artifacts:
+    logs:
+      paths:
+        - "testlogfile.log"
+        - "testresultsfile.log"
+{% endfor %} #end for editors
+
+{% endfor %} #end for packages

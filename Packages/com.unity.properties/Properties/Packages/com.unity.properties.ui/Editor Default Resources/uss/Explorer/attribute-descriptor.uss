@@ -1,0 +1,33 @@
+.unity-properties__type-descriptor__container
+{
+    margin: 2px 2px 2px 2px;
+}
+
+.unity-properties__type-descriptor__descriptor
+{
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.unity-properties__type-descriptor__value
+{
+    padding-left: 2px;
+    padding-right: 2px;
+    border-width: 1px;
+    
+    flex-shrink: 0;
+    min-width: 0;
+    margin-right:8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    align-self: flex-end;
+}
+
+.unity-properties__type-descriptor__link
+{
+    cursor: link;
+    border-bottom-width: 1px;
+}

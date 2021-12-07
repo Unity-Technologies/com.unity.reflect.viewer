@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfb3eb0b3ba576542a3f49834e57585f, type: 3}
+  m_Name: ViewBasedARInstruction
+  m_EditorClassIdentifier: 
+  InstructionUICanvasRef:
+    exposedName: 70cf66ba80686164a8f550266345b34e
+    defaultValue: {fileID: 0}
+  RaycasterRef:
+    exposedName: f75c6d98aeff0a44cb217c02b61de0b1
+    defaultValue: {fileID: 0}
