@@ -1,10 +1,12 @@
-using SharpFlux;
 using System;
 using SharpFlux.Dispatching;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.UI;
+using System.Collections.Generic;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -21,16 +23,26 @@ namespace Unity.Reflect.Viewer.UI
         TextMeshProUGUI m_ARScaleText;
 #pragma warning restore CS0649
 
-        ArchitectureScale m_DefaultScale = ArchitectureScale.OneToOneHundred;
-        static int m_NumScales = Enum.GetNames(typeof(ArchitectureScale)).Length;
+        SetModelScaleAction.ArchitectureScale m_DefaultScale = SetModelScaleAction.ArchitectureScale.OneToOneHundred;
+        static int m_NumScales = Enum.GetNames(typeof(SetModelScaleAction.ArchitectureScale)).Length;
         ARLabelConverter m_LabelConverter = new ARLabelConverter();
-        public static ToolbarType m_previousToolbar; // Note, will only be either ARSidebar or ARInstructionSidebar and set in those sidebar controllers
-        ArchitectureScale m_CurrentScale;
-        bool? m_ShowScaleReference;
+        public static SetActiveToolBarAction.ToolbarType m_previousToolbar; // Note, will only be either ARSidebar or ARInstructionSidebar and set in those sidebar controllers
+        IUISelector<SetModelScaleAction.ArchitectureScale> m_ModelScaleSelector;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
+            m_DisposeOnDestroy.Add(m_ModelScaleSelector = UISelectorFactory.createSelector<SetModelScaleAction.ArchitectureScale>(ARPlacementContext.current, nameof(IARPlacementDataProvider.modelScale), OnModelScaleChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(NavigationContext.current, nameof(INavigationDataProvider.showScaleReference),
+                data =>
+                {
+                    m_ARScaleText.gameObject.SetActive(data);
+                }));
+        }
+
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
         }
 
         void Start()
@@ -41,55 +53,45 @@ namespace Unity.Reflect.Viewer.UI
             m_ScaleDialControl.labelConverter = m_LabelConverter;
             m_ScaleDialControl.selectedValue = GetFloatFromScale(m_DefaultScale);
             m_ScaleDialControl.maximumValue = m_NumScales - 1; // Note, internal radial values will be ArchitectureScale enum indices
-            m_ARScaleText.text = FormatScaleText(UIStateManager.current.stateData.modelScale);
+            m_ARScaleText.text = FormatScaleText(m_ModelScaleSelector.GetValue());
         }
 
-        void OnStateDataChanged(UIStateData data)
+        void OnModelScaleChanged(SetModelScaleAction.ArchitectureScale newData)
         {
-            if (m_CurrentScale != data.modelScale)
-            {
-                m_ScaleDialControl.selectedValue = GetFloatFromScale(data.modelScale);
-                m_ARScaleText.text = FormatScaleText(data.modelScale);
-                m_CurrentScale = data.modelScale;
-            }
-
-            if (m_ShowScaleReference != data.navigationState.showScaleReference)
-            {
-                m_ARScaleText.gameObject.SetActive(data.navigationState.showScaleReference);
-                m_ShowScaleReference = data.navigationState.showScaleReference;
-            }
+            m_ScaleDialControl.selectedValue = GetFloatFromScale(newData);
+            m_ARScaleText.text = FormatScaleText(newData);
         }
 
         void OnScaleDialValueChanged(float value)
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, GetScaleFromFloat(value)));
+            Dispatcher.Dispatch(SetModelScaleAction.From(GetScaleFromFloat(value)));
         }
 
         void OnResetButtonClicked()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, m_DefaultScale));
+            Dispatcher.Dispatch(SetModelScaleAction.From(m_DefaultScale));
         }
 
         void OnMainButtonClicked()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, m_previousToolbar));
+            Dispatcher.Dispatch(SetActiveToolBarAction.From(m_previousToolbar));
             // TODO AR scale message (text)
         }
 
-        public static string FormatScaleText(ArchitectureScale scale)
+        public static string FormatScaleText(SetModelScaleAction.ArchitectureScale scale)
         {
             return $"1 : {(int)scale}";
         }
 
         // Get ArchitectureScale value from Dial's float value, and vice versa
-        public static ArchitectureScale GetScaleFromFloat(float value)
+        public static SetModelScaleAction.ArchitectureScale GetScaleFromFloat(float value)
         {
             var index = (int)Mathf.Round(value);
-            return (ArchitectureScale)Enum.GetValues(typeof(ArchitectureScale)).GetValue(index);
+            return (SetModelScaleAction.ArchitectureScale)Enum.GetValues(typeof(SetModelScaleAction.ArchitectureScale)).GetValue(index);
         }
-        public static float GetFloatFromScale(ArchitectureScale scale)
+        public static float GetFloatFromScale(SetModelScaleAction.ArchitectureScale scale)
         {
-            var index = Array.IndexOf(Enum.GetValues(typeof(ArchitectureScale)), scale);
+            var index = Array.IndexOf(Enum.GetValues(typeof(SetModelScaleAction.ArchitectureScale)), scale);
             return index;
         }
 

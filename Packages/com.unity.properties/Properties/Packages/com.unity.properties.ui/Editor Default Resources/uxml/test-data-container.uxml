@@ -1,0 +1,10 @@
+<UXML xmlns:pui="Unity.Properties.UI" >
+    <pui:SearchElement name="filter"
+                       handler-type="sync"
+                       search-delay="100"
+                       search-data="Id Name"
+                       source-data="SourceData"
+                       filtered-data="DestinationData"
+                       search-filters="a:StringArray e:StringEnumerable"
+                       global-string-comparison="Ordinal"/>
+</UXML>

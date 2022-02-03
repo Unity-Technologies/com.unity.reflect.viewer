@@ -1,10 +1,9 @@
 using System;
 using System.Reflection;
-using SharpFlux;
-using SharpFlux.Middleware;
-using Unity.Reflect.Viewer.UI;
 using UnityEngine;
 using UnityEngine.Events;
+using Unity.Reflect.Runtime;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.Reflect;
 
 namespace Unity.Reflect.Viewer
@@ -31,7 +30,9 @@ namespace Unity.Reflect.Viewer
 
         [SerializeField]
         private ExceptionExtraInfo m_exceptionExtraInfo;
-        
+
+        IDisposable m_ActiveProjectSelector;
+
         public StringUnityEvent onExceptionExtraInfoChanged;
 
         public void Awake()
@@ -49,16 +50,21 @@ namespace Unity.Reflect.Viewer
                 m_exceptionExtraInfo.EnvTrace = unsetConstant;
             onExceptionExtraInfoChanged?.Invoke(JsonUtility.ToJson(m_exceptionExtraInfo));
 
-            UIStateManager.projectStateChanged += CheckActiveProject;
+            m_ActiveProjectSelector = UISelectorFactory.createSelector<Project>(ProjectManagementContext<Project>.current, nameof(IProjectDataProvider<Project>.activeProject), OnActiveProjectChanged);
         }
 
-        private void CheckActiveProject(UIProjectStateData obj)
+        void OnDestroy()
         {
-            if (obj.activeProject != null &&
-                !string.IsNullOrEmpty(obj.activeProject.projectId) &&
-                obj.activeProject.projectId != m_exceptionExtraInfo.reflectUpid)
+            m_ActiveProjectSelector?.Dispose();
+        }
+
+        void OnActiveProjectChanged(Project newData)
+        {
+            if (newData != null &&
+                !string.IsNullOrEmpty(newData.projectId) &&
+                newData.projectId != m_exceptionExtraInfo.reflectUpid)
             {
-                m_exceptionExtraInfo.reflectUpid = obj.activeProject.projectId;
+                m_exceptionExtraInfo.reflectUpid = newData.projectId;
                 onExceptionExtraInfoChanged?.Invoke(JsonUtility.ToJson(m_exceptionExtraInfo));
             }
         }

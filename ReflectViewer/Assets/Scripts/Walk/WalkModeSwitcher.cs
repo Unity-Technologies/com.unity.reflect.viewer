@@ -1,18 +1,19 @@
 ﻿using System;
 using System.Collections;
-using SharpFlux;
+using System.Collections.Generic;
 using SharpFlux.Dispatching;
 using Unity.Reflect.Viewer.UI;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.OnScreen;
-using UnityEngine.Reflect.MeasureTool;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer
 {
-    public class WalkModeSwitcher : MonoBehaviour
+    public class WalkModeSwitcher: MonoBehaviour
     {
 #pragma warning disable CS0649
         [SerializeField]
@@ -22,7 +23,7 @@ namespace Unity.Reflect.Viewer
         [SerializeField]
         Vector3 m_RotationOffset;
         [SerializeField]
-        OrbitModeUIController m_OrbitModeUIController;
+        WalkModeTeleportController m_WalkModeTeleportController;
         [SerializeField]
         FreeFlyCamera m_FreeFlyCamera;
         [SerializeField]
@@ -35,66 +36,177 @@ namespace Unity.Reflect.Viewer
         Vector3 m_Destination;
 #pragma warning restore CS0649
         InputActionMap m_InputActionMap;
-        WalkModeInstruction m_WalkModeInstruction;
         CharacterController m_CharacterController;
-        bool m_IsPlacementMode = false;
-        bool m_HasFinishPlacement = true;
-        bool m_IsInit = false;
-        bool m_IsResetingPosition = false;
-        OnScreenStick m_OnScreenStick;
+        bool m_IsPlacementMode;
+        bool m_IsInit;
+        bool m_IsResettingPosition;
+        bool m_CancelWalkMode;
+
         FirstPersonController m_FirstPersonController;
 
-        UIWalkStateData? m_CachedWalkStateData;
         bool m_IsActivated;
-        DialogType m_CachedSubDialog, m_CachedDialog;
-        DialogMode m_CachedDialogMode;
-        MeasureToolStateData? m_CachedMeasureToolStateData;
-
+        OpenDialogAction.DialogType m_CachedSubDialog, m_CachedDialog;
+        SetDialogModeAction.DialogMode m_CachedDialogMode;
+        SetActiveToolAction.ToolType m_CachedActiveTool;
+        IUISelector<bool> m_MeasureToolStateSelector;
+        IUISelector<bool> m_WalkModeEnableSelector;
+        IUISelector<SetInstructionUIStateAction.InstructionUIState> m_WalkInstructionStateSelector;
+        IUISelector<IWalkInstructionUI> m_WalkInstructionSelector;
+        bool m_RotateTarget;
         Image[] m_JoystickImages;
+        Coroutine m_StatusDialogCloseCoroutine;
+        IUISelector<float> m_ScaleFactorSelector;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
+
+
         void Awake()
         {
-            m_InputActionAsset["Walk Mode Action"].performed += OnWalkStartPositionValidate;
-            m_InputActionAsset["Switch Mode Action"].performed += OnSwitchMode;
 #if UNITY_ANDROID || UNITY_IOS
             m_InputActionAsset["Place Joystick Action"].performed += OnPlaceJoystick;
+            OrphanUIController.onBeginDrag += OnBeginDrag;
+            OrphanUIController.onDrag += OnDrag;
+            OrphanUIController.onEndDrag += OnCancel;
+#else
+            m_InputActionAsset["Walk Mode Action"].started += OnBeginDrag;
+            m_InputActionAsset["Walk Mode Action"].performed += OnDrag;
+            m_InputActionAsset["Walk Mode Action"].canceled += OnCancel;
 #endif
+
+            m_InputActionAsset["Walk Mode Action Tap"].canceled += OnCancel;
             m_InputActionMap = m_InputActionAsset.FindActionMap("Walk");
             m_InputActionMap.Disable();
-            m_OnScreenStick = m_LeftJoystick.GetComponentInChildren<OnScreenStick>(true);
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.externalToolChanged += OnExternalToolChanged;
+
+            m_DisposeOnDestroy.Add(m_MeasureToolStateSelector = UISelectorFactory.createSelector<bool>(MeasureToolContext.current, nameof(IMeasureToolDataProvider.toolState), OnMeasureToolToolChanged));
+            m_DisposeOnDestroy.Add(m_WalkModeEnableSelector = UISelectorFactory.createSelector<bool>(WalkModeContext.current, nameof(IWalkModeDataProvider.walkEnabled), OnWalkEnable));
+            m_DisposeOnDestroy.Add(m_WalkInstructionStateSelector = UISelectorFactory.createSelector<SetInstructionUIStateAction.InstructionUIState>(WalkModeContext.current, nameof(IWalkModeDataProvider.instructionUIState)));
+            m_DisposeOnDestroy.Add(m_WalkInstructionSelector = UISelectorFactory.createSelector<IWalkInstructionUI>(WalkModeContext.current, nameof(IWalkModeDataProvider.instruction)));
+            m_DisposeOnDestroy.Add(m_ScaleFactorSelector = UISelectorFactory.createSelector<float>(UIStateContext.current, nameof(IUIStateDisplayProvider<DisplayData>.display) + "." + nameof(IDisplayDataProvider.scaleFactor)));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog),
+                type =>
+                {
+                    m_CachedDialog = type;
+                    CheckJoystickAvailable();
+                }));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeSubDialog),
+                type =>
+                {
+                    m_CachedSubDialog = type;
+                    CheckJoystickAvailable();
+                }));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetDialogModeAction.DialogMode>(UIStateContext.current, nameof(IDialogDataProvider.dialogMode),
+                type =>
+                {
+                    m_CachedDialogMode = type;
+                    CheckJoystickAvailable();
+                }));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetActiveToolAction.ToolType>(ToolStateContext.current, nameof(IToolStateDataProvider.activeTool),
+                type =>
+                {
+                    m_CachedActiveTool = type;
+                    CheckJoystickAvailable();
+                }));
+
             m_JoystickImages = m_LeftJoystick.GetComponentsInChildren<Image>();
         }
 
-        void OnExternalToolChanged(ExternalToolStateData data)
+        void OnWalkEnable(bool newData)
         {
-            if (m_CachedMeasureToolStateData != data.measureToolStateData)
+            if (m_WalkModeEnableSelector != null)
             {
-                m_CachedMeasureToolStateData = data.measureToolStateData;
-                CheckJoystickAvailable();
+                if (!newData)
+                    m_CancelWalkMode = true;
+                else
+                    ((WalkModeInstruction)m_WalkInstructionSelector.GetValue()).Initialize(this);
             }
         }
 
-        void OnStateDataChanged(UIStateData stateData)
+        void OnBeginDrag<T>(T evt)
         {
-            if (m_CachedDialog != stateData.activeDialog || m_CachedSubDialog != stateData.activeSubDialog
-            || m_CachedDialogMode != stateData.dialogMode)
+            BeginDragRotation();
+        }
+
+        void OnCancel<T>(T evt)
+        {
+            OnFinishTeleport();
+        }
+
+        void OnDrag(BaseEventData evt)
+        {
+            RotateTarget();
+        }
+
+        void OnDrag(InputAction.CallbackContext context)
+        {
+            RotateTarget();
+        }
+
+        void OnFinishTeleport()
+        {
+            if (!m_RotateTarget && !m_IsInit)
+                return;
+
+            m_WalkModeTeleportController.IsTargetPositionValid(result =>
             {
-                m_CachedDialog = stateData.activeDialog;
-                m_CachedSubDialog = stateData.activeSubDialog;
-                m_CachedDialogMode = stateData.dialogMode;
-                CheckJoystickAvailable();
+                if (result || m_RotateTarget)
+                {
+                    m_WalkModeTeleportController.EnableTarget(false);
+                    WalkStartPosition();
+                }
+            });
+        }
+
+        void RotateTarget()
+        {
+            if (m_RotateTarget)
+            {
+                m_WalkModeTeleportController.StartDistanceAnimation();
+                m_WalkModeTeleportController.SetRotation(m_RotationOffset);
+                m_RotationOffset.y = m_WalkModeTeleportController.GetRotation();
             }
+        }
+
+        void BeginDragRotation()
+        {
+            Dispatcher.Dispatch(SetWalkStateAction.From(SetInstructionUIStateAction.InstructionUIState.Started));
+            if (!m_IsInit)
+                return;
+
+            m_WalkModeTeleportController.SetTeleportDestination(Pointer.current.position.ReadValue());
+            m_WalkModeTeleportController.IsTargetPositionValid(result =>
+            {
+                if (!result)
+                    return;
+
+                if (m_WalkModeEnableSelector.GetValue() && m_IsPlacementMode)
+                {
+                    m_RotateTarget = true;
+                    m_WalkModeTeleportController.EnableTarget(true);
+                    m_IsPlacementMode = false;
+                    m_InputActionAsset["Camera Control Action"].Enable();
+                    m_InputActionAsset["Orbit Action"].Disable();
+                }
+            });
+        }
+
+        void OnMeasureToolToolChanged(bool data)
+        {
+            CheckJoystickAvailable();
         }
 
         void CheckJoystickAvailable()
         {
             if (m_IsActivated)
             {
-                if ( (m_CachedDialog != DialogType.None && m_CachedDialog != DialogType.GizmoMode)
-                    || m_CachedSubDialog != DialogType.None
-                    || m_CachedDialogMode == DialogMode.Help
-                    || m_CachedMeasureToolStateData?.toolState == true)
+                if (m_CachedDialog != OpenDialogAction.DialogType.None
+                    || (m_CachedSubDialog != OpenDialogAction.DialogType.None && m_CachedDialog != OpenDialogAction.DialogType.GizmoMode)
+                    || m_CachedDialogMode == SetDialogModeAction.DialogMode.Help
+                    || m_MeasureToolStateSelector.GetValue()
+                    || m_CachedActiveTool == SetActiveToolAction.ToolType.SunstudyTool)
                 {
                     m_InputActionAsset["Place Joystick Action"].Disable();
                 }
@@ -105,71 +217,129 @@ namespace Unity.Reflect.Viewer
             }
         }
 
-        public void EnableJoystick(bool enable)
+        void EnableJoystick(bool enable)
         {
-            m_OnScreenStick.enabled = enable;
-            m_LeftJoystick.SetActive(enable);
-        }
-
-        void OnPlaceJoystick(InputAction.CallbackContext obj)
-        {
-            if (m_CachedWalkStateData == null)
-                return;
-
-            Vector3 pos = Pointer.current.position.ReadValue();
-
-            if (IsInsideBound(pos))
+            foreach (var image in m_JoystickImages)
             {
-                m_LeftJoystick.transform.position = pos;
-                EnableJoystick(true);
+                image.enabled = enable;
             }
         }
 
-        void OnWalkStartPositionValidate(InputAction.CallbackContext obj)
+        void OnPlaceJoystick(InputAction.CallbackContext context)
         {
-            if (m_CachedWalkStateData.HasValue && m_CachedWalkStateData.Value.walkEnabled)
+            if (!m_WalkModeEnableSelector.GetValue() ||  m_FirstPersonController.GetJoystickTouch() != null)
+                return;
+
+            Touchscreen touchscreen = Touchscreen.current;
+            if (touchscreen != null)
             {
-                m_Destination = m_OrbitModeUIController.GetWalkReticlePosition();
-                if (m_OrbitModeUIController.OnGetTeleportTarget(false, true))
+                foreach (var touch in touchscreen.touches)
                 {
-                    m_IsPlacementMode = false;
+                    var pos = touch.position.ReadValue();
+                    if (touch.isInProgress && (IsLeftSide(pos) || m_FirstPersonController.GetJoystickTouch() == touch)
+                        && m_FirstPersonController.IsTouchControlDifferent())
+                    {
+                        m_LeftJoystick.transform.position = pos;
+                        m_FirstPersonController.SetJoystickTouch(touch);
+
+                        EnableJoystick(true);
+                    }
                 }
             }
         }
 
-        void OnWalkStateDataChanged(UIWalkStateData walkData)
+        bool IsLeftSide(Vector2 coordinate)
         {
-            if (m_WalkModeInstruction == null && walkData.walkEnabled)
+            bool retval = false;
+            if (!IsInsideBound(coordinate))
+                return retval;
+
+            var boundRect = Screen.safeArea;
+            boundRect.xMax -= boundRect.width / 2f;
+
+            if (boundRect.Contains(coordinate))
             {
-                m_WalkModeInstruction = walkData.instruction as WalkModeInstruction;
-                m_WalkModeInstruction.Initialize(this);
+                retval = true;
             }
 
-            if (walkData != m_CachedWalkStateData)
+            return retval;
+        }
+
+        void WalkStartPosition()
+        {
+            if (m_WalkModeEnableSelector.GetValue() && m_IsInit)
             {
-                m_CachedWalkStateData = walkData;
+                m_InputActionAsset["Orbit Action"].Enable();
+
+#if UNITY_ANDROID || UNITY_IOS
+                if (!m_RotateTarget)
+                {
+                    m_WalkModeTeleportController.GetAsyncTargetPosition(result =>
+                    {
+                        m_Destination = result;
+                        OnActivateTeleport();
+                    });
+                }
+                else
+                {
+                    m_Destination = m_WalkModeTeleportController.GetWalkReticlePosition();
+                    OnActivateTeleport();
+                }
+#else
+                m_Destination = m_WalkModeTeleportController.GetWalkReticlePosition();
+                OnActivateTeleport();
+#endif
+                m_RotateTarget = false;
             }
+        }
+
+        void OnActivateTeleport()
+        {
+            m_WalkModeTeleportController.OnGetTeleportTarget(false, true, result =>
+            {
+                if (result)
+                {
+                    m_IsPlacementMode = false;
+                }
+            });
         }
 
         public void OnQuitWalkMode()
         {
-            EnableJoystick(false);
+            m_LeftJoystick.SetActive(false);
+            m_FirstPersonController.SetJoystickTouch(null);
 
             m_IsPlacementMode = false;
-            m_OrbitModeUIController.OnGetTeleportTarget(m_IsPlacementMode);
             ActivateFlyMode(!m_IsInit);
             m_IsActivated = false;
+
+            if (m_StatusDialogCloseCoroutine != null)
+            {
+                StopCoroutine(m_StatusDialogCloseCoroutine);
+                m_StatusDialogCloseCoroutine = null;
+            }
+            Dispatcher.Dispatch(SetWalkStateAction.From(SetInstructionUIStateAction.InstructionUIState.Init));
         }
+
+
 
         public void OnWalkStart()
         {
             ActivateWalkMode();
             m_IsActivated = true;
+
+            if (m_StatusDialogCloseCoroutine != null)
+            {
+                StopCoroutine(m_StatusDialogCloseCoroutine);
+                m_StatusDialogCloseCoroutine = null;
+            }
+
+            m_StatusDialogCloseCoroutine = StartCoroutine(((WalkModeInstruction)m_WalkInstructionSelector.GetValue()).WaitCloseStatusDialog());
         }
 
         bool IsInsideBound(Vector2 coordinate, float range = 90)
         {
-            range *= UIStateManager.current.stateData.display.scaleFactor;
+            range *= m_ScaleFactorSelector.GetValue();
             var boundRect = Screen.safeArea;
             boundRect.xMin += range;
             boundRect.xMax -= range;
@@ -182,7 +352,7 @@ namespace Unity.Reflect.Viewer
         public void Init()
         {
             m_InputActionMap.Enable();
-            if (m_CachedWalkStateData != null && m_CachedWalkStateData.Value.walkEnabled)
+            if (m_WalkModeEnableSelector.GetValue())
             {
                 m_IsPlacementMode = true;
             }
@@ -193,6 +363,7 @@ namespace Unity.Reflect.Viewer
             }
 
             m_IsInit = true;
+            m_WalkModeTeleportController.SetRotation(Vector3.zero);
             m_InputActionAsset["Place Joystick Action"].Disable();
         }
 
@@ -201,49 +372,42 @@ namespace Unity.Reflect.Viewer
             m_FPSController = Instantiate(m_FPSController);
             m_FirstPersonController = m_FPSController.GetComponent<FirstPersonController>();
             m_FirstPersonController.Init(m_LeftJoystick.GetComponentInChildren<JoystickControl>(true));
-            UIStateManager.walkStateChanged += OnWalkStateDataChanged;
             m_FreeFlyCamera = m_MainCamera.GetComponent<FreeFlyCamera>();
-        }
-
-        void OnSwitchMode(InputAction.CallbackContext callbackContext)
-        {
-            if (m_CachedWalkStateData != null)
-            {
-                var navigationState = UIStateManager.current.stateData.navigationState;
-                navigationState.navigationMode = !m_CachedWalkStateData.Value.walkEnabled ? NavigationMode.Walk : NavigationMode.Fly;
-
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableWalk,
-                    !m_CachedWalkStateData.Value.walkEnabled));
-            }
         }
 
         void Update()
         {
-            if (m_IsPlacementMode)
+            if (m_CancelWalkMode)
             {
-                m_OrbitModeUIController.OnGetTeleportTarget(m_IsPlacementMode);
+                m_CancelWalkMode = false;
+                m_WalkInstructionSelector.GetValue().Cancel();
+            }
+
+            if (m_IsPlacementMode && !m_WalkModeTeleportController.IsTeleporting())
+            {
+                m_WalkModeTeleportController.OnGetTeleportTarget(m_IsPlacementMode, false, null);
             }
 #if UNITY_ANDROID || UNITY_IOS
-            if (!m_LeftJoystick.activeSelf)
+            if (m_FirstPersonController.GetJoystickTouch() == null)
             {
-                m_OnScreenStick.enabled = false;
+                m_FirstPersonController.SetJoystickTouch(null);
+                EnableJoystick(false);
             }
 #endif
         }
 
         public void ResetCamPos(Vector3 offset)
         {
-            if (m_IsResetingPosition)
+            if (m_IsResettingPosition)
             {
                 return;
             }
 
-            m_IsResetingPosition = true;
+            m_IsResettingPosition = true;
             m_Offset = offset;
             ActivateFlyMode(false);
             m_FreeFlyCamera.ResetDesiredPosition();
-            ActivateWalkMode(true);
+            ActivateWalkMode();
             m_InputActionMap.Enable();
         }
 
@@ -253,26 +417,34 @@ namespace Unity.Reflect.Viewer
             m_MainCamera.gameObject.SetActive(true);
             m_MainCamera.clearFlags = CameraClearFlags.Skybox;
 
+#if UNITY_IOS
+            // Camera clearFlags is changed to CameraClearFlags.Nothing after one frame on iOS so need to set to Skybox in Coroutine
+            StartCoroutine(SetCameraSkybox());
+#endif
+
             if (moveCamera)
             {
-                m_FreeFlyCamera.SetMovePosition(m_FPSController.transform.position, m_FPSController.transform.rotation);
+                m_FreeFlyCamera.TransformTo(m_FPSController.transform);
             }
 
             m_InputActionMap.Disable();
+            m_InputActionAsset["Orbit Action"].Enable();
             m_IsInit = false;
         }
 
-        void ActivateWalkMode(bool isReset = false)
+#if UNITY_IOS
+        IEnumerator SetCameraSkybox()
         {
-            if (m_HasFinishPlacement || isReset)
-            {
-                m_FPSController.SetActive(true);
-                m_FreeFlyCamera.SetMovePosition(m_MainCamera.transform.position, m_MainCamera.transform.rotation);
+            yield return null;
+            m_MainCamera.clearFlags = CameraClearFlags.Skybox;
+        }
+#endif
 
-                m_HasFinishPlacement = false;
-                StartCoroutine(ChangePos());
-                m_MainCamera.gameObject.SetActive(false);
-            }
+        void ActivateWalkMode()
+        {
+            m_FPSController.SetActive(true);
+            StartCoroutine(ChangePos());
+            m_MainCamera.gameObject.SetActive(false);
 
             m_IsInit = false;
             m_InputActionAsset["Place Joystick Action"].Disable();
@@ -289,30 +461,29 @@ namespace Unity.Reflect.Viewer
             m_CharacterController = m_FPSController.GetComponent<CharacterController>();
             m_CharacterController.enabled = false;
 
-            if (!m_IsResetingPosition)
+            if (!m_IsResettingPosition)
             {
                 // When joystick is hidden, first touch and drag is not working. So this code is needed.
                 foreach (var image in m_JoystickImages)
                 {
                     image.enabled = false;
                 }
+
                 m_LeftJoystick.SetActive(true);
-                yield return null;
-                m_LeftJoystick.SetActive(false);
-                foreach (var image in m_JoystickImages)
-                {
-                    image.enabled = true;
-                }
             }
 
             m_CharacterController.transform.position = m_Destination + m_Offset;
             SetCameraRotation(Quaternion.Euler(m_RotationOffset));
             yield return null;
             m_CharacterController.enabled = true;
-            m_HasFinishPlacement = true;
-            m_IsResetingPosition = false;
+
             m_InputActionAsset["Place Joystick Action"].Enable();
-            m_FirstPersonController.SetInitialHeight();
+            m_WalkModeTeleportController.TeleportFinish();
+            m_RotationOffset = Vector3.zero;
+            m_IsResettingPosition = false;
+
+            yield return new WaitForEndOfFrame();
+            Dispatcher.Dispatch(SetWalkStateAction.From(SetInstructionUIStateAction.InstructionUIState.Completed));
         }
     }
 }

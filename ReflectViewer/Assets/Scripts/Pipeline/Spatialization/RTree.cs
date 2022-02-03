@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Unity.Reflect.Collections;
+using Unity.Reflect.Actors;
 
 namespace UnityEngine.Reflect.Viewer.Pipeline
 {
@@ -7,12 +9,15 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 	{
 		internal sealed class SpatialNode : ISpatialObject
 		{
-			public Vector3 min { get; private set; }
-			public Vector3 max { get; private set; }
-			public Vector3 center { get; private set; }
-			public float priority { get; set; }
-			public bool isVisible { get; set; }
-			public GameObject loadedObject { get; set; }
+            public DynamicGuid Id { get; }
+            public EntryData Entry { get; }
+			public Vector3 Min { get; private set; }
+			public Vector3 Max { get; private set; }
+			public Vector3 Center { get; private set; }
+			public float Priority { get; set; }
+			public bool Ignore { get; set; }
+			public bool IsVisible { get; set; }
+			public GameObject LoadedObject { get; set; }
 
 			public bool isLeaf => children.Count == 0 || !(children[0] is SpatialNode);
 
@@ -21,8 +26,8 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
 			public SpatialNode()
 			{
-				min = Vector3.positiveInfinity;
-				max = Vector3.negativeInfinity;
+				Min = Vector3.positiveInfinity;
+				Max = Vector3.negativeInfinity;
 
 				parent = null;
 				children = new List<ISpatialObject>();
@@ -40,9 +45,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
 			public bool Encapsulates(ISpatialObject obj)
 			{
-				return min.x <= obj.min.x && max.x >= obj.max.x &&
-				       min.y <= obj.min.y && max.y >= obj.max.y &&
-				       min.z <= obj.min.z && max.z >= obj.max.z;
+				return Min.x <= obj.Min.x && Max.x >= obj.Max.x &&
+                       Min.y <= obj.Min.y && Max.y >= obj.Max.y &&
+                       Min.z <= obj.Min.z && Max.z >= obj.Max.z;
 			}
 
 			public SpatialNode FindChildLeastEnlargement(ISpatialObject obj)
@@ -52,9 +57,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 				var leastVolume = float.MaxValue;
 				foreach (var child in children)
 				{
-					var volume = CalculateVolume(child.min, child.max);
-					var newVolume = CalculateVolume(Vector3.Min(child.min, obj.min),
-						Vector3.Max(child.max, obj.max));
+					var volume = CalculateVolume(child.Min, child.Max);
+					var newVolume = CalculateVolume(Vector3.Min(child.Min, obj.Min),
+						Vector3.Max(child.Max, obj.Max));
 					var enlargement = newVolume - volume;
 					if (enlargement > leastEnlargement ||
 					    Mathf.Approximately(enlargement, leastEnlargement) && volume >= leastVolume)
@@ -70,9 +75,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
 			void SetMinMax(Vector3 newMin, Vector3 newMax)
 			{
-				min = newMin;
-				max = newMax;
-				center = newMin + (newMax - newMin) / 2f;
+                Min = newMin;
+				Max = newMax;
+				Center = newMin + (newMax - newMin) / 2f;
 			}
 
 			public void Dispose()
@@ -115,7 +120,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 			get
 			{
 				lock (m_Lock)
-					m_Bounds.SetMinMax(m_RootNode.min, m_RootNode.max);
+					m_Bounds.SetMinMax(m_RootNode.Min, m_RootNode.Max);
 				return m_Bounds;
 			}
 		}
@@ -130,16 +135,16 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 				m_CornerSplitChildren[i] = new List<ISpatialObject>();
 
 			m_RootNode = new SpatialNode();
-			m_PriorityHeap = new PriorityHeap<ISpatialObject>(m_MaxPerNode, Comparer<ISpatialObject>.Create((a, b) => a.priority.CompareTo(b.priority)));
+			m_PriorityHeap = new PriorityHeap<ISpatialObject>(m_MaxPerNode, Comparer<ISpatialObject>.Create((a, b) => a.Priority.CompareTo(b.Priority)));
 
 			// split node comparison is reversed compared to existing node
 			// that way children closest to the split axis are always at the end of the list
-			m_NodeComparerX = Comparer<ISpatialObject>.Create((a, b) => a.center.x.CompareTo(b.center.x));
-			m_SplitNodeComparerX = Comparer<ISpatialObject>.Create((a, b) => b.center.x.CompareTo(a.center.x));
-			m_NodeComparerY = Comparer<ISpatialObject>.Create((a, b) => a.center.y.CompareTo(b.center.y));
-			m_SplitNodeComparerY = Comparer<ISpatialObject>.Create((a, b) => b.center.y.CompareTo(a.center.y));
-			m_NodeComparerZ = Comparer<ISpatialObject>.Create((a, b) => a.center.z.CompareTo(b.center.z));
-			m_SplitNodeComparerZ = Comparer<ISpatialObject>.Create((a, b) => b.center.z.CompareTo(a.center.z));
+			m_NodeComparerX = Comparer<ISpatialObject>.Create((a, b) => a.Center.x.CompareTo(b.Center.x));
+			m_SplitNodeComparerX = Comparer<ISpatialObject>.Create((a, b) => b.Center.x.CompareTo(a.Center.x));
+			m_NodeComparerY = Comparer<ISpatialObject>.Create((a, b) => a.Center.y.CompareTo(b.Center.y));
+			m_SplitNodeComparerY = Comparer<ISpatialObject>.Create((a, b) => b.Center.y.CompareTo(a.Center.y));
+			m_NodeComparerZ = Comparer<ISpatialObject>.Create((a, b) => a.Center.z.CompareTo(b.Center.z));
+			m_SplitNodeComparerZ = Comparer<ISpatialObject>.Create((a, b) => b.Center.z.CompareTo(a.Center.z));
 		}
 
 		public void Search<T>(Func<ISpatialObject, bool> predicate,
@@ -166,7 +171,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 							if (!predicate(child))
 								continue;
 
-							child.priority = prioritizer(child);
+							child.Priority = prioritizer(child);
 							m_PriorityHeap.Push(child);
 						}
 
@@ -219,26 +224,28 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 		}
 
 		SpatialNode FindLeaf(ISpatialObject obj)
-		{
-			var node = m_RootNode;
-			while (node != null && !node.isLeaf)
-			{
-				var validChildFound = false;
-				foreach (var child in node.children)
-				{
-					if (!(child is SpatialNode childNode) || !childNode.Encapsulates(obj))
-						continue;
+        {
+            return FindLeaf(obj, m_RootNode);
+        }
 
-					node = childNode;
-					validChildFound = true;
-					break;
-				}
+        SpatialNode FindLeaf(ISpatialObject obj, SpatialNode node)
+        {
+            if (node.isLeaf)
+            {
+                return node.children.Contains(obj) ? node : null;
+            }
+            foreach (var child in node.children)
+            {
+                if (!(child is SpatialNode childNode) || !childNode.Encapsulates(obj))
+                    continue;
 
-				if (!validChildFound)
-					return null;
-			}
-			return node;
-		}
+                var leaf = FindLeaf(obj, childNode);
+                if (leaf != null)
+                    return leaf;
+            }
+
+            return null;
+        }
 
 		public void Remove(ISpatialObject obj)
 		{
@@ -314,9 +321,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 				return;
 
 			foreach (var obj in node.children)
-				obj.priority = (node.center - obj.center).sqrMagnitude;
+				obj.Priority = (node.Center - obj.Center).sqrMagnitude;
 
-			node.children.Sort((a, b) => a.priority.CompareTo(b.priority));
+			node.children.Sort((a, b) => a.Priority.CompareTo(b.Priority));
 
 			var objects = node.children;
 			if (node.parent != null)
@@ -343,8 +350,8 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
 			foreach (var obj in objects)
 			{
-				min = Vector3.Min(min, obj.min);
-				max = Vector3.Max(max, obj.max);
+				min = Vector3.Min(min, obj.Min);
+				max = Vector3.Max(max, obj.Max);
 			}
 		}
 
@@ -521,9 +528,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
 		static int FindClosestCornerIndex(SpatialNode node, ISpatialObject obj)
 		{
-			return (obj.center.x <= node.center.x ? 0 : k_X) +
-			       (obj.center.y <= node.center.y ? 0 : k_Y) +
-			       (obj.center.z <= node.center.z ? 0 : k_Z);
+			return (obj.Center.x <= node.Center.x ? 0 : k_X) +
+			       (obj.Center.y <= node.Center.y ? 0 : k_Y) +
+			       (obj.Center.z <= node.Center.z ? 0 : k_Z);
 		}
 
 		public void DrawDebug(Gradient nodeGradient, Gradient objectGradient, float maxPriority, int maxDepth)
@@ -546,7 +553,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 				if (nodeGradient != null)
 				{
 					Gizmos.color = nodeGradient.Evaluate(currentDepth / depth);
-					Gizmos.DrawWireCube(obj.center, obj.max - obj.min);
+					Gizmos.DrawWireCube(obj.Center, obj.Max - obj.Min);
 				}
 				foreach (var child in node.children)
 				{
@@ -558,8 +565,8 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 			if (objectGradient == null)
 				return;
 
-			Gizmos.color = objectGradient.Evaluate(maxPriority > 0 ? Math.Abs(obj.priority / maxPriority) : 0);
-			Gizmos.DrawCube(obj.center, obj.max - obj.min);
+			Gizmos.color = objectGradient.Evaluate(maxPriority > 0 ? Math.Abs(obj.Priority / maxPriority) : 0);
+			Gizmos.DrawCube(obj.Center, obj.Max - obj.Min);
 		}
 
 		public void Dispose()

@@ -4,6 +4,7 @@ using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -29,9 +30,17 @@ namespace Unity.Reflect.Viewer.UI
         public static bool isPointBlockedByUI => !s_IsPointed;
         public static bool isTouchBlockedByUI => !s_IsPressed;
 
+        public const string k_TagName = "Orphan";
+
+        void Awake()
+        {
+            UISelectorFactory.createSelector<bool>(VRContext.current, nameof(IVREnableDataProvider.VREnable), OnVREnableChanged);
+        }
 
         void Start()
         {
+            m_TapDetectorRect.gameObject.tag = k_TagName;
+
             // SetupInterceptorsIfNeeded();
             EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnPointerEnter, EventTriggerType.PointerEnter);
             EventTriggerUtility.CreateEventTrigger(m_TapDetectorRect.gameObject, OnPointerExit, EventTriggerType.PointerExit);
@@ -87,6 +96,11 @@ namespace Unity.Reflect.Viewer.UI
         void OnEndDrag(BaseEventData eventData)
         {
             onEndDrag?.Invoke(eventData);
+        }
+
+        void OnVREnableChanged(bool isVREnabled)
+        {
+            m_TapDetectorRect.gameObject.SetActive(!isVREnabled);
         }
     }
 }

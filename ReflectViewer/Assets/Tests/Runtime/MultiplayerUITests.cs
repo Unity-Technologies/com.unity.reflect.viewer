@@ -3,20 +3,22 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using SharpFlux.Dispatching;
 using TMPro;
 using Unity.Reflect;
 using Unity.Reflect.Viewer;
 using Unity.Reflect.Viewer.UI;
-using UnityEngine;
 using UnityEngine.Reflect;
 using UnityEngine.Reflect.Pipeline;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
-using Random = UnityEngine.Random;
+using UnityEngine.Reflect.Viewer;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace ReflectViewerRuntimeTests
 {
-    public class MultiplayerUITests : BaseReflectSceneTests
+    public class MultiplayerUITests: BaseReflectSceneTests
     {
         UnityProjectHost m_ProjectServerHost = new UnityProjectHost("test server id", "test server name", new[] { "endpoint 1" }, "test accessToken", false);
 
@@ -42,20 +44,24 @@ namespace ReflectViewerRuntimeTests
             project.lastPublished.AddMinutes(1);
             projectList.Add(project);
 
-            ReflectPipelineFactory.projectsRefreshCompleted.Invoke(projectList);
-            ReflectPipelineFactory.projectsRefreshCompleted = new ProjectListerSettings.ProjectsEvents();
+            ReflectProjectsManager.projectsRefreshCompleted.Invoke(projectList);
+            ReflectProjectsManager.projectsRefreshCompleted = new ProjectListerSettings.ProjectsEvents();
             UIStateManager.current.ForceSendSessionStateChangedEvent();
             yield return WaitAFrame();
         }
 
         IEnumerator ConnectAllUsers(string projectId, IEnumerable<UserIdentity> testUsers)
         {
-            Assert.AreEqual(1, UIStateManager.current.sessionStateData.sessionState.rooms.Length);
-            var roomIndex = Array.FindIndex(UIStateManager.current.sessionStateData.sessionState.rooms, (r) => r.project.serverProjectId == projectId);
-            foreach (var user in testUsers)
+            using (var RoomSelector = UISelectorFactory.createSelector<IProjectRoom[]>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.rooms)))
             {
-                UIStateManager.current.sessionStateData.sessionState.rooms[roomIndex].users.Add(user);
-                UIStateManager.current.ForceSendSessionStateChangedEvent();
+                Assert.AreEqual(1, RoomSelector.GetValue().Length);
+                var roomIndex = Array.FindIndex(RoomSelector.GetValue(), (r) => ((ProjectRoom)r).project.serverProjectId == projectId);
+                foreach (var user in testUsers)
+                {
+                    ((ProjectRoom)RoomSelector.GetValue()[roomIndex]).users.Add(user);
+                    Dispatcher.Dispatch(SetProjectRoomAction.From(RoomSelector.GetValue()));
+                    UIStateManager.current.ForceSendSessionStateChangedEvent();
+                }
             }
             foreach (var user in testUsers)
             {
@@ -66,9 +72,10 @@ namespace ReflectViewerRuntimeTests
                 });
                 yield return WaitAFrame();
             }
+            yield return WaitAFrame();
         }
 
-        [Ignore("Cannot run this test on yamato without a valid reflect user logged in")]
+        [Category("YamatoIncompatible")]
         [UnityTest]
         public IEnumerator MultiplayerUITests_CollaborationBarDisplayConnectedUsers()
         {
@@ -93,7 +100,7 @@ namespace ReflectViewerRuntimeTests
             Assert.AreEqual(m_TestUsers[2].matchmakerId, avatars[2].MatchmakerId);
         }
 
-        [Ignore("Cannot run this test on yamato without a valid reflect user logged in")]
+        [Category("YamatoIncompatible")]
         [UnityTest]
         public IEnumerator MultiplayerUITests_ClickUser_ShowsUserInfoDialog()
         {
@@ -117,7 +124,7 @@ namespace ReflectViewerRuntimeTests
             Assert.AreEqual(m_TestUsers[m_TestUsers.Length - 1].fullName, userInfoDialog.m_FullName.text);
         }
 
-        [Ignore("Cannot run this test on yamato without a valid reflect user logged in")]
+        [Category("YamatoIncompatible")]
         [UnityTest]
         public IEnumerator MultiplayerUITests_GroupBubble_ShowCorrectNbOfUsers()
         {
@@ -141,7 +148,7 @@ namespace ReflectViewerRuntimeTests
             Assert.AreEqual("+6", groupText.text);
         }
 
-        [Ignore("Cannot run this test on yamato without a valid reflect user logged in")]
+        [Category("YamatoIncompatible")]
         [UnityTest]
         public IEnumerator MultiplayerUITests_VerticalUserList_DisplayAllUsers()
         {
@@ -167,7 +174,7 @@ namespace ReflectViewerRuntimeTests
 
             Assert.AreEqual(m_TestUsers.Length, userVerticalItems.Length);
 
-            for(int i = 0 ; i < userVerticalItems.Length; ++i)
+            for (int i = 0; i < userVerticalItems.Length; ++i)
             {
                 Assert.AreEqual(m_TestUsers[m_TestUsers.Length - i - 1].matchmakerId, userVerticalItems[i].MatchmakerId);
             }

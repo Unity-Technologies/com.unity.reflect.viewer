@@ -1,0 +1,23 @@
+{
+    "name": "Unity.Properties.UI.Debug",
+    "rootNamespace": "Unity.Properties.UI.Debug",
+    "references": [
+        "GUID:807be9350277eff4182cd3600de41d3a",
+        "GUID:ce7eee763f6e12b47a5ca268e565edb8",
+        "GUID:1772c749bf871a841b5f22464e680751",
+        "GUID:2765e68924a08a94ea0ea66b31c0168f",
+        "GUID:e78ca1c4f9cf59b4c988dfe82dea3e7f",
+        "GUID:416d137b1126dbf408443d029c73482a"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

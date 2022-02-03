@@ -17,8 +17,8 @@ MonoBehaviour:
     helpModeEntryId: 0
     title: Account Dialog
     content: Log in to your Unity account or visit the BIM360 Dashboard
-  - dialogTypeId: 13
-    helpModeEntryId: 0
+  - dialogTypeId: 0
+    helpModeEntryId: 12
     title: Projects (Landing Screen)
     content: See all the projects linked to your account
   - dialogTypeId: 0
@@ -32,13 +32,13 @@ MonoBehaviour:
       information
   - dialogTypeId: 8
     helpModeEntryId: 0
-    title: Scene Options Dialog
-    content: Adjust scene options like backgrounds and cameras
+    title: Settings
+    content: Access general project settings from here.
   - dialogTypeId: 11
     helpModeEntryId: 0
     title: Sun Study Dialog
     content: Adjust sun's location and time of day settings
-  - dialogTypeId: 15
+  - dialogTypeId: 18
     helpModeEntryId: 0
     title: Stats Info
     content: View the statistics and processing information
@@ -50,58 +50,61 @@ MonoBehaviour:
     helpModeEntryId: 0
     title: Navigation Mode
     content: Switch between different viewing modes
-  - dialogTypeId: 6
-    helpModeEntryId: 3
-    title: Orbit Select
-    content: Switch between orbit, pan, and zoom for easier navigation on touch screens.
-      Long press to change option
-  - dialogTypeId: 0
-    helpModeEntryId: 4
-    title: Look Around
-    content: On Desktop use WASD controls to navigate your scene, left click to rotate
-      and scroll wheel to zoom. On touch screens use one finger swipe to rotate camera,
-      two finger pinch to zoom, double tap to teleport
   - dialogTypeId: 12
     helpModeEntryId: 0
     title: Bim Info
     content: View and filter detailed BIM information
   - dialogTypeId: 0
-    helpModeEntryId: 5
-    title: Sun Study Dial
-    content: Adjust the position of the sun relative to the scene environment
-  - dialogTypeId: 0
-    helpModeEntryId: 6
+    helpModeEntryId: 3
     title: Back
-    content: dummy text
+    content: Go to previous instruction
   - dialogTypeId: 0
-    helpModeEntryId: 7
+    helpModeEntryId: 4
     title: Scale
-    content: dummy text
+    content: Increase or decrease the model scale
   - dialogTypeId: 0
-    helpModeEntryId: 8
+    helpModeEntryId: 5
     title: Target
     content: dummy text
   - dialogTypeId: 0
-    helpModeEntryId: 9
+    helpModeEntryId: 6
     title: Ok
     content: dummy text
   - dialogTypeId: 0
-    helpModeEntryId: 10
+    helpModeEntryId: 7
     title: Cancel
     content: dummy text
-  - dialogTypeId: 0
-    helpModeEntryId: 11
+  - dialogTypeId: 10
+    helpModeEntryId: 0
     title: Select
     content: dummy text (select tool for model alignment, doesn't open subdialog)
   - dialogTypeId: 0
-    helpModeEntryId: 12
+    helpModeEntryId: 9
     title: Measure Tool
     content: Select anchors to get distance in between
   - dialogTypeId: 0
-    helpModeEntryId: 13
+    helpModeEntryId: 10
     title: Microphone
     content: Turn microphone on/off for online chat
   - dialogTypeId: 0
-    helpModeEntryId: 14
+    helpModeEntryId: 11
     title: Link Sharing
     content: Share this project
+  - dialogTypeId: 26
+    helpModeEntryId: 0
+    title: Markers
+    content: Use this tool to place AR markers on the 3D scene. These markers can
+      be scanned in AR for an accurate placement of the AR model
+  - dialogTypeId: 25
+    helpModeEntryId: 0
+    title: Scene Settings
+    content: Adjust scene options like backgrounds and cameras
+  - dialogTypeId: 30
+    helpModeEntryId: 0
+    title: More Tools
+    content: Access to other available tools
+  - dialogTypeId: 29
+    helpModeEntryId: 0
+    title: Markers
+    content: s can be scanned in AR for an accurate placement of the AR model can
+      be scanned in AR for an accurate placement of the AR model

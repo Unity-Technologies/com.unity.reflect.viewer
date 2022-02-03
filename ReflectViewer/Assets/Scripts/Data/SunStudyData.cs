@@ -1,24 +1,52 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Properties;
 using Unity.Reflect.Viewer.UI;
 using Unity.SunStudy;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    [Serializable]
-    public struct SunStudyData : IEquatable<SunStudyData>
+    [Serializable, GeneratePropertyBag]
+    public struct SunStudyData : IEquatable<SunStudyData>, ISunstudyDataProvider
     {
-        public int timeOfDay;
-        public int timeOfYear;
-        public int utcOffset;
-        public int latitude;
-        public int longitude;
-        public int northAngle;
-        public float altitude;
-        public float azimuth;
-        public bool isStaticMode;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int timeOfDay { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int timeOfYear{ get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int utcOffset{ get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int latitude{ get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int longitude{ get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int northAngle{ get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public float altitude{ get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public float azimuth{ get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool isStaticMode { get; set; }
 
         public bool Equals(SunStudyData other)
         {
@@ -60,29 +88,10 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        public static void SetSunStudyData(Unity.SunStudy.SunStudy sunStudy, SunStudyData sunStudyData)
-        {
-            sunStudy.MinuteOfDay = sunStudyData.timeOfDay;
-            sunStudy.DayOfYear = sunStudyData.timeOfYear;
-            sunStudy.UtcOffset = sunStudyData.utcOffset / 100f;
-            sunStudy.CoordLatitude = sunStudyData.latitude;
-            sunStudy.CoordLongitude = sunStudyData.longitude;
-            sunStudy.NorthAngle = sunStudyData.northAngle;
-            sunStudy.Azimuth = sunStudyData.azimuth;
-            sunStudy.Altitude = sunStudyData.altitude;
-            sunStudy.PlacementMode = sunStudyData.isStaticMode ? SunPlacementMode.Static : SunPlacementMode.Geographical;
-        }
         public static SunStudyData Format(SunStudyData sunStudyData)
         {
             sunStudyData.utcOffset -= (sunStudyData.utcOffset % 25); // only 15 minutes increments
             return sunStudyData;
-        }
-        public static string GetSunStatusMessage(ToolbarType toolbarType, SunStudyData sunStudyData)
-        {
-            // Set status message if sun study dials are open
-            string statusMessage = toolbarType == ToolbarType.AltitudeAzimuthDial ? AltitudeAzimuthRadialUIController.GetAltAzStatusMessage(sunStudyData) :
-                            toolbarType == ToolbarType.TimeOfDayYearDial ? TimeRadialUIController.GetTimeStatusMessage(sunStudyData) : String.Empty;
-            return statusMessage;
         }
     }
 }

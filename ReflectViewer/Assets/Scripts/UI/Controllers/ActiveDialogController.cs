@@ -1,12 +1,14 @@
 ﻿using System;
-using System.Data;
+using System.Collections.Generic;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
     /// <summary>
-    /// Controller responible of managing the active dialog.
+    /// Controller responsible of managing the active dialog.
     /// </summary>
     public class ActiveDialogController : MonoBehaviour
     {
@@ -48,19 +50,10 @@ namespace Unity.Reflect.Viewer.UI
         DialogWindow m_BimDialog;
 
         [SerializeField]
-        DialogWindow m_StatsInfoDialog;
-
-        [SerializeField]
         DialogWindow m_InfoSelectDialog;
 
-        [SerializeField]
-        DialogWindow m_DebugOptionsDialog;
-
-        [SerializeField, Tooltip("Reference to the Navigation Mode FanOut")]
-        FanOutWindow m_NavigationModeFanOut;
-
-        [SerializeField]
-        DialogWindow m_OrbitSelectDialog;
+        [SerializeField, Tooltip("Reference to the Navigation Mode Fly")]
+        DialogWindow m_NavigationModeFlyOut;
 
         [SerializeField, Tooltip("Reference to the Gizmo Navigation Mode FanOut")]
         FanOutWindow m_NavigationGizmoModeFanOut;
@@ -77,170 +70,183 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         DialogWindow m_LoginScreenDialog;
 
-#pragma warning restore CS0649
+        [SerializeField, Tooltip("Reference to the Scene Settings Dialog")]
+        DialogWindow m_SceneSettingsDialog;
 
-        DialogType m_CurrentActiveDialog = DialogType.None;
-        DialogType m_CurrentSubDialog = DialogType.None;
-        OptionDialogType m_CurrentActiveOptionDialog = OptionDialogType.None;
-        ProgressData m_CurrentProgressData;
+        [SerializeField, Tooltip("Reference to the Marker Edit dialog")]
+        DialogWindow m_MarkerDialog;
+
+        [SerializeField, Tooltip("Reference to the Left Sidebar More dialog")]
+        DialogWindow m_LeftSidebarMoreDialog;
+
+#pragma warning restore CS0649
+        IUISelector<SetDialogModeAction.DialogMode> m_DialogModeSelector;
+        List<IDisposable> m_DisposableSelectors;
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
+            m_DialogModeSelector = UISelectorFactory.createSelector<SetDialogModeAction.DialogMode>(UIStateContext.current, nameof(IDialogDataProvider.dialogMode));
+            m_DisposableSelectors = new List<IDisposable>()
+            {
+                m_DialogModeSelector,
+                UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog), OnActiveDialogChanged),
+                UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeSubDialog), OnActiveSubDialogChanged),
+                UISelectorFactory.createSelector<CloseAllDialogsAction.OptionDialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeOptionDialog), OnActiveOptionDialogChanged),
+                UISelectorFactory.createSelector<SetProgressStateAction.ProgressState>(ProgressContext.current, nameof(IProgressDataProvider.progressState), OnProgressStateChanged),
+            };
         }
 
-        void OnStateDataChanged(UIStateData stateData)
+        void OnDestroy()
         {
-            if (m_CurrentActiveDialog != stateData.activeDialog)
+            m_DisposableSelectors?.ForEach(x => x.Dispose());
+        }
+
+        void OnProgressStateChanged(SetProgressStateAction.ProgressState newData)
+        {
+            if (newData == SetProgressStateAction.ProgressState.NoPendingRequest)
             {
-                m_CurrentActiveDialog = stateData.activeDialog;
+                m_ProgressIndicatorDialog.Close(true);
+            }
+            else
+            {
+                m_ProgressIndicatorDialog.Open(true);
+            }
+        }
 
-                m_FiltersDialog.Close();
-                m_OrbitSelectDialog.Close();
-                m_ClippingToolDialog.Close();
-                m_CameraOptionsDialog.Close();
-                m_SceneOptionsDialog.Close();
-                m_SunStudyDialog.Close();
-                m_SequenceDialog.Close();
-                m_LandingScreenDialog.Close();
-                m_NavigationModeFanOut.Close();
-                m_NavigationGizmoModeFanOut.Close();
-                m_StatsInfoDialog.Close();
-                m_InfoSelectDialog.Close();
-                m_DebugOptionsDialog.Close();
-                m_ARCardSelectionDialog.Close();
-                m_CollaborationUserListDialog.Close();
-                m_CollaborationUserInfoDialog.Close();
-                m_LoginScreenDialog.Close();
+        void OnActiveOptionDialogChanged(CloseAllDialogsAction.OptionDialogType newData)
+        {
+            switch (newData)
+            {
+                case CloseAllDialogsAction.OptionDialogType.None:
+                    break;
+                case CloseAllDialogsAction.OptionDialogType.ProjectOptions:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
 
-                if (stateData.dialogMode == DialogMode.Help)
-                {
-                    m_HelpDialogController.Display(m_CurrentActiveDialog);
-                    return;
-                }
+        void OnActiveSubDialogChanged(OpenDialogAction.DialogType newData)
+        {
+            m_AccountDialog.Close();
+            m_LinkSharingDialog.Close();
+            m_NavigationGizmoModeFanOut.Close();
+            m_SceneOptionsDialog.Close();
+            m_NavigationModeFlyOut.Close();
 
-                switch (stateData.activeDialog)
-                {
-                    case DialogType.None:
-                        break;
-                    case DialogType.Projects:
-                        // TODO remove this type and ProjectsUIController class
-                        // m_ProjectsDialog.Open();
-                        break;
-                    case DialogType.Filters:
-                        m_FiltersDialog.Open();
-                        break;
-                    case DialogType.OrbitSelect:
-                        m_OrbitSelectDialog.Open();
-                        break;
-                    case DialogType.ClippingTool:
-                        m_ClippingToolDialog.Open();
-                        break;
-                    case DialogType.CameraOptions:
-                        m_CameraOptionsDialog.Open();
-                        break;
-                    case DialogType.SceneOptions:
-                        m_SceneOptionsDialog.Open();
-                        break;
-                    case DialogType.SunStudy:
-                        m_SunStudyDialog.Open();
-                        break;
-                    case DialogType.Sequence:
-                        m_SequenceDialog.Open();
-                        break;
-                    case DialogType.SelectTool:
-                        // TODO
-                        break;
-                    case DialogType.LandingScreen:
-                        m_LandingScreenDialog.Open();
-                        break;
-                    case DialogType.NavigationMode:
-                        m_NavigationModeFanOut.Open();
-                        break;
-                    case DialogType.GizmoMode:
-                        m_NavigationGizmoModeFanOut.Open();
-                        break;
-                    case DialogType.StatsInfo:
-                        m_StatsInfoDialog.Open();
-                        break;
-                    case DialogType.InfoSelect:
-                        m_InfoSelectDialog.Open();
-                        break;
-                    case DialogType.DebugOptions:
-                        m_DebugOptionsDialog.Open();
-                        break;
-                    case DialogType.ARCardSelection:
-                        m_ARCardSelectionDialog.Open();
-                        break;
-                    case DialogType.CollaborationUserList:
-                        m_CollaborationUserListDialog.Open();
-                        break;
-                    case DialogType.CollaborationUserInfo:
-                        m_CollaborationUserInfoDialog.Open();
-                        break;
-                    case DialogType.LoginScreen:
-                        m_LoginScreenDialog.Open();
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+            if (m_DialogModeSelector.GetValue() == SetDialogModeAction.DialogMode.Help)
+            {
+                m_HelpDialogController.Display(newData);
+                return;
             }
 
-            if (m_CurrentSubDialog != stateData.activeSubDialog)
+            m_LeftSidebarMoreDialog.Close();
+
+            switch (newData)
             {
-                m_CurrentSubDialog = stateData.activeSubDialog;
+                case OpenDialogAction.DialogType.None:
+                    break;
+                case OpenDialogAction.DialogType.Account:
+                    m_AccountDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.LinkSharing:
+                    m_LinkSharingDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.GizmoMode:
+                    m_NavigationGizmoModeFanOut.Open();
+                    break;
+                case OpenDialogAction.DialogType.SceneOptions:
+                    m_SceneOptionsDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.NavigationMode:
+                    m_NavigationModeFlyOut.Open();
+                    break;
+                case OpenDialogAction.DialogType.LeftSidebarMore:
+                    m_LeftSidebarMoreDialog.Open();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
 
-                m_NavigationModeFanOut.Close();
-                m_BimDialog.Close();
-                m_AccountDialog.Close();
-                m_LinkSharingDialog.Close();
+        void OnActiveDialogChanged(OpenDialogAction.DialogType newData)
+        {
+            m_FiltersDialog.Close();
+            m_ClippingToolDialog.Close();
+            m_CameraOptionsDialog.Close();
+            m_SunStudyDialog.Close();
+            m_SequenceDialog.Close();
+            m_LandingScreenDialog.Close();
+            m_InfoSelectDialog.Close();
+            m_ARCardSelectionDialog.Close();
+            m_CollaborationUserListDialog.Close();
+            m_CollaborationUserInfoDialog.Close();
+            m_LoginScreenDialog.Close();
+            m_SceneSettingsDialog.Close();
+            m_MarkerDialog.Close();
+            m_BimDialog.Close();
 
-                if (stateData.dialogMode == DialogMode.Help)
-                {
-                    m_HelpDialogController.Display(m_CurrentSubDialog);
-                    return;
-                }
-
-                switch (stateData.activeSubDialog)
-                {
-                    case DialogType.BimInfo:
-                        m_BimDialog.Open();
-                        break;
-                    case DialogType.Account:
-                        m_AccountDialog.Open();
-                        break;
-                    case DialogType.LinkSharing:
-                        m_LinkSharingDialog.Open();
-                        break;
-                }
+            if (m_DialogModeSelector.GetValue() == SetDialogModeAction.DialogMode.Help)
+            {
+                m_HelpDialogController.Display(newData);
+                return;
             }
 
-            if (m_CurrentActiveOptionDialog != stateData.activeOptionDialog)
+            switch (newData)
             {
-                switch (stateData.activeOptionDialog)
-                {
-                    case OptionDialogType.None:
-                        break;
-                    case OptionDialogType.ProjectOptions:
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-                m_CurrentActiveOptionDialog = stateData.activeOptionDialog;
-            }
-
-            if (m_CurrentProgressData != stateData.progressData)
-            {
-                if (stateData.progressData.progressState == ProgressData.ProgressState.NoPendingRequest)
-                {
-                    m_ProgressIndicatorDialog.Close(true);
-                }
-                else
-                {
-                    m_ProgressIndicatorDialog.Open(true);
-                }
-
-                m_CurrentProgressData = stateData.progressData;
+                case OpenDialogAction.DialogType.None:
+                    break;
+                case OpenDialogAction.DialogType.Projects:
+                    // TODO remove this type and ProjectsUIController class
+                    // m_ProjectsDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.Filters:
+                    m_FiltersDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.ClippingTool:
+                    m_ClippingToolDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.CameraOptions:
+                    m_CameraOptionsDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.SunStudy:
+                    m_SunStudyDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.Sequence:
+                    m_SequenceDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.SelectTool:
+                    // TODO
+                    break;
+                case OpenDialogAction.DialogType.LandingScreen:
+                    m_LandingScreenDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.InfoSelect:
+                    m_InfoSelectDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.ARCardSelection:
+                    m_ARCardSelectionDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.CollaborationUserList:
+                    m_CollaborationUserListDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.CollaborationUserInfo:
+                    m_CollaborationUserInfoDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.LoginScreen:
+                    m_LoginScreenDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.SceneSettings:
+                    m_SceneSettingsDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.Marker:
+                    m_MarkerDialog.Open();
+                    break;
+                case OpenDialogAction.DialogType.BimInfo:
+                    m_BimDialog.Open();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
     }

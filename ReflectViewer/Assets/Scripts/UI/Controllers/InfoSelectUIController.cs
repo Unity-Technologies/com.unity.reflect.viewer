@@ -1,7 +1,7 @@
-﻿using SharpFlux;
-using SharpFlux.Dispatching;
+﻿using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -33,25 +33,21 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnStatsButtonClicked()
         {
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.infoType = InfoType.Info;
-            SetToolState(toolState);
+            SetToolState(SetInfoTypeAction.InfoType.Info);
         }
 
         void OnDebugButtonClicked()
         {
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.infoType = InfoType.Debug;
-            SetToolState(toolState);
+            SetToolState(SetInfoTypeAction.InfoType.Debug);
         }
 
-        void SetToolState(ToolState toolState)
+        void SetToolState(SetInfoTypeAction.InfoType infoType)
         {
             if (m_CloseOnSelect)
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(OpenDialogAction.From(OpenDialogAction.DialogType.None));
             }
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(SetInfoTypeAction.From(infoType));
         }
     }
 }

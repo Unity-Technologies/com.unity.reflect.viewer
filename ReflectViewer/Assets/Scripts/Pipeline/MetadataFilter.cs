@@ -137,7 +137,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 if (metadata.GetParameters().TryGetValue(groupKey, out Metadata.Parameter category))
                 {
                     if (!GetFilterData(groupKey, category.value, out var filterData))
-                        return;
+                        continue;
 
                     filterData.instances.Add(stream.data);
 

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Unity.Reflect;
 using Unity.Reflect.IO;
 using Unity.Reflect.Viewer.UI;
@@ -47,7 +48,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
             m_SelectedProject = project;
 
-            m_Client = new ReflectClient(this, m_AuthClient.user, m_AuthClient.storage, m_SelectedProject);
+            m_Client = new ReflectClient(this, m_AuthClient.user, Storage.cache, m_SelectedProject, null);
             m_Client.manifestUpdated += OnManifestUpdated;
             m_IsManifestDirty = false;
 
@@ -56,8 +57,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             // TODO : SaveProjectData(project) saves "project.data" for the offline project.
             // Maybe we need to move/remove this code depends on the design.
             // "project.data" file is using to get "Offline Project List" and "Enable Delete Button" in the project option dialog now
-            var storage = new PlayerStorage(ProjectServer.ProjectDataPath, true,false);
-            storage.SaveProjectData(project);
+            Storage.cache.SaveProjectData(project);
         }
 
         public void SetSync(bool enabled)
@@ -108,18 +108,15 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 Debug.LogError("Invalid User");
             }
 
-            // Storage
-            var storage = new PlayerStorage(ProjectServer.ProjectDataPath, true, false);
-
             // Client
-            m_AuthClient = new AuthClient(user, storage);
+            m_AuthClient = new AuthClient(user);
 
-            ReflectPipelineFactory.SetUser(user, this, m_AuthClient, storage);
+            ReflectProjectsManager.Init(user, this, m_AuthClient);
         }
 
         public void ClearUser()
         {
-            ReflectPipelineFactory.ClearUser();
+            ReflectProjectsManager.Dispose();
         }
 
         void OnEnable()

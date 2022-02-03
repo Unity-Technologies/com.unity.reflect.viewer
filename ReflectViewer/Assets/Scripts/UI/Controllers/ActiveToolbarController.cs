@@ -1,27 +1,22 @@
 using System;
-using Unity.Reflect.Viewer.UI;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
     /// <summary>
     /// Controller responsible of managing the active toolbar.
     /// </summary>
-    public class ActiveToolbarController : MonoBehaviour
+    public class ActiveToolbarController: MonoBehaviour
     {
 #pragma warning disable CS0649
-        [SerializeField, Tooltip("Reference to the Orbit Sidebar")]
-        GameObject m_OrbitSidebar;
-
         [SerializeField, Tooltip("Reference to the Left Sidebar")]
         GameObject m_LeftSidebar;
 
         [SerializeField, Tooltip("Reference to the Top Left Sidebar")]
         GameObject m_TopSidebar;
-
-        [SerializeField, Tooltip("Reference to the Info/Debug button")]
-        GameObject m_InfoSidebar;
 
         [SerializeField, Tooltip("Reference to the Fly Sidebar")]
         GameObject m_FlySidebar;
@@ -38,81 +33,74 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField, Tooltip("Reference to the AR Instruction Sidebar")]
         GameObject m_ARInstructionSidebar;
 
-        [SerializeField, Tooltip("Reference to the Sun Study Time Of Day Year Radial")]
-        DialogWindow m_TimeOfDayYearRadial;
-
-        [SerializeField, Tooltip("Reference to the Sun Study Altitude Azimuth Radial")]
-        DialogWindow m_AltitudeAzimuthRadial;
-
         [SerializeField, Tooltip("Reference to the AR Scale Radial")]
         DialogWindow m_ARScaleRadial;
+
+        [SerializeField, Tooltip("Reference to the Navigation button")]
+        GameObject m_NavigationSidebar;
 #pragma warning restore CS0649
 
-        ToolbarType m_currentActiveToolbar;
+        IDisposable m_SelectorToDispose;
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
+            m_SelectorToDispose = UISelectorFactory.createSelector<SetActiveToolBarAction.ToolbarType>(UIStateContext.current, nameof(IToolBarDataProvider.activeToolbar), OnActiveToolBarChanged);
         }
 
-        void OnStateDataChanged(UIStateData stateData)
+        void OnDestroy()
         {
-            if (m_currentActiveToolbar == stateData.activeToolbar)
-            {
-                return;
-            }
+            m_SelectorToDispose?.Dispose();
+        }
 
-            m_OrbitSidebar.SetActive(false);
+        void OnActiveToolBarChanged(SetActiveToolBarAction.ToolbarType newData)
+        {
             m_FlySidebar.SetActive(false);
             m_WalkSidebar.SetActive(false);
             m_ARSidebar.SetActive(false);
             m_ARModelAlignViewSidebar.SetActive(false);
             m_ARInstructionSidebar.SetActive(false);
-            m_TimeOfDayYearRadial.Close();
-            m_AltitudeAzimuthRadial.Close();
             m_ARScaleRadial.Close();
 
-            switch (stateData.activeToolbar)
+            switch (newData)
             {
-                case ToolbarType.FlySidebar:
+                case SetActiveToolBarAction.ToolbarType.FlySidebar:
                     m_FlySidebar.SetActive(true);
                     break;
-                case ToolbarType.WalkSidebar:
+                case SetActiveToolBarAction.ToolbarType.WalkSidebar:
                     m_WalkSidebar.SetActive(true);
                     break;
-                case ToolbarType.ARSidebar:
+                case SetActiveToolBarAction.ToolbarType.ARSidebar:
                     m_ARSidebar.SetActive(true);
                     break;
-                case ToolbarType.ARModelAlignSidebar:
+                case SetActiveToolBarAction.ToolbarType.ARModelAlignSidebar:
                     m_ARModelAlignViewSidebar.SetActive(true);
                     break;
-                case ToolbarType.ARInstructionSidebar:
+                case SetActiveToolBarAction.ToolbarType.ARInstructionSidebar:
                     m_ARInstructionSidebar.SetActive(true);
                     break;
-                case ToolbarType.TimeOfDayYearDial:
-                    m_TimeOfDayYearRadial.Open();
-                    break;
-                case ToolbarType.AltitudeAzimuthDial:
-                    m_AltitudeAzimuthRadial.Open();
-                    break;
-                case ToolbarType.ARScaleDial:
+                case SetActiveToolBarAction.ToolbarType.ARScaleDial:
                     m_ARScaleRadial.Open();
                     break;
-                case ToolbarType.NoSidebar:
-                    m_OrbitSidebar.SetActive(false);
+                case SetActiveToolBarAction.ToolbarType.TopSidebar:
+                    m_TopSidebar.SetActive(true);
+                    break;
+                case SetActiveToolBarAction.ToolbarType.NavigationSidebar:
+                    m_NavigationSidebar.SetActive(true);
+                    break;
+                case SetActiveToolBarAction.ToolbarType.NoSidebar:
                     m_LeftSidebar.SetActive(false);
+                    m_NavigationSidebar.SetActive(false);
                     m_TopSidebar.SetActive(false);
-                    m_InfoSidebar.SetActive(false);
+                    break;
+                case SetActiveToolBarAction.ToolbarType.LandingScreen:
+                    m_TopSidebar.SetActive(true);
                     break;
                 default:
-                    m_OrbitSidebar.SetActive(true);
                     m_LeftSidebar.SetActive(true);
+                    m_NavigationSidebar.SetActive(true);
                     m_TopSidebar.SetActive(true);
-                    m_InfoSidebar.SetActive(true);
                     break;
             }
-
-            m_currentActiveToolbar = stateData.activeToolbar;
         }
     }
 }

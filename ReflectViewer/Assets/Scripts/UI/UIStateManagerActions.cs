@@ -6,17 +6,17 @@ using SharpFlux;
 using SharpFlux.Dispatching;
 using SharpFlux.Stores;
 using Unity.MARS;
-using Unity.MARS.Providers;
+using Unity.Reflect.Actors;
 using Unity.Reflect.Multiplayer;
-using Unity.Reflect.Streaming;
+using Unity.Reflect.Runtime;
+using Unity.Reflect.Viewer.Actors;
 using Unity.TouchFramework;
 using Unity.XRTools.ModuleLoader;
 using UnityEngine;
 using UnityEngine.Reflect;
-using UnityEngine.Reflect.MeasureTool;
-using UnityEngine.Reflect.Pipeline;
 using UnityEngine.Reflect.Viewer;
-using UnityEngine.Reflect.Viewer.Pipeline;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.SceneManagement;
 using UnityEngine.XR.Interaction.Toolkit;
 
@@ -26,190 +26,673 @@ namespace Unity.Reflect.Viewer.UI
     /// Component that hold the state of the UI.
     /// Partial Class with Actions and Dispatcher
     /// </summary>
-    public partial class UIStateManager : MonoBehaviour,
-        IStore<UIStateData>, IStore<UISessionStateData>, IStore<UIProjectStateData>, IStore<UIARStateData>,
-        IStore<UIDebugStateData>, IStore<ApplicationStateData>, IStore<RoomConnectionStateData>,IStore<ExternalToolStateData>, IStore<DragStateData>,
-        IUsesSessionControl, IUsesPointCloud, IUsesPlaneFinding
+    public partial class UIStateManager
     {
         //Returns whether the store has changed during the most recent dispatch
         bool hasChanged;
 
         IDispatcher dispatcher;
         public string DispatchToken { get; private set; }
+        public string DispatchTokenClassAction { get; private set; }
+        readonly object syncRoot = new object();
 
-        [SerializeField, Tooltip("State of the UI")]
+        [SerializeField, Tooltip("State of the UI"), UIContextProperties(nameof(UIStateContext))]
+        [ContextButton("Value Changed", nameof(OnUIStateContextChanged))]
         UIStateData m_UIStateData;
-        [SerializeField, Tooltip("State of the Session")]
+
+        [SerializeField, Tooltip("State of the UI"), UIContextProperties(nameof(MessageManagerContext))]
+        [ContextButton("Value Changed", nameof(OnMessageManagerContextChanged))]
+        MessageManagerStateData m_MessageManagerStateData;
+
+        [SerializeField, Tooltip("State of the Session"), UIContextProperties(nameof(SessionStateContext<UnityUser, LinkPermission>))]
+        [ContextButton("Value Changed", nameof(OnSessionStateContextChanged))]
         UISessionStateData m_UISessionStateData;
-        [SerializeField, Tooltip("State of the Project")]
+
+        [SerializeField, Tooltip("State of DeltaDNA"), UIContextProperties(nameof(DeltaDNAContext))]
+        [ContextButton("Value Changed", nameof(OnDeltaDNAContextChanged))]
+        DeltaDNAStateData m_DeltaDNAStateData;
+
+        [SerializeField, Tooltip("State of the Project"), UIContextProperties(nameof(ProjectContext))]
+        [ContextButton("Value Changed", nameof(OnProjectStateContextChanged))]
         UIProjectStateData m_UIProjectStateData;
-        [SerializeField, Tooltip("State of the AR Simulation")]
-        UIARStateData m_ARStateData;
-        [SerializeField, Tooltip("State of the walk Simulation")]
-        UIWalkStateData m_WalkStateData;
-        [SerializeField, Tooltip("State of the Debug Data")]
+
+        [SerializeField, Tooltip("State of the Project setting"), UIContextProperties(nameof(ProjectManagementContext<Project>))]
+        [ContextButton("Value Changed", nameof(OnProjectSettingStateContextChanged))]
+        ProjectSettingStateData m_ProjectSettingStateData;
+
+        [SerializeField, Tooltip("State of the login setting"), UIContextProperties(nameof(LoginSettingContext<EnvironmentInfo>))]
+        [ContextButton("Value Changed", nameof(OnLoginSettingStateContextChanged))]
+        LoginSettingStateData m_LoginSettingStateData;
+        bool m_CanUpdateEnvironmentInfo;
+
+        [SerializeField, Tooltip("State of the Debug Data"), UIContextProperties(nameof(DebugStateContext))]
+        [ContextButton("Value Changed", nameof(OnDebugStateContextChanged))]
         UIDebugStateData m_UIDebugStateData;
-        [SerializeField, Tooltip("State of the Application Data")]
-        ApplicationStateData m_ApplicationStateData;
-        [SerializeField, Tooltip("State of the Application Data")]
+
+        [SerializeField, Tooltip("State of the Room Connexion Data"), UIContextProperties(nameof(RoomConnectionContext))]
+        [ContextButton("Value Changed", nameof(OnRoomConnectionContextChanged))]
         RoomConnectionStateData m_RoomConnectionStateData;
+
+        [SerializeField, Tooltip("State of the Application Settings Data"), UIContextProperties(nameof(ApplicationSettingsContext))]
+        [ContextButton("Value Changed", nameof(OnApplicationSettingsContextChanged))]
+        ApplicationSettingsStateData m_ApplicationSettingsStateData;
+
+        [SerializeField, Tooltip("State of the SceneOption"), UIContextProperties(nameof(SceneOptionContext))]
+        [ContextButton("Value Changed", nameof(OnSceneOptionContextChanged))]
+        SceneOptionData m_SceneOptionData;
+
         [SerializeField, Tooltip("State of the Tool")]
+        [ContextButton("Value Changed", nameof(OnExternalToolStateContextChanged))]
         ExternalToolStateData m_ExternalToolStateData;
-        [SerializeField, Tooltip("State of Drag")]
+
+        [SerializeField, Tooltip("State of the Drag"), UIContextProperties(nameof(DragStateContext))]
+        [ContextButton("Value Changed", nameof(OnDragStateContextChanged))]
         DragStateData m_DragStateData;
+
+        [SerializeField, Tooltip("State of the AR Simulation"), UIContextProperties(nameof(ARContext))]
+        [ContextButton("Value Changed", nameof(OnARStateContextChanged))]
+        UIARStateData m_ARStateData;
+
+        [SerializeField, Tooltip("State of the Pipeline"), UIContextProperties(nameof(PipelineContext))]
+        [ContextButton("Value Changed", nameof(OnPipelineStateContextChanged))]
+        PipelineStateData m_PipelineStateData;
+
+        [SerializeField, Tooltip("State of the VR"), UIContextProperties(nameof(VRContext))]
+        [ContextButton("Value Changed", nameof(OnVRStateContextChanged))]
+        VRStateData m_VRStateData;
+
+        [SerializeField, Tooltip("State of the walk mode"), UIContextProperties(nameof(WalkModeContext))]
+        [ContextButton("Value Changed", nameof(OnWalkStateContextChanged))]
+        UIWalkStateData m_WalkStateData;
+
+        [SerializeField, Tooltip("State of the Force Navigation Mode"), UIContextProperties(nameof(ForceNavigationModeContext))]
+        [ContextButton("Value Changed", nameof(OnForceNavigationModeContextChanged))]
+        ForceNavigationModeData m_ForceNavigationModeStateData;
+
+        [SerializeField, Tooltip("State of the Top Bar Button Visibility"), UIContextProperties(nameof(AppBarContext))]
+        [ContextButton("Value Changed", nameof(OnAppBarContextChanged))]
+        AppBarStateData m_AppBarStateData;
+
+        [SerializeField]
+        MarkerUIPresenter m_MarkerUIPresenter;
 
         public PopUpManager popUpManager => m_PopUpManager;
 
-        /// <summary>
-        /// State of the UI
-        /// </summary>
-        public UIStateData stateData
-        {
-            get => m_UIStateData;
-        }
+        public bool IsNetworkConnected =>
+            m_UISessionStateData.networkReachability != NetworkReachability.NotReachable &&
+            m_UISessionStateData.projectServerConnection;
 
-        /// <summary>
-        /// State of the Session
-        /// </summary>
-        public UISessionStateData sessionStateData
-        {
-            get => m_UISessionStateData;
-        }
-
-        /// <summary>
-        /// State of the Project
-        /// </summary>
+        // Only used by ProjectDrawerUIE
         public UIProjectStateData projectStateData
         {
             get => m_UIProjectStateData;
         }
 
-        /// <summary>
-        /// State of the Project
-        /// </summary>
-        public UIARStateData arStateData
+        public ProjectSettingStateData projectSettingStateData
         {
-            get => m_ARStateData;
+            get => m_ProjectSettingStateData;
         }
-
-        public UIDebugStateData debugStateData
-        {
-            get => m_UIDebugStateData;
-        }
-
-        public UIWalkStateData walkStateData
-        {
-            get => m_WalkStateData;
-        }
-
-        /// <summary>
-        /// State of the Application
-        /// </summary>
-        public ApplicationStateData applicationStateData { get => m_ApplicationStateData; }
-
-        /// <summary>
-        /// State of the Application
-        /// </summary>
-        public RoomConnectionStateData roomConnectionStateData { get => m_RoomConnectionStateData; }
-
-        /// <summary>
-        /// State of the Tool
-        /// </summary>
-        public ExternalToolStateData externalToolStateData { get => m_ExternalToolStateData; }
-
-        /// <summary>
-        /// State of Drag
-        /// </summary>
-        public DragStateData dragStateData { get => m_DragStateData; }
 
         UIStateData IStore<UIStateData>.Data => m_UIStateData;
+        IContextTarget m_UIStateContextTarget;
+        IContextTarget m_ToolStateContextTarget;
+        IContextTarget m_CameraOptionsContextTarget;
+        IContextTarget m_NavigationContextTarget;
+        IContextTarget m_SettingsToolContextTarget;
+        IContextTarget m_FollowUserTarget;
+        IContextTarget m_ProgressContextTarget;
+        IContextTarget m_LandingScreenContextTarget;
+
+        SceneOptionData IStore<SceneOptionData>.Data => m_SceneOptionData;
+        IContextTarget m_SceneOptionContextTarget;
 
         UISessionStateData IStore<UISessionStateData>.Data => m_UISessionStateData;
+        IContextTarget m_SessionStateContextTarget;
+        DeltaDNAStateData IStore<DeltaDNAStateData>.Data => m_DeltaDNAStateData;
+        IContextTarget m_DeltaDNAStateContextTarget;
+
+        MessageManagerStateData IStore<MessageManagerStateData>.Data => m_MessageManagerStateData;
+        IContextTarget m_MessageManagerContextTarget;
 
         UIProjectStateData IStore<UIProjectStateData>.Data => m_UIProjectStateData;
+        IContextTarget m_ProjectStateContextTarget;
 
-        UIARStateData IStore<UIARStateData>.Data => m_ARStateData;
+        ProjectSettingStateData IStore<ProjectSettingStateData>.Data => m_ProjectSettingStateData;
+        IContextTarget m_ProjectManagementContextTarget;
 
+        LoginSettingStateData IStore<LoginSettingStateData>.Data => m_LoginSettingStateData;
+        IContextTarget m_LoginSettingContextTarget;
         UIDebugStateData IStore<UIDebugStateData>.Data => m_UIDebugStateData;
+        IContextTarget m_DebugStateContextTarget;
+        IContextTarget m_DebugOptionContextTarget;
+        IContextTarget m_StateInfoContextTarget;
 
-        ApplicationStateData IStore<ApplicationStateData>.Data => m_ApplicationStateData;
-
+        ApplicationSettingsStateData IStore<ApplicationSettingsStateData>.Data => m_ApplicationSettingsStateData;
+        IContextTarget m_ApplicationSettingsContextTarget;
         RoomConnectionStateData IStore<RoomConnectionStateData>.Data => m_RoomConnectionStateData;
+        IContextTarget m_RoomConnectionContextTarget;
 
         ExternalToolStateData IStore<ExternalToolStateData>.Data => m_ExternalToolStateData;
+        IContextTarget m_MeasureToolContextTarget;
+        IContextTarget m_SunStudyContextTarget;
 
         UIWalkStateData IStore<UIWalkStateData>.Data => m_WalkStateData;
+        IContextTarget m_WalkStateContextTarget;
 
         DragStateData IStore<DragStateData>.Data => m_DragStateData;
+        IContextTarget m_DragStateContextTarget;
 
-        /// <summary>
-        /// Event signaled when the state of the UI has changed
-        /// </summary>
-        public static event Action<UIStateData> stateChanged = delegate { };
+        UIARStateData IStore<UIARStateData>.Data => m_ARStateData;
+        IContextTarget m_ARStateContextTarget;
+        IContextTarget m_ARPlacementContextTarget;
+        IContextTarget m_ARToolStateContextTarget;
 
-        /// <summary>
-        /// Event signaled when the state of the session has changed
-        /// </summary>
-        public static event Action<UISessionStateData> sessionStateChanged = delegate { };
+        PipelineStateData IStore<PipelineStateData>.Data => m_PipelineStateData;
+        IContextTarget m_PipelineContextTarget;
 
-        /// <summary>
-        /// Event signaled when the state of the Project has changed
-        /// </summary>
-        public static event Action<UIProjectStateData> projectStateChanged = delegate { };
+        VRStateData IStore<VRStateData>.Data => m_VRStateData;
+        IContextTarget m_VRStateContextTarget;
 
-        /// <summary>
-        /// Event signaled when the state of the AR Simulation has changed
-        /// </summary>
-        public static event Action<UIARStateData> arStateChanged = delegate { };
+        ForceNavigationModeData IStore<ForceNavigationModeData>.Data => m_ForceNavigationModeStateData;
+        IContextTarget m_ForceNavigationModeContextTarget;
 
-        /// <summary>
-        /// Event signaled when the state of the walk Simulation has changed
-        /// </summary>
-        public static event Action<UIWalkStateData> walkStateChanged = delegate { };
-
-        /// <summary>
-        /// Event signaled when the state of the debug Simulation has changed
-        /// </summary>
-        public static event Action<UIDebugStateData> debugStateChanged = delegate { };
-
-        /// <summary>
-        /// Event signaled when the state of the Application has changed
-        /// </summary>
-        public static event Action<ApplicationStateData> applicationStateChanged = delegate { };
-
-        /// <summary>
-        /// Event signaled when the state of the Connection has changed
-        /// </summary>
-        public static event Action<RoomConnectionStateData> roomConnectionStateChanged = delegate { };
-
-        /// <summary>
-        /// Event signaled when the state of a Tool has changed
-        /// </summary>
-        public static event Action<ExternalToolStateData> externalToolChanged = delegate {};
+        AppBarStateData IStore<AppBarStateData>.Data => m_AppBarStateData;
+        IContextTarget m_AppBarContextTarget;
 
         /// <summary>
         /// Event signaled when the Login Setting has changed
         /// </summary>
         ///
-        public static event Action loginSettingChanged = delegate {};
+        public static event Action loginSettingChanged = delegate { };
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
 
-        /// <summary>
-        /// Event signaled when the state of Drag has changed
-        /// </summary>
-        public static event Action<DragStateData> dragStateChanged = delegate {};
+        LoginState m_CachedLoginState = LoginState.ProcessingToken;
 
         void AwakeActions()
         {
-            dispatcher = new Dispatcher();
-            Dispatcher.RegisterDefaultDispatcher(dispatcher);
-            // set Project.Empty for the NonSerialized value
-            m_UIStateData.selectedProjectOption = Project.Empty;
-            m_UIProjectStateData.activeProject = Project.Empty;
-            m_UIProjectStateData.activeProjectThumbnail = null;
-            m_RoomConnectionStateData.localUser = NetworkUserData.defaultData;
-            m_ApplicationStateData.qualityStateData = QualityState.defaultData;
+            m_DragStateContextTarget = DragStateContext.BindTarget(m_DragStateData);
+            m_MeasureToolContextTarget = MeasureToolContext.BindTarget(m_ExternalToolStateData.measureToolStateData);
+            m_SunStudyContextTarget = SunStudyContext.BindTarget(m_ExternalToolStateData.sunStudyData);
+            m_SceneOptionContextTarget = SceneOptionContext.BindTarget(m_SceneOptionData);
+            m_ARStateContextTarget = ARContext.BindTarget(m_ARStateData);
+            m_ARPlacementContextTarget = ARPlacementContext.BindTarget(m_ARStateData.placementStateData);
+            m_ARToolStateContextTarget = ARToolStateContext.BindTarget(m_ARStateData.arToolStateData);
+            m_PipelineContextTarget = PipelineContext.BindTarget(m_PipelineStateData);
+            m_DebugStateContextTarget = DebugStateContext.BindTarget(m_UIDebugStateData);
+            m_StateInfoContextTarget = StatsInfoContext.BindTarget(m_UIDebugStateData.statsInfoData);
+            m_DebugOptionContextTarget = DebugOptionContext.BindTarget(m_UIDebugStateData.debugOptionsData);
+            m_VRStateContextTarget = VRContext.BindTarget(m_VRStateData);
+            m_WalkStateContextTarget = WalkModeContext.BindTarget(m_WalkStateData);
+            m_ApplicationSettingsContextTarget = ApplicationSettingsContext.BindTarget(m_ApplicationSettingsStateData);
+            m_ProjectStateContextTarget = ProjectContext.BindTarget(m_UIProjectStateData);
+            m_ProjectManagementContextTarget = ProjectManagementContext<Project>.BindTarget(m_ProjectSettingStateData);
+            m_LoginSettingContextTarget = LoginSettingContext<EnvironmentInfo>.BindTarget(m_LoginSettingStateData);
+            m_ForceNavigationModeContextTarget = ForceNavigationModeContext.BindTarget(m_ForceNavigationModeStateData);
+            m_AppBarContextTarget = AppBarContext.BindTarget(m_AppBarStateData);
+            m_RoomConnectionContextTarget = RoomConnectionContext.BindTarget(m_RoomConnectionStateData);
+            m_UIStateContextTarget = UIStateContext.BindTarget(m_UIStateData);
+            m_ToolStateContextTarget = ToolStateContext.BindTarget(m_UIStateData.toolState);
+            m_CameraOptionsContextTarget = CameraOptionsContext.BindTarget(m_UIStateData.cameraOptionData);
+            m_NavigationContextTarget = NavigationContext.BindTarget(m_UIStateData.navigationStateData);
+            m_SettingsToolContextTarget = SettingsToolContext.BindTarget(m_UIStateData.settingsToolStateData);
+            m_ProgressContextTarget = ProgressContext.BindTarget(m_UIStateData.progressData);
+            m_LandingScreenContextTarget = LandingScreenContext.BindTarget(m_UIStateData.landingScreenFilterData);
+            m_FollowUserTarget = FollowUserContext.BindTarget(m_UIStateData.toolState.followUserTool);
+            m_SessionStateContextTarget = SessionStateContext<UnityUser, LinkPermission>.BindTarget(m_UISessionStateData);
+            m_DeltaDNAStateContextTarget = DeltaDNAContext.BindTarget(m_DeltaDNAStateData);
+            m_MessageManagerContextTarget = MessageManagerContext.BindTarget(m_MessageManagerStateData);
 
-            DispatchToken = Subscribe();
+            dispatcher = DispatcherFactory.GetDispatcher();
+            m_ProjectSettingStateData.activeProject = Project.Empty;
+            m_ProjectSettingStateData.activeProjectThumbnail = null;
+            m_UIProjectStateData.highlightFilter = new HighlightFilterInfo();
+            m_RoomConnectionStateData.localUser = NetworkUserData.defaultData;
+            m_UISessionStateData = UISessionStateData.defaultData;
+            m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData);
+            m_UIStateData.SelectedUserData = new UserInfoDialogData();
+            m_WalkStateData.instruction ??= new WalkModeInstruction();
+
+            m_MarkerUIPresenter.Setup(dispatcher);
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetInstructionUIStateAction.InstructionUIState>(ARContext.current, nameof(IARModeDataProvider.instructionUIState), OnInstructionUIStateChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(SceneOptionContext.current, nameof(ISceneOptionData<SkyboxData>.enableLightData), OnEnableLightDataChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetModelScaleAction.ArchitectureScale>(ARPlacementContext.current, nameof(IARPlacementDataProvider.modelScale), OnModelScaleChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(VRContext.current, nameof(IVREnableDataProvider.VREnable), OnVREnableChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(WalkModeContext.current, nameof(IWalkModeDataProvider.walkEnabled), OnWalkEnableChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<Vector3>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.spatialPriorityWeights), OnSpatialPriorityWeightsChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.useDebugBoundingBoxMaterials), OnUseDebugBoundingBoxChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.useCulling), OnUseCullingChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.useSpatialManifest), OnUseSpatialManifestChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.useHlods), OnUseHlodsChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.hlodDelayMode), OnHlodDelayModeChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.hlodPrioritizer), OnHlodPrioritizerChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.targetFps), OnTargetFpsChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.showActorDebug), OnShowActorDebugChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(ARPlacementContext.current, nameof(IARPlacementDataProvider.showModel), OnShowModelChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(ARPlacementContext.current, nameof(IARPlacementDataProvider.showBoundingBoxModelAction), OnShowBoundingBoxModeChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<GameObject>(ARPlacementContext.current, nameof(IARPlacementDataProvider.placementRulesGameObject), OnPlacementRulesGameObjectChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<FilterItemInfo>(ProjectContext.current, nameof(IProjectSortDataProvider.lastChangedFilterItem), OnProjectFilterInfoDataChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<Vector3>(ProjectContext.current, nameof(ITeleportDataProvider.teleportTarget), OnTeleportDataChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<ObjectSelectionInfo>(ProjectContext.current, nameof(IObjectSelectorDataProvider.objectSelectionInfo), OnObjectSelectionChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<HighlightFilterInfo>(ProjectContext.current, nameof(IProjectSortDataProvider.highlightFilter), OnHighlightFilterInfoChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<Project>(ProjectManagementContext<Project>.current, nameof(IProjectDataProvider<Project>.activeProject), OnOpenProjectChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<string>(ProjectManagementContext<Project>.current, nameof(IProjectDataProvider<Project>.loadSceneName), OnLoadSceneChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<string>(ProjectManagementContext<Project>.current, nameof(IProjectDataProvider<Project>.unloadSceneName), OnUnloadSceneChanged));
+
+            try
+            {
+                m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<EnvironmentInfo>(LoginSettingContext<EnvironmentInfo>.current, nameof(ILoginSettingDataProvider.environmentInfo), OnEnvironmentInfoChanged));
+            }
+            finally
+            {
+                m_CanUpdateEnvironmentInfo = true;
+            }
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(LoginSettingContext<EnvironmentInfo>.current, nameof(ILoginSettingDataProvider.deleteCloudEnvironmentSetting), OnDeleteCloudEnvironmentChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<string>(RoomConnectionContext.current, nameof(IRoomConnectionDataProvider<NetworkUserData>.userToMute), OnMuteUserChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<ProjectListState>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.projectListState), OnRefreshProjectListStateChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<LinkPermission>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.linkSharePermission), OnLinkSharePermissionStateChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<LoginState>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.loggedState), OnLoggedStateChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.isInPrivateMode), OnPrivateModeChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(UIStateContext.current, nameof(ISyncModeDataProvider.syncEnabled), OnSyncModeEnabledChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetNavigationModeAction.NavigationMode>(NavigationContext.current, nameof(INavigationDataProvider.navigationMode), OnNavigationModeChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(SceneOptionContext.current, nameof(ISceneOptionData<SkyboxData>.filterHlods), OnFilterHLODsChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(WalkModeContext.current, nameof(IWalkModeDataProvider.isTeleportFinish), isFinish =>
+            {
+                if (isFinish)
+                    m_WalkStateData.instructionUIState = SetInstructionUIStateAction.InstructionUIState.Started;
+            }));
+
+            // Sun Study
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.timeOfDay), (val) =>
+            {
+                m_SunStudy.MinuteOfDay = val;
+            }));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.timeOfYear), (val) =>
+            {
+                m_SunStudy.DayOfYear = val;
+            }));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.utcOffset), (val) =>
+            {
+                m_SunStudy.UtcOffset = val / 100f;
+            }));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.latitude), (val) =>
+            {
+                m_SunStudy.CoordLatitude = val;
+            }));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.longitude), (val) =>
+            {
+                m_SunStudy.CoordLongitude = val;
+            }));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.northAngle), (val) =>
+            {
+                m_SunStudy.NorthAngle = val;
+            }));
+
+            Subscribe();
+        }
+
+        void OnLoggedStateChanged(LoginState newData)
+        {
+            // Avoid infinite loop on logout
+            if (m_CachedLoginState == newData)
+            {
+                return;
+            }
+            m_CachedLoginState = newData;
+
+            if (newData == LoginState.LoggingIn)
+            {
+                m_LoginManager.Login();
+            }
+            else if (newData == LoginState.LoggingOut)
+            {
+                CloseProject();
+                m_UISessionStateData.projectListState = ProjectListState.AwaitingUser;
+#if UNITY_EDITOR
+                m_LoginManager.userLoggedOut?.Invoke();
+#else
+                m_LoginManager.userLoggedOut?.Invoke();
+                m_LoginManager.Logout();
+#endif
+
+                m_UISessionStateData.rooms = new IProjectRoom[] { };
+                m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
+                EnableMARSSession(false);
+            }
+        }
+
+        void OnPrivateModeChanged(bool newData)
+        {
+            if (newData)
+            {
+                PlayerClientBridge.MatchmakerManager.LeaveRoom();
+
+                // We dont disconnect from the room so the player identity is kept on the matchmaker when we reconnect
+                PlayerClientBridge.MatchmakerManager.Disconnect();
+            }
+            else if (m_UISessionStateData.user != null)
+            {
+                PlayerClientBridge.MatchmakerManager.Connect(m_UISessionStateData.user.AccessToken, m_MultiplayerController.connectToLocalServer);
+                PlayerClientBridge.MatchmakerManager.MonitorRooms(m_UISessionStateData.rooms.Select(r => ((ProjectRoom)r).project.serverProjectId));
+                if (m_ProjectSettingStateData.activeProject != Project.Empty)
+                {
+                    PlayerClientBridge.MatchmakerManager.JoinRoom(m_ProjectSettingStateData.activeProject.serverProjectId, () => m_ProjectSettingStateData.accessToken.CloudServicesAccessToken);
+                }
+            }
+        }
+
+        void OnLinkSharePermissionStateChanged(LinkPermission newData)
+        {
+            m_UISessionStateData.linkSharePermission = newData;
+        }
+
+        void OnRefreshProjectListStateChanged(ProjectListState newData)
+        {
+            if (ProjectListState.AwaitingUserData == newData)
+            {
+                m_UISessionStateData.projectListState = newData;
+                ReflectProjectsManager.RefreshProjects();
+                m_UIStateData.progressData.progressState = SetProgressStateAction.ProgressState.PendingIndeterminate;
+                m_ProgressContextTarget.UpdateWith(ref m_UIStateData.progressData);
+            }
+        }
+
+        void OnNavigationModeChanged(SetNavigationModeAction.NavigationMode newData)
+        {
+            if (newData != SetNavigationModeAction.NavigationMode.AR && m_Bridge.IsInitialized)
+            {
+                var settings = m_Bridge.GetFirstMatchingSettings<BoundingBoxActor.Settings>();
+                m_Bridge.UpdateSetting<BoundingBoxActor.Settings>(settings.Id, nameof(BoundingBoxActor.Settings.DisplayOnlyBoundingBoxes), false);
+            }
+        }
+
+        void OnSyncModeEnabledChanged(bool newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            var settings = m_Bridge.GetFirstMatchingSettings<SyncTreeActor.Settings>();
+            m_Bridge.UpdateSetting<SyncTreeActor.Settings>(settings.Id, nameof(SyncTreeActor.Settings.IsLiveSyncEnabled), newData);
+        }
+
+        void OnWalkEnableChanged(bool newData)
+        {
+            if (newData)
+            {
+                m_WalkStateData.instructionUIState = SetInstructionUIStateAction.InstructionUIState.Init;
+                m_WalkStateData.instruction ??= new WalkModeInstruction();
+            }
+        }
+
+        void OnLoadSceneChanged(string newData)
+        {
+            if (!string.IsNullOrEmpty(newData) && !SceneManager.GetSceneByName(newData).IsValid())
+            {
+                StartCoroutine(LoadAsyncScene(newData));
+            }
+        }
+
+        void OnUnloadSceneChanged(string newData)
+        {
+            if (!string.IsNullOrEmpty(newData) && SceneManager.GetSceneByName(newData).IsValid())
+            {
+                StartCoroutine(UnloadAsyncScene(newData));
+            }
+        }
+
+        void OnEnvironmentInfoChanged(EnvironmentInfo newData)
+        {
+            if (m_CanUpdateEnvironmentInfo)
+            {
+                LocaleUtils.SaveEnvironmentInfo(newData);
+                UnityEngine.Reflect.ProjectServer.Cleanup();
+                UnityEngine.Reflect.ProjectServer.Init();
+                loginSettingChanged?.Invoke();
+            }
+        }
+
+        void OnDeleteCloudEnvironmentChanged(bool newData)
+        {
+            if (newData)
+            {
+                LocaleUtils.DeleteCloudEnvironmentSetting();
+                UnityEngine.Reflect.ProjectServer.Cleanup();
+                UnityEngine.Reflect.ProjectServer.Init();
+                loginSettingChanged?.Invoke();
+            }
+        }
+
+        void OnMuteUserChanged(string newData)
+        {
+            if (!string.IsNullOrEmpty(newData))
+            {
+                MuteUser(newData);
+            }
+        }
+
+        void OnOpenProjectChanged(Project newData)
+        {
+            if (newData == null)
+                return;
+
+            if (newData == Project.Empty)
+                CloseProject();
+            else
+                RequestOpenProject(newData);
+        }
+
+        void OnHighlightFilterInfoChanged(HighlightFilterInfo newData)
+        {
+            if (m_Bridge.IsInitialized)
+            {
+                var highlightActorHandle = m_Reflect.Hook.Systems.ActorRunner.GetActorHandle<HighlightActor>();
+                if (newData.IsValid)
+                {
+                    var metadataActor = m_Reflect.Hook.Systems.ActorRunner.GetActorHandle<ObjectMetadataCacheActor>();
+                    m_Bridge.ForwardRpc(metadataActor, new MetadataCategoryGroup { Group = newData.groupKey, FilterKey = newData.filterKey },
+                        (List<DynamicGuid> ids) =>
+                        {
+                            m_Bridge.ForwardNet(highlightActorHandle, new SetHighlight() { HighlightedInstances = ids });
+                        },
+                        (ex) =>
+                        {
+                            Debug.LogError(ex.Message);
+                        });
+                }
+                else
+                {
+                    m_Bridge.ForwardNet(highlightActorHandle, new CancelHighlight());
+                }
+            }
+        }
+
+        void OnObjectSelectionChanged(ObjectSelectionInfo newData)
+        {
+            SetNetworkSelected(newData);
+        }
+
+        void OnTeleportDataChanged(Vector3 newData)
+        {
+            if (m_UIStateData.navigationStateData.navigationMode == SetNavigationModeAction.NavigationMode.VR)
+            {
+                var teleportationProviders = Resources.FindObjectsOfTypeAll<TeleportationProvider>();
+                if (teleportationProviders.Length > 0)
+                {
+                    var teleportationProvider = teleportationProviders[0];
+                    if (!ReferenceEquals(teleportationProvider, null))
+                    {
+                        teleportationProvider.QueueTeleportRequest(new TeleportRequest()
+                        {
+                            destinationPosition = newData
+                        });
+                    }
+                }
+            }
+        }
+
+        List<FilterItemInfo> m_InvisibleFilterItemInfos = new List<FilterItemInfo>();
+
+        void OnProjectFilterInfoDataChanged(FilterItemInfo newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            if (newData.visible)
+                m_InvisibleFilterItemInfos.RemoveAll(x => x.groupKey == newData.groupKey && x.filterKey == newData.filterKey);
+            else
+                m_InvisibleFilterItemInfos.Add(newData);
+
+            var metadataActor = m_Reflect.Hook.Systems.ActorRunner.GetActorHandle<ObjectMetadataCacheActor>();
+            m_Bridge.ForwardNet(metadataActor, new MetadataCategoryGroupToggle(newData));
+        }
+
+        static void OnPlacementRulesGameObjectChanged(GameObject newPlacementGO)
+        {
+            if (newPlacementGO == null)
+                return;
+
+            ModuleLoaderCore.instance.GetModule<FunctionalityInjectionModule>().activeIsland
+                .InjectFunctionalitySingle(newPlacementGO.gameObject.GetComponent<Replicator>());
+
+            newPlacementGO.transform.parent = null;
+            newPlacementGO.transform.localScale = Vector3.one;
+            newPlacementGO.SetActive(true);
+        }
+
+        void OnVREnableChanged(bool newData)
+        {
+            if (m_Bridge.IsInitialized && m_PipelineStateData.deviceCapability.HasFlag(SetVREnableAction.DeviceCapability.SupportsAsyncGPUReadback))
+            {
+                var settings = m_Bridge.GetFirstMatchingSettings<SpatialActor.Settings>();
+                m_Bridge.UpdateSetting<SpatialActor.Settings>(settings.Id, nameof(SpatialActor.Settings.UseDepthCulling), !newData);
+            }
+        }
+
+        void OnUseCullingChanged(bool newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            var settings = m_Bridge.GetFirstMatchingSettings<SpatialActor.Settings>();
+            m_Bridge.UpdateSetting<SpatialActor.Settings>(settings.Id, nameof(SpatialActor.Settings.UseCulling), newData);
+        }
+
+        void OnUseDebugBoundingBoxChanged(bool newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            var settings = m_Bridge.GetFirstMatchingSettings<BoundingBoxActor.Settings>();
+            m_Bridge.UpdateSetting<BoundingBoxActor.Settings>(settings.Id, nameof(BoundingBoxActor.Settings.UseDebugMaterials), newData);
+        }
+
+        void OnSpatialPriorityWeightsChanged(Vector3 newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            var settings = m_Bridge.GetFirstMatchingSettings<SpatialActor.Settings>();
+            m_Bridge.UpdateSetting<SpatialActor.Settings>(settings.Id, nameof(SpatialActor.Settings.PriorityWeightAngle), newData.x);
+            m_Bridge.UpdateSetting<SpatialActor.Settings>(settings.Id, nameof(SpatialActor.Settings.PriorityWeightDistance), newData.y);
+            m_Bridge.UpdateSetting<SpatialActor.Settings>(settings.Id, nameof(SpatialActor.Settings.PriorityWeightSize), newData.z);
+        }
+
+        void OnUseSpatialManifestChanged(bool newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            var settings = m_Bridge.GetFirstMatchingSettings<SyncTreeActor.Settings>();
+            m_Bridge.UpdateSetting<SyncTreeActor.Settings>(settings.Id, nameof(SyncTreeActor.Settings.UseSpatialManifest), newData);
+        }
+
+        void OnUseHlodsChanged(bool newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            var settings = m_Bridge.GetFirstMatchingSettings<SyncTreeActor.Settings>();
+            m_Bridge.UpdateSetting<SyncTreeActor.Settings>(settings.Id, nameof(SyncTreeActor.Settings.UseHlods), newData);
+        }
+
+        void OnHlodDelayModeChanged(int newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            var settings = m_Bridge.GetFirstMatchingSettings<SyncTreeActor.Settings>();
+            m_Bridge.UpdateSetting<SyncTreeActor.Settings>(settings.Id, nameof(SyncTreeActor.Settings.HlodDelayMode), newData);
+        }
+
+        void OnHlodPrioritizerChanged(int newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            var settings = m_Bridge.GetFirstMatchingSettings<SyncTreeActor.Settings>();
+            m_Bridge.UpdateSetting<SyncTreeActor.Settings>(settings.Id, nameof(SyncTreeActor.Settings.Prioritizer), newData);
+        }
+
+        void OnTargetFpsChanged(int newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            var settings = m_Bridge.GetFirstMatchingSettings<SyncTreeActor.Settings>();
+            m_Bridge.UpdateSetting<SyncTreeActor.Settings>(settings.Id, nameof(SyncTreeActor.Settings.TargetFps), newData);
+        }
+
+        void OnShowActorDebugChanged(bool newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            var settings = m_Bridge.GetFirstMatchingSettings<DebugActor.Settings>();
+            m_Bridge.UpdateSetting<DebugActor.Settings>(settings.Id, nameof(DebugActor.Settings.ShowGui), newData);
+        }
+
+        void OnShowModelChanged(bool newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            m_PipelineStateData.rootNode.gameObject.SetActive(newData);
+
+            if (newData)
+            {
+                var settings = m_Bridge.GetFirstMatchingSettings<BoundingBoxActor.Settings>();
+                m_Bridge.UpdateSetting<BoundingBoxActor.Settings>(settings.Id, nameof(BoundingBoxActor.Settings.DisplayOnlyBoundingBoxes), false);
+            }
+        }
+
+        void OnShowBoundingBoxModeChanged(bool newData)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            m_ARStateData.placementStateData.boundingBoxRootNode.gameObject.SetActive(newData);
+
+            var settings = m_Bridge.GetFirstMatchingSettings<BoundingBoxActor.Settings>();
+            m_Bridge.UpdateSetting<BoundingBoxActor.Settings>(settings.Id, nameof(BoundingBoxActor.Settings.DisplayOnlyBoundingBoxes), newData);
+        }
+
+        void OnInstructionUIStateChanged(SetInstructionUIStateAction.InstructionUIState newData)
+        {
+            if (newData == SetInstructionUIStateAction.InstructionUIState.Completed && m_UIStateData.progressData.progressState == SetProgressStateAction.ProgressState.NoPendingRequest)
+            {
+                // This has to be delayed because the renderers are
+                // not activated instantly after the instruction is complete
+                StartCoroutine(UIStateManager.current.TakeDelayedThumbnail());
+            }
+        }
+
+        void OnEnableLightDataChanged(bool newData)
+        {
+            if (m_Bridge.IsInitialized)
+            {
+                var settings = m_Bridge.GetFirstMatchingSettings<LightActor.Settings>();
+                if (settings != null)
+                    m_Bridge.UpdateSetting<LightActor.Settings>(settings.Id, nameof(LightActor.Settings.EnableLights), newData);
+            }
+        }
+
+        void OnModelScaleChanged(SetModelScaleAction.ArchitectureScale modelScale)
+        {
+            if (m_Bridge.IsInitialized)
+            {
+                var lightIntensity = Mathf.Pow(1 / (float)modelScale, 2);
+                var settings = m_Bridge.GetFirstMatchingSettings<LightActor.Settings>();
+                if (settings != null)
+                    m_Bridge.UpdateSetting<LightActor.Settings>(settings.Id, nameof(LightActor.Settings.LightIntensity), lightIntensity);
+            }
         }
 
         public bool HasChanged
@@ -224,9 +707,9 @@ namespace Unity.Reflect.Viewer.UI
         }
 
         //Dispatcher-forwarded methods so the API users do not have to care about the Dispatcher
-        protected string Subscribe()
+        protected void Subscribe()
         {
-            return dispatcher.Register<Payload<ActionTypes>>(InvokeOnDispatch);
+            DispatchTokenClassAction = dispatcher.Register<Payload<IViewerAction>>(InvokeOnDispatchClassAction);
         }
 
         protected void Unsubscribe(string dispatchToken)
@@ -234,953 +717,209 @@ namespace Unity.Reflect.Viewer.UI
             dispatcher.Unregister(dispatchToken);
         }
 
-        protected void WaitFor(IEnumerable<string> dispatchTokens)
-        {
-            dispatcher.WaitFor<ActionTypes>(dispatchTokens);
-        }
-
-        IEnumerator TakeDelayedThumbnail()
+        public IEnumerator TakeDelayedThumbnail()
         {
             yield return new WaitForSeconds(1.0f);
-            m_UIProjectStateData.activeProjectThumbnail = m_ThumbnailController.CaptureActiveProjectThumbnail(current.projectStateData);
-            projectStateChanged?.Invoke(m_UIProjectStateData);
+            m_ProjectSettingStateData.activeProjectThumbnail = m_ThumbnailController.CaptureActiveProjectThumbnail(current.m_UIProjectStateData);
+            m_ProjectManagementContextTarget.UpdateWith(ref m_ProjectSettingStateData);
         }
 
-        //This is the store's registered callback method and all the logic that will be executed is contained here
-        //Only place where state's mutation should happen
-        private void InvokeOnDispatch(Payload<ActionTypes> payload)
+        T HasContextTargetChanged<T>(Payload<IViewerAction> viewerAction, IUIContext context, T stateData, IContextTarget contextTarget)
+        {
+            if (viewerAction.ActionType.RequiresContext(context, viewerAction.Data))
+            {
+                viewerAction.ActionType.ApplyPayload(viewerAction.Data, ref stateData, () =>
+                {
+                    contextTarget.UpdateWith(ref stateData);
+                    HasChanged = true;
+                });
+            }
+
+            return stateData;
+        }
+
+        ForceNavigationModeData HasForceNavigationModeContextTargetChanged(Payload<IViewerAction> viewerAction)
+        {
+            if (viewerAction.ActionType.RequiresContext(ForceNavigationModeContext.current, viewerAction.Data))
+            {
+                viewerAction.ActionType.ApplyPayload(viewerAction.Data, ref m_ForceNavigationModeStateData, () =>
+                {
+                    m_ForceNavigationModeContextTarget.UpdateWith(ref m_ForceNavigationModeStateData);
+                    HasChanged = true;
+
+                    if (m_ForceNavigationModeStateData.navigationMode.trigger)
+                    {
+                        var navigationMode = m_ForceNavigationModeStateData.navigationMode;
+                        navigationMode.trigger = false;
+                        m_ForceNavigationModeStateData.navigationMode = navigationMode;
+                        m_ForceNavigationModeContextTarget.UpdateWith(ref m_ForceNavigationModeStateData);
+                    }
+                });
+            }
+            return m_ForceNavigationModeStateData;
+        }
+
+        void InvokeOnDispatchClassAction(Payload<IViewerAction> viewerAction)
         {
             HasChanged = false;
 
             lock (syncRoot)
             {
-                OnDispatch(payload);
+                m_ApplicationSettingsStateData = HasContextTargetChanged(viewerAction, ApplicationSettingsContext.current, m_ApplicationSettingsStateData, m_ApplicationSettingsContextTarget);
+                m_PipelineStateData = HasContextTargetChanged(viewerAction, PipelineContext.current, m_PipelineStateData, m_PipelineContextTarget);
+                m_RoomConnectionStateData = HasContextTargetChanged(viewerAction, RoomConnectionContext.current, m_RoomConnectionStateData, m_RoomConnectionContextTarget);
+                m_UIProjectStateData = HasContextTargetChanged(viewerAction, ProjectContext.current, m_UIProjectStateData, m_ProjectStateContextTarget);
+                m_DeltaDNAStateData = HasContextTargetChanged(viewerAction, DeltaDNAContext.current, m_DeltaDNAStateData, m_DeltaDNAStateContextTarget);
+                m_ProjectSettingStateData = HasContextTargetChanged(viewerAction, ProjectManagementContext<Project>.current, m_ProjectSettingStateData, m_ProjectManagementContextTarget);
+                m_LoginSettingStateData = HasContextTargetChanged(viewerAction, LoginSettingContext<EnvironmentInfo>.current, m_LoginSettingStateData, m_LoginSettingContextTarget);
+                m_UIStateData = HasContextTargetChanged(viewerAction, UIStateContext.current, m_UIStateData, m_UIStateContextTarget);
+                m_UIStateData.toolState = HasContextTargetChanged(viewerAction, ToolStateContext.current, m_UIStateData.toolState, m_ToolStateContextTarget);
+                m_UIStateData.cameraOptionData = HasContextTargetChanged(viewerAction, CameraOptionsContext.current, m_UIStateData.cameraOptionData, m_CameraOptionsContextTarget);
+                m_UIStateData.navigationStateData = HasContextTargetChanged(viewerAction, NavigationContext.current, m_UIStateData.navigationStateData, m_NavigationContextTarget);
+                m_UIStateData.settingsToolStateData = HasContextTargetChanged(viewerAction, SettingsToolContext.current, m_UIStateData.settingsToolStateData, m_SettingsToolContextTarget);
+                m_UIStateData.toolState.followUserTool = HasContextTargetChanged(viewerAction, FollowUserContext.current, m_UIStateData.toolState.followUserTool, m_FollowUserTarget);
+                m_UIStateData.landingScreenFilterData = HasContextTargetChanged(viewerAction, LandingScreenContext.current, m_UIStateData.landingScreenFilterData, m_LandingScreenContextTarget);
+                m_UIStateData.progressData = HasContextTargetChanged(viewerAction, ProgressContext.current, m_UIStateData.progressData, m_ProgressContextTarget);
+                m_DragStateData = HasContextTargetChanged(viewerAction, DragStateContext.current, m_DragStateData, m_DragStateContextTarget);
+                m_ExternalToolStateData.measureToolStateData = HasContextTargetChanged(viewerAction, MeasureToolContext.current, m_ExternalToolStateData.measureToolStateData, m_MeasureToolContextTarget);
+                m_ExternalToolStateData.sunStudyData = HasContextTargetChanged(viewerAction, SunStudyContext.current, m_ExternalToolStateData.sunStudyData, m_SunStudyContextTarget);
+                m_SceneOptionData = HasContextTargetChanged(viewerAction, SceneOptionContext.current, m_SceneOptionData, m_SceneOptionContextTarget);
+                m_MessageManagerStateData = HasContextTargetChanged(viewerAction, MessageManagerContext.current, m_MessageManagerStateData, m_MessageManagerContextTarget);
+                m_ARStateData.placementStateData = HasContextTargetChanged(viewerAction, ARPlacementContext.current, m_ARStateData.placementStateData, m_ARPlacementContextTarget);
+                m_ARStateData.arToolStateData = HasContextTargetChanged(viewerAction, ARToolStateContext.current, m_ARStateData.arToolStateData, m_ARToolStateContextTarget);
+                m_ARStateData = HasContextTargetChanged(viewerAction, ARContext.current, m_ARStateData, m_ARStateContextTarget);
+                m_VRStateData = HasContextTargetChanged(viewerAction, VRContext.current, m_VRStateData, m_VRStateContextTarget);
+                m_WalkStateData = HasContextTargetChanged(viewerAction, WalkModeContext.current, m_WalkStateData, m_WalkStateContextTarget);
+                m_UIDebugStateData = HasContextTargetChanged(viewerAction, DebugStateContext.current, m_UIDebugStateData, m_DebugStateContextTarget);
+                m_UIDebugStateData.statsInfoData = HasContextTargetChanged(viewerAction, StatsInfoContext.current, m_UIDebugStateData.statsInfoData, m_StateInfoContextTarget);
+                m_UIDebugStateData.debugOptionsData = HasContextTargetChanged(viewerAction, DebugOptionContext.current, m_UIDebugStateData.debugOptionsData, m_DebugOptionContextTarget);
+                m_ForceNavigationModeStateData = HasForceNavigationModeContextTargetChanged(viewerAction);
+                m_AppBarStateData = HasContextTargetChanged(viewerAction, AppBarContext.current, m_AppBarStateData, m_AppBarContextTarget);
+                m_UISessionStateData = HasContextTargetChanged(viewerAction, SessionStateContext<UnityUser, LinkPermission>.current, m_UISessionStateData, m_SessionStateContextTarget);
             }
         }
 
-        void OnDispatch(Payload<ActionTypes> payload)
+        void OnExternalToolStateContextChanged()
         {
-            switch (payload.ActionType)
+            m_MeasureToolContextTarget.UpdateWith(ref m_ExternalToolStateData.measureToolStateData);
+            m_SunStudyContextTarget.UpdateWith(ref m_ExternalToolStateData.sunStudyData);
+        }
+
+        void OnDragStateContextChanged()
+        {
+            m_DragStateContextTarget.UpdateWith(ref m_DragStateData);
+        }
+
+        void OnSceneOptionContextChanged()
+        {
+            m_SceneOptionContextTarget.UpdateWith(ref m_SceneOptionData);
+        }
+
+        void OnARStateContextChanged()
+        {
+            m_ARStateContextTarget.UpdateWith(ref m_ARStateData);
+            var placementData = m_ARStateData.placementStateData;
+            m_ARPlacementContextTarget.UpdateWith(ref placementData);
+            m_ARToolStateContextTarget.UpdateWith(ref m_ARStateData.arToolStateData);
+        }
+
+        void OnPipelineStateContextChanged()
+        {
+            m_PipelineContextTarget.UpdateWith(ref m_DragStateData);
+        }
+
+        void OnDebugStateContextChanged()
+        {
+            m_DebugStateContextTarget.UpdateWith(ref m_UIDebugStateData);
+            m_DebugOptionContextTarget.UpdateWith(ref m_UIDebugStateData.debugOptionsData);
+            m_StateInfoContextTarget.UpdateWith(ref m_UIDebugStateData.statsInfoData);
+        }
+
+        void OnVRStateContextChanged()
+        {
+            m_VRStateContextTarget.UpdateWith(ref m_VRStateData);
+        }
+
+        void OnApplicationSettingsContextChanged()
+        {
+            m_ApplicationSettingsContextTarget.UpdateWith(ref m_ApplicationSettingsStateData);
+        }
+
+        void OnProjectStateContextChanged()
+        {
+            m_ProjectStateContextTarget.UpdateWith(ref m_UIProjectStateData);
+        }
+
+        void OnProjectSettingStateContextChanged()
+        {
+            m_ProjectManagementContextTarget.UpdateWith(ref m_ProjectSettingStateData);
+        }
+
+        void OnLoginSettingStateContextChanged()
+        {
+            m_LoginSettingContextTarget.UpdateWith(ref m_LoginSettingStateData);
+        }
+
+        void OnWalkStateContextChanged()
+        {
+            m_WalkStateContextTarget.UpdateWith(ref m_WalkStateData);
+        }
+
+        void OnForceNavigationModeContextChanged()
+        {
+            m_ForceNavigationModeContextTarget.UpdateWith(ref m_ForceNavigationModeStateData);
+        }
+
+        void OnFilterHLODsChanged(bool on)
+        {
+            if (!m_Bridge.IsInitialized)
+                return;
+            var spatialActor = m_Reflect.Hook.Systems.ActorRunner.GetActorHandle<SpatialActor>();
+            if (on)
             {
-                case ActionTypes.Login:
-                {
-                    m_UISessionStateData.sessionState.loggedState = LoginState.LoggingIn;
-                    m_LoginManager.Login();
-                    sessionStateChanged?.Invoke(sessionStateData);
-                    break;
-                }
-                case ActionTypes.Logout:
-                {
-                    if(m_WalkStateData.walkEnabled)
-                        m_WalkStateData.instruction.Cancel();
-
-                    m_UISessionStateData.sessionState.loggedState = LoginState.LoggingOut;
-#if UNITY_EDITOR
-                    m_LoginManager.userLoggedOut?.Invoke();
-#else
-                    m_LoginManager.Logout();
-#endif
-                    sessionStateChanged?.Invoke(sessionStateData);
-                    break;
-                }
-                case ActionTypes.OpenURL:
-                {
-                    Application.OpenURL((string)payload.Data);
-                    break;
-                }
-                case ActionTypes.SetToolState:
-                {
-                    var toolState = (ToolState)payload.Data;
-                    m_UIStateData.toolState = toolState;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.OpenDialog:
-                {
-                    var dialogType = (DialogType)payload.Data;
-                    m_UIStateData.activeDialog = dialogType;
-                    m_UIStateData.activeSubDialog = DialogType.None;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.OpenSubDialog:
-                {
-                    var dialogType = (DialogType)payload.Data;
-                    m_UIStateData.activeSubDialog = dialogType;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetProgressIndicator:
-                {
-                    var progressIndicatorData = (ProgressData)payload.Data;
-                    m_UIStateData.progressData = progressIndicatorData;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetSync:
-                {
-                    var enabled = (bool)payload.Data;
-                    m_ReflectPipeline.SetSync(enabled);
-                    m_UIStateData.syncEnabled = enabled;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetActiveToolbar:
-                {
-                    var toolbarType = (ToolbarType)payload.Data;
-                    m_UIStateData.activeToolbar = toolbarType;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.OpenOptionDialog:
-                {
-                    var optionDialogType = (OptionDialogType)payload.Data;
-                    m_UIStateData.activeOptionDialog = optionDialogType;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetProjectSortMethod:
-                {
-                    var sortData = (ProjectListSortData)payload.Data;
-                    m_UIProjectStateData.projectSortData = sortData;
-                    projectStateChanged?.Invoke(m_UIProjectStateData);
-                    break;
-                }
-                case ActionTypes.SetOptionProject:
-                {
-                    var project = (Project)payload.Data;
-                    m_UIStateData.selectedProjectOption = project;
-                    m_UIStateData.projectOptionIndex = 0;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.CloseAllDialogs:
-                {
-                    CloseAllDialogs();
-                    break;
-                }
-                case ActionTypes.ResetToolbars:
-                {
-                    ResetToolBars();
-                    break;
-                }
-                case ActionTypes.SetDialogMode:
-                {
-                    var dialogMode = (DialogMode)payload.Data;
-                    m_UIStateData.dialogMode = dialogMode;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetHelpModeID:
-                {
-                    var activeEntry = (HelpModeEntryID)payload.Data;
-                    m_UIStateData.helpModeEntryId = activeEntry;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetStatusMessage:
-                {
-                    var message = (string)payload.Data;
-                    m_MessageManager.SetStatusMessage(message);
-                    break;
-                }
-                case ActionTypes.SetStatusWithType:
-                {
-                    var messageData = (StatusMessageData)payload.Data;
-                    m_MessageManager.SetStatusMessage(messageData.text, messageData.type);
-                    break;
-                }
-                case ActionTypes.SetStatusInstructionMode:
-                {
-                    var mode = (bool)payload.Data;
-                    m_MessageManager.SetInstructionMode(mode);
-                    break;
-                }
-                case ActionTypes.ClearStatus:
-                {
-                    m_MessageManager.ClearAllMessage();
-                    break;
-                }
-                case ActionTypes.SetObjectPicker:
-                {
-                    SpatialSelector picker = (SpatialSelector)payload.Data;
-                    picker.SpatialPicker = m_SpatialFilter.SpatialPicker;
-                    picker.WorldRoot = m_RootNode.transform;
-                    m_UIProjectStateData.objectPicker = picker;
-                    projectStateChanged?.Invoke(m_UIProjectStateData);
-                    break;
-                }
-                case ActionTypes.OpenProject:
-                {
-                    UIProjectStateData projectData = (UIProjectStateData)payload.Data;
-                    OpenProject(projectData.activeProject);
-                    break;
-                }
-                case ActionTypes.CloseProject:
-                {
-                    CloseProject();
-                    break;
-                }
-                case ActionTypes.DownloadProject:
-                {
-                    var project = (Project)payload.Data;
-                    ReflectPipelineFactory.DownloadProject(project);
-
-                    m_UIStateData.progressData.progressState = ProgressData.ProgressState.PendingIndeterminate;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.RemoveProject:
-                {
-                    var project = (Project)payload.Data;
-                    ReflectPipelineFactory.DeleteProjectLocally(project);
-
-                    m_UIStateData.progressData.progressState = ProgressData.ProgressState.PendingIndeterminate;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetVisibleFilter:
-                {
-                    var filterItemInfo = (FilterItemInfo)payload.Data;
-                    m_MetadataFilter?.processor.SetVisibility(filterItemInfo.groupKey, filterItemInfo.filterKey, filterItemInfo.visible);
-
-                    if (m_UseExperimentalActorSystem)
-                    {
-                        m_Bridge.SetHighlightVisibility(filterItemInfo.groupKey, filterItemInfo.filterKey, filterItemInfo.visible);
-                    }
-
-                    m_UIProjectStateData.lastChangedFilterItem = new FilterItemInfo
-                    {
-                        groupKey = filterItemInfo.groupKey,
-                        filterKey = filterItemInfo.filterKey,
-                        visible = filterItemInfo.visible,
-                    };
-
-                    projectStateChanged?.Invoke(m_UIProjectStateData);
-                    break;
-                }
-
-                case ActionTypes.SetHighlightFilter:
-                {
-                    var highlightFilterInfo = (HighlightFilterInfo)payload.Data;
-
-                    if (!m_UseExperimentalActorSystem)
-                    {
-                        if (m_MetadataFilter.processor.IsHighlighted(highlightFilterInfo.groupKey, highlightFilterInfo.filterKey))
-                        {
-                            m_UIProjectStateData.highlightFilter.groupKey = String.Empty;
-                            m_UIProjectStateData.highlightFilter.filterKey = String.Empty;
-                        }
-                        else
-                        {
-                            m_UIProjectStateData.highlightFilter = highlightFilterInfo;
-                        }
-
-                        m_MetadataFilter.processor.SetHighlightFilter(highlightFilterInfo.groupKey, highlightFilterInfo.filterKey);
-                        projectStateChanged?.Invoke(m_UIProjectStateData);
-                    }
-                    else
-                    {
-                        GetFilterItemInfos(m_UIStateData.filterGroup, filters =>
-                        {
-                            var filter = filters.FirstOrDefault(x => x.groupKey == highlightFilterInfo.groupKey && x.filterKey == highlightFilterInfo.filterKey);
-                            if (filter.groupKey == string.Empty && filter.filterKey == string.Empty ||
-                                filter.highlight)
-                            {
-                                m_UIProjectStateData.highlightFilter.groupKey = string.Empty;
-                                m_UIProjectStateData.highlightFilter.filterKey = string.Empty;
-                            }
-                            else
-                                m_UIProjectStateData.highlightFilter = highlightFilterInfo;
-
-                            m_Bridge.SetHighlightFilter(highlightFilterInfo.groupKey, highlightFilterInfo.filterKey);
-                            projectStateChanged?.Invoke(m_UIProjectStateData);
-                        });
-                    }
-
-                    break;
-                }
-                case ActionTypes.SetFilterGroup:
-                {
-                    m_UIStateData.filterGroup = (string)payload.Data;
-                    stateChanged?.Invoke(m_UIStateData);
-
-                    GetFilterItemInfos(m_UIStateData.filterGroup, filters =>
-                    {
-                        m_UIProjectStateData.filterItemInfos = filters;
-                        projectStateChanged?.Invoke(m_UIProjectStateData);
-                    });
-                    break;
-                }
-                case ActionTypes.SetFilterSearch:
-                {
-                    var searchString = (string)payload.Data;
-
-                    m_UIProjectStateData.filterSearchString = searchString;
-                    projectStateChanged?.Invoke(m_UIProjectStateData);
-                    break;
-                }
-                case ActionTypes.SetViewOption:
-                {
-                    var sceneOptionData = (SceneOptionData)payload.Data;
-
-                    if (sceneOptionData.enableTexture != m_UIStateData.sceneOptionData.enableTexture)
-                    {
-                        // set enable texture
-                        if (sceneOptionData.enableTexture)
-                            Shader.SetGlobalFloat(k_UseTexture, 1);
-                        else
-                            Shader.SetGlobalFloat(k_UseTexture, 0);
-                    }
-
-                    if (!m_UseExperimentalActorSystem)
-                    {
-                        if (m_LightFilterNode != null && sceneOptionData.enableLightData != m_UIStateData.sceneOptionData.enableLightData)
-                        {
-                            m_LightFilterNode.settings.enableLights = sceneOptionData.enableLightData;
-                            m_LightFilterNode.processor.RefreshLights();
-                        }
-                    }
-                    else if (sceneOptionData.enableLightData != m_UIStateData.sceneOptionData.enableLightData)
-                    {
-                        var settings = m_Bridge.GetFirstMatchingSettings<LightActor.Settings>();
-                        if (settings != null)
-                            m_Bridge.UpdateSetting<LightActor.Settings>(settings.Id, nameof(LightActor.Settings.EnableLights), sceneOptionData.enableLightData);
-                    }
-
-                    m_UIStateData.sceneOptionData = sceneOptionData;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetSkybox:
-                {
-                    var sceneOptionData = (SceneOptionData)payload.Data;
-
-                    // set skybox option
-                    // sceneOptionData.skyboxData
-
-                    m_UIStateData.sceneOptionData = sceneOptionData;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetClimateOption:
-                {
-                    var sceneOptionData = (SceneOptionData)payload.Data;
-
-                    // sceneOptionData.climateSimulation;
-                    // sceneOptionData.weatherType;
-                    // sceneOptionData.temperature;
-
-                    m_UIStateData.sceneOptionData = sceneOptionData;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetSunStudy:
-                {
-                    var sunStudyData = (SunStudyData)payload.Data;
-                    sunStudyData = SunStudyData.Format(sunStudyData);
-                    SunStudyData.SetSunStudyData(m_SunStudy, sunStudyData);
-                    m_UIStateData.sunStudyData = sunStudyData;
-
-                    var sunStatusMessage = SunStudyData.GetSunStatusMessage(m_UIStateData.activeToolbar, m_UIStateData.sunStudyData);
-                    if(!string.IsNullOrEmpty(sunStatusMessage))
-                        m_MessageManager.SetStatusMessage(sunStatusMessage);
-
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetSunStudyMode:
-                {
-                    var isStatic = (bool)payload.Data;
-                    m_UIStateData.sunStudyData.isStaticMode = isStatic;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetCameraOption:
-                {
-                    var cameraOptionData = (CameraOptionData)payload.Data;
-                    if (m_UIStateData.cameraOptionData.cameraProjectionType != cameraOptionData.cameraProjectionType)
-                    {
-                        // set camera projection Type
-                    }
-
-                    if (m_UIStateData.cameraOptionData.cameraViewType != cameraOptionData.cameraViewType)
-                    {
-                        // set camera view Type
-                        m_UIStateData.cameraOptionData.cameraViewType = cameraOptionData.cameraViewType;
-                        stateChanged?.Invoke(m_UIStateData);
-                        break;
-                    }
-
-                    m_UIStateData.cameraOptionData = cameraOptionData;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetJoystickOption:
-                {
-                    var cameraOptionData = (CameraOptionData)payload.Data;
-
-                    // set Enable Joystick
-                    // cameraOptionData.enableJoysticks;
-
-                    // set Joystick Preference
-                    // cameraOptionData.joystickPreference;
-
-                    m_UIStateData.cameraOptionData = cameraOptionData;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetNavigationOption:
-                {
-                    var cameraOptionData = (CameraOptionData)payload.Data;
-
-                    // cameraOptionData.autoNavigationSpeed;
-                    // cameraOptionData.navigationSpeed;
-                    break;
-                }
-                case ActionTypes.SetNavigationState:
-                {
-                    var navigationState = (NavigationState)payload.Data;
-
-                    if (navigationState.navigationMode != m_UIStateData.navigationState.navigationMode && navigationState.navigationMode == NavigationMode.AR)
-                    {
-                        // Reset instruction UI Step when start AR mode
-                        m_ARStateData.instructionUIStep = 0;
-                    }
-                    else if (navigationState.navigationMode != NavigationMode.AR)
-                    {
-                        // TODO: Move this as part of switching ot Orbit mode.
-                        // Reset scale for most mode except AR
-                        m_UIStateData.modelScale = ArchitectureScale.OneToOne;
-
-                        m_BoundingBoxRootNode.SetActive(true);
-                        if (!m_UseExperimentalActorSystem)
-                        {
-                            if (m_ReflectPipeline.TryGetNode<BoundingBoxControllerNode>(out var boundingBoxControllerNode))
-                            {
-                                boundingBoxControllerNode.settings.displayOnlyBoundingBoxes = false;
-                            }
-                        }
-                        else if (m_Bridge.IsInitialized)
-                        {
-                            var settings = m_Bridge.GetFirstMatchingSettings<BoundingBoxActor.Settings>();
-                            m_Bridge.UpdateSetting<BoundingBoxActor.Settings>(settings.Id, nameof(BoundingBoxActor.Settings.DisplayOnlyBoundingBoxes), false);
-                        }
-                    }
-
-                    m_UIStateData.navigationState = navigationState;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SelectObjects:
-                {
-                    var selectionInfo = (ObjectSelectionInfo)payload.Data;
-                    m_UIProjectStateData.objectSelectionInfo = selectionInfo;
-                    SetNetworkSelected(selectionInfo);
-                    projectStateChanged?.Invoke(m_UIProjectStateData);
-                    break;
-                }
-                case ActionTypes.SetBimGroup:
-                {
-                    m_UIStateData.bimGroup = (string)payload.Data;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetBimSearch:
-                {
-                    var searchString = (string)payload.Data;
-
-                    m_UIProjectStateData.bimSearchString = searchString;
-                    projectStateChanged?.Invoke(m_UIProjectStateData);
-                    break;
-                }
-                case ActionTypes.Failure:
-                {
-                    break;
-                }
-                case ActionTypes.SetLandingScreenFilter:
-                {
-                    var filterData = (ProjectListFilterData)payload.Data;
-                    m_UIStateData.landingScreenFilterData = filterData;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.LoadScene:
-                {
-                    var name = (string)payload.Data;
-                    if (!string.IsNullOrEmpty(name) && !SceneManager.GetSceneByName(name).IsValid())
-                    {
-                        StartCoroutine(LoadAsyncScene(name));
-                    }
-
-                    break;
-                }
-                case ActionTypes.UnloadScene:
-                {
-                    var name = (string)payload.Data;
-                    if (!string.IsNullOrEmpty(name) && SceneManager.GetSceneByName(name).IsValid())
-                    {
-                        StartCoroutine(UnloadAsyncScene(name));
-                    }
-
-                    break;
-                }
-                case ActionTypes.SetInstructionUIState:
-                {
-                    m_ARStateData.instructionUIState = (InstructionUIState)payload.Data;
-                    arStateChanged?.Invoke(m_ARStateData);
-
-                    if (m_ARStateData.instructionUIState == InstructionUIState.Completed && m_UIStateData.progressData.progressState == ProgressData.ProgressState.NoPendingRequest)
-                    {
-                        // This has to be delayed because the renderers are
-                        // not activated instantly after the instruction is complete
-                        StartCoroutine(TakeDelayedThumbnail());
-                    }
-
-                    break;
-                }
-                case ActionTypes.SetInstructionUI:
-                {
-                    m_ARStateData.currentInstructionUI = (IInstructionUI)payload.Data;
-                    arStateChanged?.Invoke(m_ARStateData);
-                    break;
-                }
-                case ActionTypes.ResetHomeView:
-                {
-                    m_UIProjectStateData.cameraTransformInfo = m_OrbitModeUIController.ResetCamera();
-                    m_UIStateData.cameraOptionData.cameraViewType = CameraViewType.Default;
-
-                    stateChanged?.Invoke(m_UIStateData);
-                    projectStateChanged?.Invoke(m_UIProjectStateData);
-                    break;
-                }
-                case ActionTypes.Teleport:
-                {
-                    m_UIProjectStateData.teleportTarget = (Vector3)payload.Data;
-                    projectStateChanged?.Invoke(m_UIProjectStateData);
-
-                    if (m_UIStateData.navigationState.navigationMode == NavigationMode.VR)
-                    {
-                        var teleportationProviders = Resources.FindObjectsOfTypeAll<TeleportationProvider>();
-                        if (teleportationProviders.Length > 0)
-                        {
-                            var teleportationProvider = teleportationProviders[0];
-                            if (!ReferenceEquals(teleportationProvider, null) && m_UIProjectStateData.teleportTarget != null)
-                            {
-                                teleportationProvider.QueueTeleportRequest(new TeleportRequest()
-                                {
-                                    destinationPosition = m_UIProjectStateData.teleportTarget.Value
-                                });
-                            }
-                        }
-                    }
-
-                    break;
-                }
-                case ActionTypes.FinishTeleport:
-                {
-                    m_WalkStateData.instructionUIState = InstructionUIState.Started;
-                    walkStateChanged?.Invoke(m_WalkStateData);
-                    break;
-                }
-                case ActionTypes.SetStatsInfo:
-                {
-                    var statsInfoData = (StatsInfoData)payload.Data;
-                    m_UIDebugStateData.statsInfoData = statsInfoData;
-                    debugStateChanged?.Invoke(m_UIDebugStateData);
-                    break;
-                }
-                case ActionTypes.SetQuality:
-                {
-                    var qualityData = (QualityState)payload.Data;
-                    m_ApplicationStateData.qualityStateData = qualityData;
-                    applicationStateChanged?.Invoke(m_ApplicationStateData);
-                    break;
-                }
-                case ActionTypes.ShowModel:
-                {
-                    var active = (bool)payload.Data;
-                    m_RootNode.SetActive(active);
-
-                    if (active)
-                    {
-                        if (!m_UseExperimentalActorSystem)
-                        {
-                            if (m_ReflectPipeline.TryGetNode<BoundingBoxControllerNode>(out var boundingBoxControllerNode))
-                            {
-                                boundingBoxControllerNode.settings.displayOnlyBoundingBoxes = false;
-                            }
-                        }
-                        else
-                        {
-                            var settings = m_Bridge.GetFirstMatchingSettings<BoundingBoxActor.Settings>();
-                            m_Bridge.UpdateSetting<BoundingBoxActor.Settings>(settings.Id, nameof(BoundingBoxActor.Settings.DisplayOnlyBoundingBoxes), false);
-                        }
-                    }
-
-                    break;
-                }
-                case ActionTypes.ShowBoundingBoxModel:
-                {
-                    var active = (bool)payload.Data;
-                    m_BoundingBoxRootNode.SetActive(active);
-
-                    if (!m_UseExperimentalActorSystem)
-                    {
-                        if (m_ReflectPipeline.TryGetNode<BoundingBoxControllerNode>(out var boundingBoxControllerNode))
-                        {
-                            boundingBoxControllerNode.settings.displayOnlyBoundingBoxes = active;
-                        }
-                    }
-                    else
-                    {
-                        var settings = m_Bridge.GetFirstMatchingSettings<BoundingBoxActor.Settings>();
-                        m_Bridge.UpdateSetting<BoundingBoxActor.Settings>(settings.Id, nameof(BoundingBoxActor.Settings.DisplayOnlyBoundingBoxes), active);
-                    }
-
-                    break;
-                }
-                case ActionTypes.SetModelScale:
-                {
-                    var scale = (ArchitectureScale)payload.Data;
-                    m_UIStateData.modelScale = scale;
-
-                    // TODO: Use Mars World Scale to scale objects
-                    float scalef = (float)m_UIStateData.modelScale;
-
-                    m_PlacementRoot.gameObject.transform.localScale = new Vector3(1.0f / scalef, 1.0f / scalef, 1.0f / scalef);
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetModelRotation:
-                {
-                    var rotation = (Vector3)payload.Data;
-                    m_PlacementRoot.transform.Rotate(rotation);
-                    break;
-                }
-
-                case ActionTypes.RefreshProjectList:
-                {
-                    ReflectPipelineFactory.RefreshProjects();
-                    m_UIStateData.progressData.progressState = ProgressData.ProgressState.PendingIndeterminate;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetPlacementRules:
-                {
-                    var value = (PlacementRule)payload.Data;
-
-                    if (m_PlacementRules != null && value == m_ARStateData.placementStateData.placementRule)
-                    {
-                        if (value != PlacementRule.None)
-                        {
-                            m_PlacementRules.SetActive(true);
-                        }
-
-                        return;
-                    }
-
-                    m_ARStateData.placementStateData.placementRule = value;
-
-                    if (m_PlacementRules != null)
-                    {
-                        Destroy(m_PlacementRules);
-                        m_PlacementRules = null;
-                    }
-
-                    if (value != PlacementRule.None)
-                    {
-                        m_PlacementRules = Instantiate(m_PlacementRulesPrefabs[(int)value - 1], m_BoundingBoxRootNode.transform);
-                        ModuleLoaderCore.instance.GetModule<FunctionalityInjectionModule>().activeIsland.InjectFunctionalitySingle(m_PlacementRules.gameObject.GetComponent<Replicator>());
-                        m_PlacementRules.transform.parent = null;
-                        m_PlacementRules.transform.localScale = Vector3.one;
-                        m_PlacementRules.SetActive(true);
-                    }
-
-                    arStateChanged?.Invoke(m_ARStateData);
-                    break;
-                }
-                case ActionTypes.Cancel:
-                {
-                    var value = (bool)payload.Data;
-                    m_UIStateData.operationCancelled = value;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetTheme:
-                {
-                    var value = (string)payload.Data;
-                    m_UIStateData.themeName = value;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetDisplay:
-                {
-                    var value = (DisplayData)payload.Data;
-                    UpdateDisplayData(value);
-                    break;
-                }
-                case ActionTypes.EnableAR:
-                {
-                    var value = (bool)payload.Data;
-
-                    if (value == false)
-                    {
-                        // Reset scale and position
-                        m_UIStateData.modelScale = ArchitectureScale.OneToOne;
-                        m_PlacementRoot.transform.localScale = Vector3.one;
-                        m_PlacementRoot.transform.position = Vector3.zero;
-                        m_PlacementRoot.transform.rotation = Quaternion.identity;
-
-                        m_RootNode.transform.localPosition = Vector3.zero;
-                        m_BoundingBoxRootNode.transform.localPosition = Vector3.zero;
-
-                        stateChanged?.Invoke(m_UIStateData);
-                    }
-
-                    m_ARStateData.arEnabled = value;
-                    arStateChanged?.Invoke(m_ARStateData);
-                    break;
-                }
-                case ActionTypes.EnableWalk:
-                {
-                    m_WalkStateData.walkEnabled = (bool)payload.Data;
-                    m_WalkStateData.instructionUIState = InstructionUIState.Init;
-                    m_WalkStateData.instruction ??= new WalkModeInstruction();
-                    walkStateChanged?.Invoke(m_WalkStateData);
-                    break;
-                }
-                case ActionTypes.EnableVR:
-                {
-                    var value = (bool)payload.Data;
-                    m_UIStateData.VREnable = value;
-                    stateChanged?.Invoke(m_UIStateData);
-                    // disable depth culling in VR due to depth shader incompatibility with SinglePassInstanced
-                    // ignore this if the device doesn't support AsyncGPUReadback
-                    if (m_UIStateData.deviceCapability.HasFlag(DeviceCapability.SupportsAsyncGPUReadback))
-                    {
-                        if (!m_UseExperimentalActorSystem)
-                        {
-                            if (m_ReflectPipeline.TryGetNode<SpatialFilterNode>(out var spatialFilterNode))
-                                spatialFilterNode.settings.cullingSettings.useDepthCulling = !value;
-                        }
-                        else
-                        {
-                            var settings = m_Bridge.GetFirstMatchingSettings<SpatialActor.Settings>();
-                            m_Bridge.UpdateSetting<SpatialActor.Settings>(settings.Id, nameof(SpatialActor.Settings.UseDepthCulling), !value);
-                        }
-                    }
-                    break;
-                }
-                case ActionTypes.SetARToolState:
-                {
-                    var value = (ARToolStateData)payload.Data;
-                    m_ARStateData.arToolStateData = value;
-                    arStateChanged?.Invoke(m_ARStateData);
-                    break;
-                }
-                case ActionTypes.SetPlacementState:
-                {
-                    var value = (ARPlacementStateData)payload.Data;
-                    m_ARStateData.placementStateData = value;
-                    arStateChanged?.Invoke(m_ARStateData);
-                    break;
-                }
-                case ActionTypes.SetARMode:
-                {
-                    var value = (ARMode)payload.Data;
-                    m_ARStateData.arMode = value;
-                    arStateChanged?.Invoke(m_ARStateData);
-                    break;
-                }
-                case ActionTypes.SetSettingsToolState:
-                {
-                    var value = (SettingsToolStateData)payload.Data;
-                    m_UIStateData.settingsToolStateData = value;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetDebugOptions:
-                {
-                    var value = (DebugOptionsData)payload.Data;
-                    m_UIDebugStateData.debugOptionsData = value;
-                    debugStateChanged?.Invoke(m_UIDebugStateData);
-                    break;
-                }
-                case ActionTypes.SetPrivateMode:
-                {
-                    m_UISessionStateData.sessionState.isInPrivateMode = (bool)payload.Data;
-                    if(m_UISessionStateData.sessionState.isInPrivateMode)
-                    {
-                        PlayerClientBridge.MatchmakerManager.LeaveRoom();
-                        // We dont disconnect from the room so the player identity is kept on the matchmaker when we reconnect
-                        PlayerClientBridge.MatchmakerManager.Disconnect();
-                    }
-                    else
-                    {
-                        PlayerClientBridge.MatchmakerManager.Connect( m_UISessionStateData.sessionState.user.AccessToken, m_MultiplayerController.connectToLocalServer);
-                        PlayerClientBridge.MatchmakerManager.MonitorRooms(sessionStateData.sessionState.rooms.Select(r => r.project.serverProjectId));
-                        if(m_UIProjectStateData.activeProject != Project.Empty)
-                        {
-                            PlayerClientBridge.MatchmakerManager.JoinRoom(m_UIProjectStateData.activeProject.serverProjectId);
-                        }
-                    }
-                    break;
-                }
-                case ActionTypes.FollowUser:
-                {
-                    NetworkUserData? user = (NetworkUserData?)payload.Data;
-                    var shouldFollowThisUser = (user != null && m_UIStateData.toolState.followUserTool.userId != user.Value.matchmakerId);
-                    m_UIStateData.toolState.followUserTool.userId = shouldFollowThisUser ? user.Value.matchmakerId: null;
-                    m_UIStateData.toolState.followUserTool.userObject = shouldFollowThisUser ? user.Value.visualRepresentation.gameObject : null;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.SetUserInfo:
-                {
-                    UserInfoDialogData user = (UserInfoDialogData)payload.Data;
-                    m_UIStateData.SelectedUserData = user;
-                    stateChanged?.Invoke(m_UIStateData);
-                    break;
-                }
-                case ActionTypes.ToggleUserMicrophone:
-                {
-                    var user = (string)payload.Data;
-                    if(m_VivoxManager.IsConnected)
-                    {
-                        ToggleUserMicrophone(user);
-                    }
-                    else
-                    {
-                        m_RoomConnectionStateData.localUser.voiceStateData.isServerMuted = !m_RoomConnectionStateData.localUser.voiceStateData.isServerMuted;
-                        roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
-                    }
-                    break;
-                }
-                case ActionTypes.SetSpatialPriorityWeights:
-                {
-                    var value = (Vector3)payload.Data;
-                    if (!m_UseExperimentalActorSystem)
-                    {
-                        if (m_ReflectPipeline.TryGetNode<SpatialFilterNode>(out var spatialFilterNode))
-                        {
-                            spatialFilterNode.settings.priorityWeightAngle = value.x;
-                            spatialFilterNode.settings.priorityWeightDistance = value.y;
-                            spatialFilterNode.settings.priorityWeightSize = value.z;
-                        }
-                    }
-                    else
-                    {
-                        var settings = m_Bridge.GetFirstMatchingSettings<SpatialActor.Settings>();
-                        m_Bridge.UpdateSetting<SpatialActor.Settings>(settings.Id, nameof(SpatialActor.Settings.PriorityWeightAngle), value.x);
-                        m_Bridge.UpdateSetting<SpatialActor.Settings>(settings.Id, nameof(SpatialActor.Settings.PriorityWeightDistance), value.y);
-                        m_Bridge.UpdateSetting<SpatialActor.Settings>(settings.Id, nameof(SpatialActor.Settings.PriorityWeightSize), value.z);
-                    }
-                    break;
-                }
-                case ActionTypes.SetDebugBoundingBoxMaterials:
-                {
-                    var value = (bool)payload.Data;
-                    if (!m_UseExperimentalActorSystem)
-                    {
-                        if (m_ReflectPipeline.TryGetNode<BoundingBoxControllerNode>(out var boundingBoxControllerNode))
-                            boundingBoxControllerNode.settings.useDebugMaterials = value;
-                    }
-                    else
-                    {
-                        var settings = m_Bridge.GetFirstMatchingSettings<BoundingBoxActor.Settings>();
-                        m_Bridge.UpdateSetting<BoundingBoxActor.Settings>(settings.Id, nameof(BoundingBoxActor.Settings.UseDebugMaterials), value);
-                    }
-                    break;
-                }
-                case ActionTypes.SetCulling:
-                {
-                    var value = (bool)payload.Data;
-                    if (!m_UseExperimentalActorSystem)
-                    {
-                        if (m_ReflectPipeline.TryGetNode<SpatialFilterNode>(out var spatialFilterNode))
-                            spatialFilterNode.settings.useCulling = value;
-                    }
-                    else
-                    {
-                        var settings = m_Bridge.GetFirstMatchingSettings<SpatialActor.Settings>();
-                        m_Bridge.UpdateSetting<SpatialActor.Settings>(settings.Id, nameof(SpatialActor.Settings.UseCulling), value);
-                    }
-                    break;
-                }
-                case ActionTypes.SetStaticBatching:
-                {
-                    var value = (bool)payload.Data;
-                    if (!m_UseExperimentalActorSystem)
-                    {
-                        if (m_ReflectPipeline.TryGetNode<BoundingBoxControllerNode>(out var boundingBoxControllerNode))
-                            boundingBoxControllerNode.settings.useStaticBatching = value;
-                    }
-                    else
-                    {
-                        var settings = m_Bridge.GetFirstMatchingSettings<BoundingBoxActor.Settings>();
-                        m_Bridge.UpdateSetting<BoundingBoxActor.Settings>(settings.Id, nameof(BoundingBoxActor.Settings.UseStaticBatching), value);
-                    }
-                    break;
-                }
-                case ActionTypes.SetMeasureToolOptions:
-                {
-                    var value = (MeasureToolStateData)payload.Data;
-                    m_ExternalToolStateData.measureToolStateData = value;
-                    externalToolChanged?.Invoke(m_ExternalToolStateData);
-                    break;
-                }
-                case ActionTypes.SetLoginSetting:
-                {
-                    var value = (EnvironmentInfo)payload.Data;
-                    LocaleUtils.SaveEnvironmentInfo(value);
-                    UnityEngine.Reflect.ProjectServer.Cleanup();
-                    UnityEngine.Reflect.ProjectServer.Init();
-                    loginSettingChanged?.Invoke();
-                    break;
-                }
-                case ActionTypes.DeleteCloudEnvironmentSetting:
-                {
-                    LocaleUtils.DeleteCloudEnvironmentSetting();
-                    UnityEngine.Reflect.ProjectServer.Cleanup();
-                    UnityEngine.Reflect.ProjectServer.Init();
-                    loginSettingChanged?.Invoke();
-                    break;
-                }
-                case ActionTypes.BeginDrag:
-                {
-                    var value = (DragStateData)payload.Data;
-                    m_DragStateData = value;
-                    dragStateChanged?.Invoke(m_DragStateData);
-                    break;
-                }
-                case ActionTypes.OnDrag:
-                {
-                    var value = (DragStateData)payload.Data;
-                    m_DragStateData = value;
-                    dragStateChanged?.Invoke(m_DragStateData);
-                    break;
-                }
-                case ActionTypes.EndDrag:
-                {
-                    var value = (DragStateData)payload.Data;
-                    m_DragStateData = value;
-                    dragStateChanged?.Invoke(m_DragStateData);
-                    break;
-                }
-                case ActionTypes.ResetExternalTools:
-                {
-                    ResetExternalTools();
-                    break;
-                }
-                case ActionTypes.SetLinkSharePermission:
-                {
-                    var value = (LinkPermission)payload.Data;
-                    m_UISessionStateData.sessionState.linkSharePermission = value;
-                    sessionStateChanged?.Invoke(sessionStateData);
-                    break;
-                }
+                m_Bridge.ForwardNet(spatialActor, new AddVisibilityIgnoreFlag(SpatialActor.k_IsHlodFlag));
             }
+            else
+            {
+                m_Bridge.ForwardNet(spatialActor, new RemoveVisibilityIgnoreFlag(SpatialActor.k_IsHlodFlag));
+            }
+        }
+
+        void OnAppBarContextChanged()
+        {
+            m_AppBarContextTarget.UpdateWith(ref m_AppBarStateData);
+        }
+
+        void OnRoomConnectionContextChanged()
+        {
+            m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData);
+        }
+
+        void OnUIStateContextChanged()
+        {
+            m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
+            m_ToolStateContextTarget.UpdateWith(ref m_UIStateData.toolState);
+            m_CameraOptionsContextTarget.UpdateWith(ref m_UIStateData.cameraOptionData);
+            m_NavigationContextTarget.UpdateWith(ref m_UIStateData.navigationStateData);
+            m_SettingsToolContextTarget.UpdateWith(ref m_UIStateData.settingsToolStateData);
+            m_FollowUserTarget.UpdateWith(ref m_UIStateData.toolState.followUserTool);
+            m_ProgressContextTarget.UpdateWith(ref m_UIStateData.progressData);
+            m_LandingScreenContextTarget.UpdateWith(ref m_UIStateData.landingScreenFilterData);
+        }
+
+        void OnSessionStateContextChanged()
+        {
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
+        }
+
+        void OnDeltaDNAContextChanged()
+        {
+            m_DeltaDNAStateContextTarget.UpdateWith(ref m_DeltaDNAStateData);
+        }
+
+        void OnMessageManagerContextChanged()
+        {
+            m_MessageManagerContextTarget.UpdateWith(ref m_MessageManagerStateData);
         }
     }
 }

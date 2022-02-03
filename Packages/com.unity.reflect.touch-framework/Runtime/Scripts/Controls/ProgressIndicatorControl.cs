@@ -30,8 +30,18 @@ namespace Unity.TouchFramework
         FloatTween m_LoopingTween;
         TweenRunner<FloatTween> m_TweenRunner;
 
+        bool m_Initialized = false;
+
         void Awake()
         {
+            Initialize();
+        }
+
+        public void Initialize()
+        {
+            if (m_Initialized)
+                return;
+
             m_CurrentProgress = 0;
             m_ProgressTween = new FloatTween
             {
@@ -52,6 +62,8 @@ namespace Unity.TouchFramework
             UpdateCorners();
             m_TweenRunner = new TweenRunner<FloatTween>();
             m_TweenRunner.Init(this);
+
+            m_Initialized = true;
         }
 
         void OnLoopingTweenChanged(float rotation)

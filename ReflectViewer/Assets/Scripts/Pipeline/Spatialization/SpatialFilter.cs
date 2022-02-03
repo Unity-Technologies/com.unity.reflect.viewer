@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Reflect;
+using Unity.Reflect.Actors;
+using Unity.Reflect.Collections;
 using Unity.Reflect.Data;
 using Unity.Reflect.Model;
 using UnityEngine.Reflect.Pipeline;
@@ -25,7 +27,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         protected override SpatialFilter Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
-            var p = new SpatialFilter(hook.helpers.clock, hook.helpers.memoryStats, hook.services.eventHub, hook.systems.memoryCleaner.memoryLevel,
+            var p = new SpatialFilter(hook.Helpers.Clock, hook.Helpers.MemoryStats, hook.Services.EventHub, hook.Systems.MemoryCleaner.memoryLevel,
                 settings, assetOutput, visibilityOutput, resolver);
 
             assetInput.streamBegin = assetOutput.SendBegin;
@@ -49,12 +51,15 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
     {
         class SpatialObject : ISpatialObject
         {
-            public Vector3 min { get; }
-            public Vector3 max { get; }
-            public Vector3 center { get; }
-            public float priority { get; set; }
-            public bool isVisible { get; set; }
-            public GameObject loadedObject
+            public DynamicGuid Id { get; }
+            public EntryData Entry { get; }
+            public Vector3 Min { get; }
+            public Vector3 Max { get; }
+            public Vector3 Center { get; }
+            public float Priority { get; set; }
+            public bool Ignore { get; set; }
+            public bool IsVisible { get; set; }
+            public GameObject LoadedObject
             {
                 get => SyncedGameObject.data;
                 set => SyncedGameObject = new SyncedData<GameObject>(StreamAsset.key, value);
@@ -75,9 +80,9 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 SyncedGameObject = new SyncedData<GameObject>(streamAsset.key, null);
 
                 var syncBb = streamAsset.data.boundingBox;
-                min = new Vector3(syncBb.Min.X, syncBb.Min.Y, syncBb.Min.Z);
-                max = new Vector3(syncBb.Max.X, syncBb.Max.Y, syncBb.Max.Z);
-                center = min + (max - min) / 2f;
+                Min = new Vector3(syncBb.Min.X, syncBb.Min.Y, syncBb.Min.Z);
+                Max = new Vector3(syncBb.Max.X, syncBb.Max.Y, syncBb.Max.Z);
+                Center = Min + (Max - Min) / 2f;
             }
 
             public void Dispose()
@@ -166,8 +171,8 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
             InitCamera();
 
-            m_ObjectsToLoad = new PriorityHeap<SpatialObject>(settings.visibleObjectsMax, Comparer<SpatialObject>.Create((a, b) => a.priority.CompareTo(b.priority)));
-            m_ObjectsToUnload = new PriorityHeap<SpatialObject>(settings.visibleObjectsMax, Comparer<SpatialObject>.Create((a, b) => b.priority.CompareTo(a.priority)));
+            m_ObjectsToLoad = new PriorityHeap<SpatialObject>(settings.visibleObjectsMax, Comparer<SpatialObject>.Create((a, b) => a.Priority.CompareTo(b.Priority)));
+            m_ObjectsToUnload = new PriorityHeap<SpatialObject>(settings.visibleObjectsMax, Comparer<SpatialObject>.Create((a, b) => b.Priority.CompareTo(a.Priority)));
 
             if (useDynamicNbVisibleObjects)
                 m_CurrentMaxVisibleObjects = Math.Min(k_MinNbObjects, settings.visibleObjectsMax);
@@ -253,7 +258,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
             foreach (var obj in m_ObjectsByStreamKey.Values)
             {
-                if (obj.isVisible)
+                if (obj.IsVisible)
                 {
                     if (!obj.IsLoaded)
                         OnLoad(obj);
@@ -279,7 +284,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 var nbToLoad = Mathf.Min(count - m_ObjectsToLoad.count, m_CurrentMaxVisibleObjects - m_NbLoadedGameObjects);
                 foreach (var obj in m_ObjectsByStreamKey.Values)
                 {
-                    if (!obj.isVisible && !obj.IsLoaded)
+                    if (!obj.IsVisible && !obj.IsLoaded)
                     {
                         OnLoad(obj);
                         --nbToLoad;
@@ -344,8 +349,11 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                     Add(obj);
                     break;
                 case StreamEvent.Changed:
+                    var newObj = new SpatialObject(streamAsset);
+                    newObj.LoadedObject = obj.LoadedObject;
                     Remove(obj);
-                    Add(obj);
+                    Add(newObj);
+                    m_ObjectsByStreamKey[streamAsset.key] = newObj;
                     m_StreamOutput.SendStreamChanged(streamAsset);
                     break;
                 case StreamEvent.Removed:
@@ -382,16 +390,16 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             switch (eventType)
             {
                 case StreamEvent.Added:
-                    obj.loadedObject = gameObject.data;
+                    obj.LoadedObject = gameObject.data;
                     ++m_NbLoadedGameObjects;
                     if (m_NbLoadedGameObjects >= m_CurrentMaxVisibleObjects * 0.98f)
                         UpdateSpeculation();
                     break;
                 case StreamEvent.Changed:
-                    obj.loadedObject = gameObject.data;
+                    obj.LoadedObject = gameObject.data;
                     break;
                 case StreamEvent.Removed:
-                    obj.loadedObject = null;
+                    obj.LoadedObject = null;
                     --m_NbLoadedGameObjects;
                     break;
             }
@@ -514,10 +522,10 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                     m_VisibilityResults);
 
                 foreach (var obj in m_VisibilityResults.Except(m_PrevVisibilityResults))
-                    obj.isVisible = true;
+                    obj.IsVisible = true;
 
                 foreach (var obj in m_PrevVisibilityResults.Except(m_VisibilityResults))
-                    obj.isVisible = false;
+                    obj.IsVisible = false;
 
                 // save the results
                 m_PrevVisibilityResults.Clear();
@@ -532,13 +540,13 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             if (settings.useCulling)
                 return m_Culling.IsVisible(obj);
 
-            m_Bounds.SetMinMax(obj.min, obj.max);
+            m_Bounds.SetMinMax(obj.Min, obj.Max);
             return m_Bounds.SqrDistance(m_CamPos) < m_VisibilitySqrDist;
         }
 
         float DefaultVisibilityPrioritizer(ISpatialObject obj)
         {
-            m_Bounds.SetMinMax(obj.min, obj.max);
+            m_Bounds.SetMinMax(obj.Min, obj.Max);
             m_BoundsSize = m_Bounds.size;
             m_ObjDirection = m_Bounds.ClosestPoint(m_CamPos) - m_CamPos;
             // lower priority is better so change sign after adding the weighted values
@@ -556,7 +564,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             m_Camera = Camera.main;
             if (m_Camera == null)
             {
-                Debug.LogError($"[{nameof(SpatialFilter)}] active main camera not found!");
+                Debug.LogWarning($"[{nameof(SpatialFilter)}] active main camera not found!");
                 return;
             }
 
@@ -579,7 +587,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             m_VisibilitySqrDist *= m_VisibilitySqrDist;
         }
 
-        public void Pick(Ray ray, List<ISpatialObject> results)
+        public void Pick(Ray ray, List<ISpatialObject> results, string[] flagsExcluded = null)
         {
             m_SelectionRay = ray;
 
@@ -589,12 +597,13 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 results);
         }
 
-        public void VRPick(Ray ray, List<ISpatialObject> results)
+        [Obsolete("Please use 'Pick(Ray ray, List<ISpatialObject> results)' instead.")]
+        public void VRPick(Ray ray, List<ISpatialObject> results, string[] flagsExcluded = null)
         {
             Pick(ray, results);
         }
 
-        public void Pick(float distance, List<ISpatialObject> results, Transform origin)
+        public void Pick(float distance, List<ISpatialObject> results, Transform origin, string[] flagsExcluded = null)
         {
             m_DistanceCheckOrigin = origin;
             m_PickSqrDistance = distance * distance;
@@ -605,7 +614,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                 results);
         }
 
-        public void Pick(Vector3[] samplePoints, int samplePointCount, List<ISpatialObject> results)
+        public void Pick(Vector3[] samplePoints, int samplePointCount, List<ISpatialObject> results, string[] flagsExcluded = null)
         {
             if (m_SelectionRaySamplePoints == null || m_SelectionRaySamplePoints.Length != samplePointCount - 1)
                 m_SelectionRaySamplePoints = new Ray[samplePointCount - 1];
@@ -624,16 +633,16 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         bool CheckIntersectRaySamplePoints(ISpatialObject obj)
         {
-            m_Bounds.SetMinMax(obj.min, obj.max);
+            m_Bounds.SetMinMax(obj.Min, obj.Max);
             for (var i = 0; i < m_SelectionRaySamplePoints.Length; ++i)
             {
                 var ray = m_SelectionRaySamplePoints[i];
                 if (!m_Bounds.IntersectRay(ray, out var distance))
                     continue;
 
-                obj.priority = distance;
+                obj.Priority = distance;
                 if (i > 0)
-                    obj.priority += Vector3.Distance(m_SelectionRaySamplePoints[0].origin, ray.origin);
+                    obj.Priority += Vector3.Distance(m_SelectionRaySamplePoints[0].origin, ray.origin);
 
                 return true;
             }
@@ -643,28 +652,28 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         bool CheckIntersectRay(ISpatialObject obj)
         {
-            m_Bounds.SetMinMax(obj.min, obj.max);
+            m_Bounds.SetMinMax(obj.Min, obj.Max);
             if (!m_Bounds.IntersectRay(m_SelectionRay, out var distance))
                 return false;
 
-            obj.priority = distance;
+            obj.Priority = distance;
             return true;
         }
 
         bool CheckDistance(ISpatialObject obj)
         {
-            m_Bounds.SetMinMax(obj.min, obj.max);
+            m_Bounds.SetMinMax(obj.Min, obj.Max);
             var distance = m_Bounds.SqrDistance(m_DistanceCheckOrigin.position);
             if (distance > m_PickSqrDistance)
                 return false;
 
-            obj.priority = distance;
+            obj.Priority = distance;
             return true;
         }
 
         static float GetRayCastDistance(ISpatialObject obj)
         {
-            return obj.priority;
+            return obj.Priority;
         }
     }
 }

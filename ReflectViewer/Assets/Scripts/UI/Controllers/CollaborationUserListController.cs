@@ -4,7 +4,8 @@ using System.Linq;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
-using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -25,28 +26,34 @@ namespace Unity.Reflect.Viewer.UI
         DialogWindow m_DialogWindow;
         List<UserUIController> m_Users = new List<UserUIController>();
         string[] m_MatchmakerIds;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
 
         void Awake()
         {
-            UIStateManager.roomConnectionStateChanged += OnConnectionStateChanged;
-            UIStateManager.stateChanged += OnStateDataChanged;
             m_DialogWindow = GetComponent<DialogWindow>();
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog), OnActiveDialogChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<List<NetworkUserData>>(RoomConnectionContext.current, nameof(IRoomConnectionDataProvider<NetworkUserData>.users), OnUsersChanged));
         }
 
-        void OnStateDataChanged(UIStateData data)
+        void OnDestroy()
         {
-            switch (data.activeDialog)
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
+
+        void OnActiveDialogChanged(OpenDialogAction.DialogType data)
+        {
+            switch (data)
             {
-                case DialogType.CollaborationUserInfo:
-                case DialogType.CollaborationUserList:
+                case OpenDialogAction.DialogType.CollaborationUserInfo:
+                case OpenDialogAction.DialogType.CollaborationUserList:
                     UpdateList(m_MatchmakerIds);
                     break;
             }
         }
 
-        void OnConnectionStateChanged(RoomConnectionStateData applicationData)
+        void OnUsersChanged(List<NetworkUserData> users)
         {
-            m_MatchmakerIds = applicationData.users.Select( u => u.matchmakerId).ToArray();
+            m_MatchmakerIds = users.Select( u => u.matchmakerId).ToArray();
             if (m_DialogWindow.open)
             {
                 UpdateList(m_MatchmakerIds);

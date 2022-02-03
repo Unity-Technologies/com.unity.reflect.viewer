@@ -1,89 +1,102 @@
-using SharpFlux;
 using System;
 using SharpFlux.Dispatching;
+using Unity.Reflect.Viewer;
 using Unity.Reflect.Viewer.UI;
-using UnityEngine;
-using UnityEngine.Events;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace UnityEngine.Reflect
 {
-    public class FrameCalculator : MonoBehaviour
+    public class FrameCalculator: MonoBehaviour
     {
-        public int FrameBufferCount = 30;
+        [SerializeField]
+        ViewerReflectBootstrapper m_Reflect;
 
-        float[] m_FrameCounts;
+        [SerializeField]
+        int m_FrameBufferCount = 30;
+
+        TimeSpan[] m_FrameTimes;
         int m_CurrentIndex;
-        int m_CurrentValidFrameCount;
-        float m_TotalFrameRate;
 
-        float m_CurrentFrameRate;
-        float m_MinFrameRate;
-        float m_MaxFrameRate;
+        TimeSpan m_AvgFrameTime;
+        TimeSpan m_MinFrameTime;
+        TimeSpan m_MaxFrameTime;
         bool m_DispatchEnabled;
 
         public event Action<float> fpsChanged;
+        IDisposable m_SelectorToDispose;
 
         void Start()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
+            m_SelectorToDispose = UISelectorFactory.createSelector<bool>(SceneOptionContext.current, nameof(ISceneOptionData<SkyboxData>.enableStatsInfo), OnEnableStatsInfoChanged);
 
-            m_FrameCounts = new float[FrameBufferCount];
-            for (int i = 0; i < m_FrameCounts.Length; ++i)
-            {
-                m_FrameCounts[i] = -1;
-            }
+            m_FrameTimes = new TimeSpan[m_FrameBufferCount];
+            for (var i = 0; i < m_FrameTimes.Length; ++i)
+                m_FrameTimes[i] = TimeSpan.FromMilliseconds(-1);
         }
 
-        void OnStateDataChanged(UIStateData data)
+        void OnDestroy()
         {
-            m_DispatchEnabled = data.activeDialog == DialogType.StatsInfo;
+            m_SelectorToDispose?.Dispose();
+        }
+
+        void OnEnableStatsInfoChanged(bool on)
+        {
+            m_DispatchEnabled = on;
         }
 
         void Update()
         {
-            m_FrameCounts[m_CurrentIndex] = 1f / Time.deltaTime;
-            ++m_CurrentIndex;
-            m_CurrentIndex %= m_FrameCounts.Length;
+            var clock = m_Reflect.Hook.Helpers.Clock;
+            m_FrameTimes[m_CurrentIndex] = clock.deltaTime;
+            m_CurrentIndex = ++m_CurrentIndex % m_FrameTimes.Length;
 
             Calculate();
-            if(m_DispatchEnabled)
+            if (m_DispatchEnabled)
                 DispatchStatsInfoData();
         }
 
         void Calculate()
         {
-            m_CurrentValidFrameCount = 0;
-            m_TotalFrameRate = 0;
-            m_MinFrameRate = float.MaxValue;
-            m_MaxFrameRate = float.MinValue;
-            for (int i = 0; i < m_FrameCounts.Length; ++i)
+            var m_CurrentValidFrameCount = 0;
+            var totalFrameTime = TimeSpan.Zero;
+            m_MinFrameTime = TimeSpan.MaxValue;
+            m_MaxFrameTime = TimeSpan.MinValue;
+
+            for (var i = 0; i < m_FrameTimes.Length; ++i)
             {
-                var value = m_FrameCounts[i];
-                if (value <= 0)
+                var value = m_FrameTimes[i];
+                if (value <= TimeSpan.Zero)
                     continue;
 
                 ++m_CurrentValidFrameCount;
-                m_TotalFrameRate += value;
+                totalFrameTime += value;
 
-                if (m_MinFrameRate > value) m_MinFrameRate = value;
-                if (m_MaxFrameRate < value) m_MaxFrameRate = value;
+                if (value < m_MinFrameTime)
+                    m_MinFrameTime = value;
+                if (value > m_MaxFrameTime)
+                    m_MaxFrameTime = value;
             }
 
             if (m_CurrentValidFrameCount > 0)
             {
-                m_CurrentFrameRate = m_TotalFrameRate / m_CurrentValidFrameCount;
-                fpsChanged?.Invoke(m_CurrentFrameRate);
+                m_AvgFrameTime = TimeSpan.FromMilliseconds(totalFrameTime.TotalMilliseconds / m_CurrentValidFrameCount);
+                fpsChanged?.Invoke(1.0f / (float)m_AvgFrameTime.TotalSeconds);
             }
         }
 
         void DispatchStatsInfoData()
         {
-            var statsInfoData = UIStateManager.current.debugStateData.statsInfoData;
-            statsInfoData.fpsAvg = Mathf.Clamp((int) m_CurrentFrameRate, 0, 99);
-            statsInfoData.fpsMax = Mathf.Clamp((int) m_MaxFrameRate, 0, 99);
-            statsInfoData.fpsMin = Mathf.Clamp((int) m_MinFrameRate, 0, 99);
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatsInfo,
-                statsInfoData));
+            var avgFps = 1.0 / m_AvgFrameTime.TotalSeconds;
+            var maxFps = 1.0 / m_MinFrameTime.TotalSeconds;
+            var minFps = 1.0 / m_MaxFrameTime.TotalSeconds;
+
+            var statsInfoData = new SetStatsInfoAction.SetStatsInfoData();
+            statsInfoData.fpsAvg = Mathf.Clamp((int)avgFps, 0, 99);
+            statsInfoData.fpsMax = Mathf.Clamp((int)maxFps, 0, 99);
+            statsInfoData.fpsMin = Mathf.Clamp((int)minFps, 0, 99);
+
+            Dispatcher.Dispatch(SetStatsInfoAction.From(statsInfoData));
         }
     }
 }

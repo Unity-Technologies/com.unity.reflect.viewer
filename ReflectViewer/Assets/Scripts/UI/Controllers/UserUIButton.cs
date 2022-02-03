@@ -1,8 +1,10 @@
 using System;
-using SharpFlux;
+using System.Collections.Generic;
 using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -26,9 +28,35 @@ namespace Unity.Reflect.Viewer.UI
         public Image m_MicVolume;
 #pragma warning restore CS0649
 
+        IUISelector<OpenDialogAction.DialogType> m_ActiveDialogSelector;
+        IUISelector<IUserInfoDialogDataProvider> m_SelectedUserSelector;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        protected override void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+            base.OnDestroy();
+        }
+
+        public override void Awake()
+        {
+            base.Awake();
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<string>(FollowUserContext.current, nameof(IFollowUserDataProvider.userId), OnFollow));
+            m_DisposeOnDestroy.Add(m_ActiveDialogSelector = UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog)));
+            m_DisposeOnDestroy.Add(m_SelectedUserSelector = UISelectorFactory.createSelector<IUserInfoDialogDataProvider>(UIStateContext.current, nameof(IUIStateDataProvider.SelectedUserData)));
+        }
+
+        void OnFollow(string newData)
+        {
+            if (!ReferenceEquals(m_IsFollowingIcon, null))
+            {
+                m_IsFollowingIcon.enabled = IsFollowing();
+            }
+        }
+
         protected virtual void Start()
         {
-            m_Button.onClick.AddListener(()=>
+            m_Button.onClick.AddListener(() =>
             {
                 OnUserClick();
             });
@@ -37,7 +65,7 @@ namespace Unity.Reflect.Viewer.UI
         void UpdateBackground()
         {
             Color userColor = m_UserColor;
-            if(IsSelected())
+            if (IsSelected())
             {
                 userColor = bubbleColorSelected;
                 if (m_Initials != null)
@@ -57,10 +85,7 @@ namespace Unity.Reflect.Viewer.UI
                     m_ButtonBackground.color = Color.clear;
                 }
             }
-            if (!ReferenceEquals(m_IsFollowingIcon, null))
-            {
-                m_IsFollowingIcon.enabled = IsFollowing();
-            }
+
             ColorImages(userColor);
         }
 
@@ -73,20 +98,26 @@ namespace Unity.Reflect.Viewer.UI
                 {
                     case 0:
                         m_Icons[index].SetActive(IsMuted());
+                        m_Icons[1].SetActive(!IsMuted());
                         break;
                     case 1:
                         var isSpeaking = IsSpeaking();
-                        m_Icons[index].SetActive(isSpeaking);
                         if (isSpeaking && m_MicVolume != null)
                         {
-                            var userData = UIStateManager.current.roomConnectionStateData.users.Find(data => data.matchmakerId == MatchmakerId);
+                            var userData = m_UsersSelector.GetValue().Find(data => data.matchmakerId == MatchmakerId);
                             if (userData != default)
                             {
                                 m_MicVolume.fillAmount = userData.voiceStateData.micVolume;
                             }
                         }
+                        else
+                        {
+                            m_MicVolume.fillAmount = 0;
+                        }
+
                         break;
                 }
+
                 statusIsOn |= m_Icons[index].activeSelf;
             }
 
@@ -105,29 +136,30 @@ namespace Unity.Reflect.Viewer.UI
 
         protected virtual void OnUserClick()
         {
-            Vector3 anchorPosition = (ReferenceEquals(m_InfoAnchor, null))? transform.position: m_InfoAnchor.position;
-            var dialogType =  DialogType.None;
-            if (UIStateManager.current.stateData.activeDialog != DialogType.CollaborationUserInfo ||
-                UIStateManager.current.stateData.SelectedUserData.matchmakerId != MatchmakerId)
+            Vector3 anchorPosition = (ReferenceEquals(m_InfoAnchor, null)) ? transform.position : m_InfoAnchor.position;
+            var dialogType = OpenDialogAction.DialogType.None;
+            if (m_ActiveDialogSelector.GetValue() != OpenDialogAction.DialogType.CollaborationUserInfo ||
+                m_SelectedUserSelector.GetValue().matchmakerId != MatchmakerId)
             {
-                dialogType =   DialogType.CollaborationUserInfo;
-                var userInfo = UIStateManager.current.stateData.SelectedUserData;
+                dialogType = OpenDialogAction.DialogType.CollaborationUserInfo;
+                var userInfo = new SetUserInfoAction.SetUserInfoData();
                 userInfo.matchmakerId = MatchmakerId;
                 userInfo.dialogPosition = anchorPosition;
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetUserInfo, userInfo));
+                Dispatcher.Dispatch(SetUserInfoAction.From(userInfo));
             }
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+
+            Dispatcher.Dispatch(OpenDialogAction.From(dialogType));
         }
 
         protected virtual bool IsSelected()
         {
-            return UIStateManager.current.stateData.activeDialog == DialogType.CollaborationUserInfo &&
-                UIStateManager.current.stateData.SelectedUserData.matchmakerId == MatchmakerId;
+            return m_ActiveDialogSelector.GetValue() == OpenDialogAction.DialogType.CollaborationUserInfo &&
+                m_SelectedUserSelector.GetValue().matchmakerId == MatchmakerId;
         }
 
         protected bool IsSpeaking()
         {
-            var user = UIStateManager.current.roomConnectionStateData.users.Find(data => data.matchmakerId == MatchmakerId);
+            var user = m_UsersSelector.GetValue().Find(data => data.matchmakerId == MatchmakerId);
             return user.voiceStateData.micVolume > 0;
         }
     }

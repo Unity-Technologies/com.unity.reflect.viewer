@@ -2,12 +2,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using SharpFlux;
 using SharpFlux.Dispatching;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
-using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -20,7 +20,7 @@ namespace Unity.Reflect.Viewer.UI
     {
 #pragma warning disable CS0649
         [SerializeField]
-        Button m_DialogButton;
+        ToolButton m_DialogButton;
 
         [SerializeField, Tooltip("Reference to the button prefab.")]
         FilterListItem m_FilterListItemPrefab;
@@ -45,37 +45,59 @@ namespace Unity.Reflect.Viewer.UI
 #pragma warning restore CS0649
 
         DialogWindow m_DialogWindow;
-        Image m_DialogButtonImage;
         Dictionary<ButtonControl, int> m_ProjectDictionary;
 
         Stack<FilterListItem> m_FilterListItemPool = new Stack<FilterListItem>();
         List<FilterListItem> m_ActiveFilterListItem = new List<FilterListItem>();
+        HighlightFilterInfo m_CachedHighlightFilter;
+        Coroutine m_SearchCoroutine;
+        IUISelector<List<SetVisibleFilterAction.IFilterItemInfo>> m_FilterInfosSelector;
+        IUISelector<string> m_FilterSearchStringSelector;
+        IUISelector<OpenDialogAction.DialogType> m_ActiveDialogSelector;
 
-        List<FilterItemInfo> m_CurrentFilterKeys;
-        List<string> m_CurrentFilterGroupList;
-        FilterItemInfo m_LastChangedFilterItem;
-        HighlightFilterInfo m_CurrentHighlightFilter;
-        string m_CachedSearchString;
-        DialogType m_currentActiveDialog;
+        string m_SelectedGroupKey;
+        List<string> m_CacheFilterGroupList = new List<string>();
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        void OnDestroy()
+        {
+            m_DialogButton.buttonClicked -= OnDialogButtonClicked;
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.projectStateChanged += OnProjectStateDataChanged;
+            m_DialogWindow = GetComponent<DialogWindow>();
 
-            m_DialogButton.onClick.AddListener(OnDialogButtonClicked);
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<List<string>>(ProjectContext.current, nameof(IProjectSortDataProvider.filterGroupList), OnFilterGroupListChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<string>(ProjectContext.current, nameof(IProjectSortDataProvider.filterGroup), OnFilterGroupChanged));
+            m_DisposeOnDestroy.Add(m_ActiveDialogSelector = UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog), OnActiveDialogChanged));
+            m_DisposeOnDestroy.Add(m_FilterInfosSelector = UISelectorFactory.createSelector<List<SetVisibleFilterAction.IFilterItemInfo>>(ProjectContext.current, nameof(IProjectSortDataProvider.filterItemInfos), OnFilterItemInfosChanged));
+            m_DisposeOnDestroy.Add(m_FilterSearchStringSelector = UISelectorFactory.createSelector<string>(ProjectContext.current, nameof(IProjectSortDataProvider.filterSearchString), filterSearch => { SearchFilterItem(filterSearch); }));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetVisibleFilterAction.IFilterItemInfo>(ProjectContext.current, nameof(IProjectSortDataProvider.lastChangedFilterItem), OnLastChangedFilterItemChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<HighlightFilterInfo>(ProjectContext.current, nameof(IProjectSortDataProvider.highlightFilter), OnHighlightFilterInfoChanged));
+            m_DialogButton.buttonClicked += OnDialogButtonClicked;
             m_CancelButton.onClick.AddListener(OnCancelButtonClicked);
 
-            m_DialogButtonImage = m_DialogButton.GetComponent<Image>();
-            m_DialogWindow = GetComponent<DialogWindow>();
             m_FilterGroupDropdown.onValueChanged.AddListener(OnFilterGroupChanged);
             m_SearchInput.onValueChanged.AddListener(OnSearchInputTextChanged);
             m_SearchInput.onSelect.AddListener(OnSearchInputSelected);
             m_SearchInput.onDeselect.AddListener(OnSearchInputDeselected);
-
         }
 
-        void CreateFilterListItem(FilterItemInfo filterItemInfo)
+        void OnActiveDialogChanged(OpenDialogAction.DialogType newData)
+        {
+            m_DialogButton.selected = newData == OpenDialogAction.DialogType.Filters;
+            if (newData == OpenDialogAction.DialogType.Filters)
+            {
+                m_SearchInput.text = null;
+
+                if (m_LastReceivedFilterItemInfo != null)
+                    RebuildList(m_LastReceivedFilterItemInfo);
+            }
+        }
+
+        void CreateFilterListItem(SetVisibleFilterAction.IFilterItemInfo filterItemInfo)
         {
             FilterListItem filterListItem;
             if (m_FilterListItemPool.Count > 0)
@@ -89,8 +111,8 @@ namespace Unity.Reflect.Viewer.UI
                 filterListItem.listItemClicked += OnListItemClicked;
             }
 
-            filterListItem.InitItem(filterItemInfo.groupKey, filterItemInfo.filterKey, filterItemInfo.visible,
-                filterItemInfo.highlight);
+            bool isHighlighted = m_CachedHighlightFilter.groupKey == filterItemInfo.groupKey && m_CachedHighlightFilter.filterKey == filterItemInfo.filterKey;
+            filterListItem.InitItem(filterItemInfo.groupKey, filterItemInfo.filterKey, filterItemInfo.visible, isHighlighted);
             filterListItem.gameObject.SetActive(true);
             filterListItem.transform.SetAsLastSibling();
             m_ActiveFilterListItem.Add(filterListItem);
@@ -115,8 +137,7 @@ namespace Unity.Reflect.Viewer.UI
                 filterKey = filterKey,
                 visible = visible
             };
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetVisibleFilter,
-                filterItemInfo));
+            Dispatcher.Dispatch(SetVisibleFilterAction.From(filterItemInfo));
         }
 
         void OnListItemClicked(string groupKey, string filterKey)
@@ -126,107 +147,120 @@ namespace Unity.Reflect.Viewer.UI
                 groupKey = groupKey,
                 filterKey = filterKey
             };
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetHighlightFilter,
-                highlightFilterInfo));
+
+            // Toggle like behaviour
+            if (highlightFilterInfo == m_CachedHighlightFilter)
+                highlightFilterInfo = default;
+
+            Dispatcher.Dispatch(SetHighlightFilterAction.From(highlightFilterInfo));
+            Dispatcher.Dispatch(SetDeltaDNAButtonAction.From($"BimFilter_{groupKey}_{filterKey}"));
         }
 
-        void OnStateDataChanged(UIStateData data)
+        void OnFilterGroupListChanged(List<string> newData)
         {
-            if (m_currentActiveDialog != data.activeDialog)
+            if (m_CacheFilterGroupList.SequenceEqual(newData))
+                return;
+
+            // fill filter group Dropdown
+            m_FilterGroupDropdown.options.Clear();
+
+            if (newData.Count == 0)
             {
-                m_currentActiveDialog = data.activeDialog;
-                m_DialogButtonImage.enabled = m_currentActiveDialog == DialogType.Filters;
-                if (m_currentActiveDialog == DialogType.Filters)
-                {
-                    m_SearchInput.text = null;
-                }
-            }
-        }
-
-        void OnProjectStateDataChanged(UIProjectStateData data)
-        {
-            if (!EnumerableExtension.SafeSequenceEquals(data.filterGroupList, m_CurrentFilterGroupList))
-            {
-                // fill filter group Dropdown
-                m_FilterGroupDropdown.options.Clear();
-
-                if (data.filterGroupList.Count == 0)
-                {
-                    // show no data
-                    ClearFilterList();
-                    m_FilterGroupDropdown.interactable = false;
-                    m_FilterGroupDropdown.options.Add(new TMP_Dropdown.OptionData("No Category"));
-                    m_NoDataText.gameObject.SetActive(true);
-                    m_DropdownMask.SetActive(true);
-                }
-                else
-                {
-                    m_FilterGroupDropdown.interactable = true;
-                    m_NoDataText.gameObject.SetActive(false);
-                    m_DropdownMask.SetActive(false);
-
-                    var filterGroupList = data.filterGroupList;
-                    foreach (string group in filterGroupList)
-                    {
-                        m_FilterGroupDropdown.options.Add(new TMP_Dropdown.OptionData(group));
-                    }
-
-                    // default select index = 0,
-                    StartCoroutine(SetDefaultGroup());
-                }
-                m_CurrentFilterGroupList = data.filterGroupList;
-
-            }
-
-            if (data.filterItemInfos != m_CurrentFilterKeys)
-            {
+                // show no data
                 ClearFilterList();
-                foreach (var filterItemInfo in data.filterItemInfos)
+                m_FilterGroupDropdown.interactable = false;
+                m_FilterGroupDropdown.options.Add(new TMP_Dropdown.OptionData("No Category"));
+                m_NoDataText.gameObject.SetActive(true);
+                m_DropdownMask.SetActive(true);
+            }
+            else
+            {
+                m_FilterGroupDropdown.interactable = true;
+                m_NoDataText.gameObject.SetActive(false);
+                m_DropdownMask.SetActive(false);
+
+                var filterGroupList = newData;
+                foreach (string group in filterGroupList)
                 {
-                    CreateFilterListItem(filterItemInfo);
+                    m_FilterGroupDropdown.options.Add(new TMP_Dropdown.OptionData(group));
                 }
 
-                m_CurrentFilterKeys = data.filterItemInfos;
-                SearchFilterItem(data.filterSearchString);
+                // default select index = 0,
+                StartCoroutine(SetDefaultGroup());
             }
 
-            if (data.filterSearchString != m_CachedSearchString)
+            m_CacheFilterGroupList = newData;
+        }
+
+        void OnFilterGroupChanged(string newData)
+        {
+            m_SelectedGroupKey = newData;
+
+            if (m_FilterInfosSelector == null)
+                return;
+
+            var list = m_FilterInfosSelector.GetValue();
+            if (list != null)
             {
-                SearchFilterItem(data.filterSearchString);
-                m_CachedSearchString = data.filterSearchString;
+                RebuildList(list);
+            }
+        }
+
+        void OnFilterItemInfosChanged(List<SetVisibleFilterAction.IFilterItemInfo> newData)
+        {
+            m_LastReceivedFilterItemInfo = newData;
+
+            if (m_ActiveDialogSelector.GetValue() == OpenDialogAction.DialogType.Filters)
+                RebuildList(m_LastReceivedFilterItemInfo);
+        }
+
+        List<SetVisibleFilterAction.IFilterItemInfo> m_LastReceivedFilterItemInfo;
+
+        void RebuildList(List<SetVisibleFilterAction.IFilterItemInfo> newData)
+        {
+            m_LastReceivedFilterItemInfo = null;
+
+            ClearFilterList();
+            foreach (var filterItemInfo in newData)
+            {
+                if (filterItemInfo.groupKey == m_SelectedGroupKey)
+                    CreateFilterListItem(filterItemInfo);
             }
 
-            if (data.lastChangedFilterItem != m_LastChangedFilterItem)
+            if (m_FilterSearchStringSelector != null)
+                SearchFilterItem(m_FilterSearchStringSelector.GetValue());
+        }
+
+        void OnLastChangedFilterItemChanged(SetVisibleFilterAction.IFilterItemInfo newData)
+        {
+            if (newData != null)
             {
-                var filterItemInfo = data.lastChangedFilterItem;
-                var filterListItem = m_ActiveFilterListItem.SingleOrDefault(e =>
-                    e.groupKey == filterItemInfo.groupKey && e.filterKey == filterItemInfo.filterKey);
+                var filterItemInfo = (FilterItemInfo)newData;
+                var filterListItem = m_ActiveFilterListItem.SingleOrDefault(e =>                e.groupKey == filterItemInfo.groupKey && e.filterKey == filterItemInfo.filterKey);
 
                 if (filterListItem != null)
                     filterListItem.SetVisible(filterItemInfo.visible);
-
-                m_LastChangedFilterItem = data.lastChangedFilterItem;
             }
+        }
 
-            if (data.highlightFilter != m_CurrentHighlightFilter)
+        void OnHighlightFilterInfoChanged(HighlightFilterInfo newData)
+        {
+            var filterListItem = m_ActiveFilterListItem.SingleOrDefault(e =>
+                e.groupKey == m_CachedHighlightFilter.groupKey &&
+                e.filterKey == m_CachedHighlightFilter.filterKey);
+            if (filterListItem != null)
             {
-                var filterListItem = m_ActiveFilterListItem.SingleOrDefault(e =>
-                    e.groupKey == m_CurrentHighlightFilter.groupKey &&
-                    e.filterKey == m_CurrentHighlightFilter.filterKey);
-                if (filterListItem != null)
-                {
-                    filterListItem.SetHighlight(false);
-                }
-
-                filterListItem = m_ActiveFilterListItem.SingleOrDefault(e =>
-                    e.groupKey == data.highlightFilter.groupKey && e.filterKey == data.highlightFilter.filterKey);
-                if (filterListItem != null)
-                {
-                    filterListItem.SetHighlight(true);
-                }
-
-                m_CurrentHighlightFilter = data.highlightFilter;
+                filterListItem.SetHighlight(false);
             }
+
+            filterListItem = m_ActiveFilterListItem.SingleOrDefault(e =>
+                e.groupKey == newData.groupKey && e.filterKey == newData.filterKey);
+            if (filterListItem != null)
+            {
+                filterListItem.SetHighlight(true);
+            }
+
+            m_CachedHighlightFilter = newData;
         }
 
         IEnumerator SetDefaultGroup()
@@ -239,13 +273,13 @@ namespace Unity.Reflect.Viewer.UI
         void OnFilterGroupChanged(int index)
         {
             var groupKey = m_FilterGroupDropdown.options[index].text;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetFilterGroup, groupKey));
+            Dispatcher.Dispatch(SetFilterGroupAction.From(groupKey));
         }
 
         void OnDialogButtonClicked()
         {
-            var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.Filters;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+            var dialogType = m_DialogWindow.open ? OpenDialogAction.DialogType.None : OpenDialogAction.DialogType.Filters;
+            Dispatcher.Dispatch(OpenDialogAction.From(dialogType));
         }
 
         void OnCancelButtonClicked()
@@ -253,15 +287,14 @@ namespace Unity.Reflect.Viewer.UI
             m_SearchInput.text = "";
         }
 
-        Coroutine m_SearchCoroutine;
         void OnSearchInputTextChanged(string search)
         {
-
             if (m_SearchCoroutine != null)
             {
                 StopCoroutine(m_SearchCoroutine);
                 m_SearchCoroutine = null;
             }
+
             m_SearchCoroutine = StartCoroutine(SearchStringChanged(search));
         }
 
@@ -269,6 +302,7 @@ namespace Unity.Reflect.Viewer.UI
         {
             DisableMovementMapping(true);
         }
+
         void OnSearchInputDeselected(string input)
         {
             DisableMovementMapping(false);
@@ -276,16 +310,15 @@ namespace Unity.Reflect.Viewer.UI
 
         public static void DisableMovementMapping(bool disableWASD)
         {
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            navigationState.moveEnabled = !disableWASD;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+            Dispatcher.Dispatch(SetMoveEnabledAction.From(!disableWASD));
         }
 
         IEnumerator SearchStringChanged(string search)
         {
             yield return new WaitForSeconds(0.2f);
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetFilterSearch, search));
+            Dispatcher.Dispatch(SetFilterSearchAction.From(search));
+            Dispatcher.Dispatch(SetDeltaDNAButtonAction.From($"BimFilterSearch"));
         }
 
         void SearchFilterItem(string search)
@@ -302,6 +335,5 @@ namespace Unity.Reflect.Viewer.UI
                 }
             }
         }
-
     }
 }

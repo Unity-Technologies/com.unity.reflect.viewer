@@ -29,8 +29,8 @@ namespace Unity.TouchFramework
         Vector2 m_InputAxis;
         Vector2 m_JoystickPositionOnPointerUp;
         public float distanceFromCenter;
-
         Coroutine m_MoveJoystickCoroutine;
+        const float k_MovementRange = 50;
 
         /// <summary>
         /// Values of x and y between 0 and 1 that represent joystick movement
@@ -81,7 +81,7 @@ namespace Unity.TouchFramework
                 yield return null;
             }
 
-            if(m_IsPersistentJoystick)
+            if (m_IsPersistentJoystick)
                 transform.parent.gameObject.SetActive(false);
 
             m_MoveJoystickCoroutine = null;
@@ -122,16 +122,14 @@ namespace Unity.TouchFramework
 
             var x = 0f;
             if (!m_DisableXMovement)
-                x = (Math.Abs(m_JoystickContainerRect.pivot.x - 1f) < Mathf.Epsilon) ? position.x * 2f + 1f :
-                    position.x * 2f - 1f;
+                x = (Math.Abs(m_JoystickContainerRect.pivot.x - 1f) < Mathf.Epsilon) ? position.x * 2f + 1f : position.x * 2f - 1f;
 
-            var y = (Math.Abs(m_JoystickContainerRect.pivot.y - 1f) < Mathf.Epsilon) ? position.y * 2f + 1f :
-                position.y * 2f - 1f;
+            var y = (Math.Abs(m_JoystickContainerRect.pivot.y - 1f) < Mathf.Epsilon) ? position.y * 2f + 1f : position.y * 2f - 1f;
 
-            m_InputAxis.Set(x , y);
-            distanceFromCenter = m_InputAxis.magnitude;
+            m_InputAxis.Set(x, y);
             m_InputAxis = (m_InputAxis.magnitude > 1) ? m_InputAxis.normalized : m_InputAxis;
 
+            distanceFromCenter = m_JoystickRect.localPosition.magnitude / k_MovementRange;
             m_JoystickRect.anchoredPosition = new Vector2(m_InputAxis.x * m_JoystickContainerRect.sizeDelta.x *
                 sensitivity, m_InputAxis.y * m_JoystickContainerRect.sizeDelta.y * sensitivity);
         }

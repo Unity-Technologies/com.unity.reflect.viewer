@@ -20,11 +20,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         [SerializeField, Range(1, 1000)] int m_Limit = 1000;
         #pragma warning restore 0649
 
-        public bool bypass
-        {
-            get => m_Bypass;
-            set => m_Bypass = value;
-        }
+        public bool bypass => m_Bypass;
 
         public int limit => m_InstancesPerFrameLimiter != null ? m_InstancesPerFrameLimiter.maxInstancesPerFrame : m_Limit;
     }

@@ -1,7 +1,9 @@
 {
     "name": "Unity.Reflect.Viewer.Core.Editor",
+    "rootNamespace": "",
     "references": [
-        "Unity.[SubGroup].[YourPackageName]"
+        "Unity.Reflect.Viewer.Core",
+        "Unity.TouchFramework"
     ],
     "includePlatforms": [
         "Editor"

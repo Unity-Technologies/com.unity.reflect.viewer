@@ -1,29 +1,39 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using Unity.Properties;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    [Serializable]
+    [Serializable, GeneratePropertyBag]
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct UIWalkStateData : IEquatable<UIWalkStateData>
+    public struct UIWalkStateData : IEquatable<UIWalkStateData>, IWalkModeDataProvider
     {
-        public bool walkEnabled;
-        public InstructionUIState instructionUIState;
-        public IWalkInstructionUI instruction;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool walkEnabled { get; set; }
 
-        public static readonly UIWalkStateData defaultData = new UIWalkStateData()
-        {
-            walkEnabled = false,
-            instructionUIState = InstructionUIState.Init,
-            instruction = null,
-        };
+        // TODO: Move all teleport variable to it's own store
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool isTeleportFinish { get; set; }
 
-        public UIWalkStateData(bool walkEnabled, InstructionUIState instructionUIState, IWalkInstructionUI instruction)
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetInstructionUIStateAction.InstructionUIState instructionUIState { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public IWalkInstructionUI instruction { get; set; }
+
+        public UIWalkStateData(bool walkEnabled, SetInstructionUIStateAction.InstructionUIState instructionUIState, IWalkInstructionUI instruction)
         {
             this.walkEnabled = walkEnabled;
             this.instructionUIState = instructionUIState;
             this.instruction = instruction;
+            isTeleportFinish = false;
         }
 
         public static UIWalkStateData Validate(UIWalkStateData stateData)
@@ -33,7 +43,7 @@ namespace Unity.Reflect.Viewer.UI
 
         public override string ToString()
         {
-            return ToString("WalkEnabled{0}, instructionUIState{1}, instructionUIStep{2}");
+            return ToString("WalkEnabled{0}, instructionUIState{1}, instructionUIStep{2}, TeleportFinish{3}");
         }
 
         public string ToString(string format)
@@ -41,14 +51,15 @@ namespace Unity.Reflect.Viewer.UI
             return string.Format(format,
                 walkEnabled,
                 (object)instructionUIState,
-                instruction);
+                instruction, isTeleportFinish);
         }
 
         public bool Equals(UIWalkStateData other)
         {
             return walkEnabled == other.walkEnabled &&
                 instructionUIState == other.instructionUIState &&
-                instruction == other.instruction;
+                instruction == other.instruction
+                && isTeleportFinish == other.isTeleportFinish;
         }
 
         public override bool Equals(object obj)
@@ -63,6 +74,7 @@ namespace Unity.Reflect.Viewer.UI
                 var hashCode = walkEnabled.GetHashCode();
                 hashCode = (hashCode * 397) ^ instructionUIState.GetHashCode();
                 hashCode = (hashCode * 397) ^ instruction.GetHashCode();
+                hashCode = (hashCode * 397) ^ isTeleportFinish.GetHashCode();
                 return hashCode;
             }
         }

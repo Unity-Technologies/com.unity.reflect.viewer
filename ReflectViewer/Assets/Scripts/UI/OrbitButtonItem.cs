@@ -1,9 +1,8 @@
 ﻿using System;
-using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -13,14 +12,14 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         ButtonControl m_ButtonControl;
         [SerializeField]
-        OrbitType m_OrbitType;
+        SetOrbitTypeAction.OrbitType m_OrbitType;
 #pragma warning restore CS0649
 
         public ButtonControl buttonControl => m_ButtonControl;
 
-        public OrbitType orbitType => m_OrbitType;
+        public SetOrbitTypeAction.OrbitType orbitType => m_OrbitType;
 
-        public event Action<OrbitType> orbitButtonClicked;
+        public event Action<SetOrbitTypeAction.OrbitType> orbitButtonClicked;
 
         void Awake()
         {

@@ -1,19 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &2856225824177871315
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5662340319151552961}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3a445ee08530de44f88c1831dbe06328, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Offset: {x: 45, y: 0, z: 0}
-  m_IsLeftHand: 1
 --- !u!1 &5662340319300250176
 GameObject:
   m_ObjectHideFlags: 0
@@ -166,6 +152,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 2147483647
+  m_RaycastTriggerInteraction: 1
 --- !u!1 &5662340319630942365
 GameObject:
   m_ObjectHideFlags: 0
@@ -284,6 +271,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 2147483647
+  m_RaycastTriggerInteraction: 1
 --- !u!1 &5662340320177046098
 GameObject:
   m_ObjectHideFlags: 0
@@ -402,6 +390,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 2147483647
+  m_RaycastTriggerInteraction: 1
 --- !u!1 &5662340320290982284
 GameObject:
   m_ObjectHideFlags: 0
@@ -520,6 +509,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 2147483647
+  m_RaycastTriggerInteraction: 1
 --- !u!1 &6522615130185599742
 GameObject:
   m_ObjectHideFlags: 0
@@ -635,12 +625,6 @@ PrefabInstance:
 --- !u!4 &5662340319151202181 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 436998, guid: b8cd5407792522543a52d20579ae4966,
-    type: 3}
-  m_PrefabInstance: {fileID: 5662340319151633539}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &5662340319151552961 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 118082, guid: b8cd5407792522543a52d20579ae4966,
     type: 3}
   m_PrefabInstance: {fileID: 5662340319151633539}
   m_PrefabAsset: {fileID: 0}

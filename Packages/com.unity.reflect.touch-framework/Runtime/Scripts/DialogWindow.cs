@@ -12,6 +12,8 @@ namespace Unity.TouchFramework
     [RequireComponent(typeof(Canvas), typeof(CanvasGroup), typeof(GraphicRaycaster))]
     public class DialogWindow : MonoBehaviour, IDialog
     {
+        bool? m_DelayedStatus;
+        bool m_Ready;
         bool m_Open;
         Canvas m_Canvas;
         CanvasGroup m_CanvasGroup;
@@ -28,6 +30,12 @@ namespace Unity.TouchFramework
 
         public void Open(bool instant = false, bool setInteractable = true)
         {
+            if (!m_Ready)
+            {
+                m_DelayedStatus = true;
+                return;
+            }
+
             if (!m_Open)
                 dialogOpen.Invoke();
 
@@ -49,6 +57,12 @@ namespace Unity.TouchFramework
 
         public void Close(bool instant = false)
         {
+            if (!m_Ready)
+            {
+                m_DelayedStatus = false;
+                return;
+            }
+
             if (m_Open)
                 dialogClose.Invoke();
 
@@ -60,7 +74,7 @@ namespace Unity.TouchFramework
             {
                 OnCloseTransitionComplete();
             }
-            else
+            else if(m_CanvasGroup != null)
             {
                 m_CloseDialogTween.startValue = m_CanvasGroup.alpha;
                 m_CloseDialogTween.targetValue = 0f;
@@ -84,8 +98,12 @@ namespace Unity.TouchFramework
 
             if (m_ScrollRect != null)
                 m_ScrollRect.enabled = interactable;
-            m_CanvasGroup.interactable = interactable;
-            m_CanvasGroup.blocksRaycasts = interactable;
+
+            if (m_CanvasGroup != null)
+            {
+                m_CanvasGroup.interactable = interactable;
+                m_CanvasGroup.blocksRaycasts = interactable;
+            }
         }
 
         void SetVisible(bool visible)
@@ -118,6 +136,17 @@ namespace Unity.TouchFramework
             m_TweenRunner.Init(this);
 
             m_Open = m_Canvas.enabled;
+            m_Ready = true;
+
+            switch (m_DelayedStatus)
+            {
+                case true:
+                    Open();
+                    break;
+                case false:
+                    Close();
+                    break;
+            }
         }
 
         void OnSetAlpha(float alpha)

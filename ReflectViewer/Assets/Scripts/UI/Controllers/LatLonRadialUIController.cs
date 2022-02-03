@@ -1,9 +1,10 @@
-using SharpFlux;
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -25,9 +26,23 @@ namespace Unity.Reflect.Viewer.UI
         Button m_RefreshButton;
 #pragma warning restore CS0649
 
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
+
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.latitude), (lat) =>
+                {
+                    m_LatitudeDialControl.selectedValue = lat;
+                }));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.longitude), (lon) =>
+            {
+                m_LongitudeDialControl.selectedValue = lon;
+            }));
         }
 
         void Start()
@@ -41,28 +56,15 @@ namespace Unity.Reflect.Viewer.UI
             m_SecondaryButton.onClick.AddListener(OnSecondaryButtonClicked);
         }
 
-        void OnStateDataChanged(UIStateData data)
-        {
-            m_LongitudeDialControl.selectedValue = data.sunStudyData.longitude;
-            m_LatitudeDialControl.selectedValue = data.sunStudyData.latitude;
-        }
-
+        // See old commit for previous implementation
         void OnLatitudeDialValueChanged(float value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            data.latitude = (int)value;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
-            var Message = "Latitude: " + data.latitude + ", Longitude: " + data.longitude;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, Message));
+
         }
 
         void OnLongitudeDialValueChanged(float value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            data.longitude = (int)value;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
-            var Message = "Latitude: " + data.latitude + ", Longitude: " + data.longitude;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, Message));
+
         }
 
         void OnRefreshButtonClicked()
@@ -74,22 +76,23 @@ namespace Unity.Reflect.Viewer.UI
         {
             // TODO: on close, display previous ToolbarType instead of ORBIT Sidebar!
             //var toolbarType = m_DialogWindow.open ? ToolbarType.OrbitSidebar : ToolbarType.SunStudyDial;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.AltitudeAzimuthDial));
+            Dispatcher.Dispatch(SetActiveToolBarAction.From(SetActiveToolBarAction.ToolbarType.AltitudeAzimuthDial));
         }
 
         void OnMainButtonClicked()
         {
             // TODO: on close, display previous ToolbarType instead of ORBIT Sidebar!
             //var toolbarType = m_DialogWindow.open ? ToolbarType.OrbitSidebar : ToolbarType.SunStudyDial;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.OrbitSidebar));
-            //Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveTool, ToolType.None));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
+            Dispatcher.Dispatch(SetActiveToolBarAction.From(SetActiveToolBarAction.ToolbarType.OrbitSidebar));
+            Dispatcher.Dispatch(ClearStatusAction.From(true));
+            Dispatcher.Dispatch(ClearStatusAction.From(false));
         }
 
         void OnSecondaryButtonClicked()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.AltitudeAzimuthDial));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
+            Dispatcher.Dispatch(SetActiveToolBarAction.From(SetActiveToolBarAction.ToolbarType.AltitudeAzimuthDial));
+            Dispatcher.Dispatch(ClearStatusAction.From(true));
+            Dispatcher.Dispatch(ClearStatusAction.From(false));
         }
     }
 }

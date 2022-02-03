@@ -1,4 +1,5 @@
 using Unity.Collections;
+using Unity.Reflect.Collections;
 using UnityEngine.Rendering;
 
 namespace UnityEngine.Reflect.Viewer.Pipeline
@@ -103,8 +104,8 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         public bool IsVisible(ISpatialObject obj)
         {
-            m_BoundsMin = obj.min;
-            m_BoundsMax = obj.max;
+            m_BoundsMin = obj.Min;
+            m_BoundsMax = obj.Max;
 
             if (m_Settings.useDistanceCullingAvoidance)
             {
@@ -160,7 +161,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             m_CamFarClipPlane = m_Camera.farClipPlane;
             m_CamPos = m_CameraTransform.position;
             m_CamForwardPlane.SetNormalAndPosition(m_CameraTransform.forward, m_CamPos);
-            m_DirectionalLightForward = m_DirectionalLight.forward;
+            m_DirectionalLightForward = m_DirectionalLight != null ? m_DirectionalLight.forward : Vector3.zero;
 
             if (m_Settings.useDistanceCullingAvoidance)
                 m_AvoidCullingWithinSqrDistance = m_Settings.avoidCullingWithinDistance * m_Settings.avoidCullingWithinDistance;

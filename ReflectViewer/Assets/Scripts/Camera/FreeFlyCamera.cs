@@ -1,6 +1,12 @@
 using System;
-using Unity.Reflect.Viewer.UI;
+using System.Collections.Generic;
+using System.Linq;
+using Unity.Reflect.Collections;
 using UnityEngine;
+using UnityEngine.Reflect;
+using UnityEngine.Reflect.Utils;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -18,6 +24,7 @@ namespace Unity.Reflect.Viewer.UI
         /// </summary>
         Follow
     }
+
     /// <summary>
     ///     A generic free fly camera with pan, move, rotation, orbit and automatic positioning features.
     /// </summary>
@@ -47,12 +54,16 @@ namespace Unity.Reflect.Viewer.UI
         Vector3 m_MovingDirection;
         LookAtConstraint m_LookAtConstraint;
 
-        Vector3 m_CameraCenter;
-        float m_SqrCameraMaxDistance;
         Vector2 m_AngleOffset;
 
         public new Camera camera => m_Camera;
 
+        readonly string k_CameraTransformKey = "ct";
+        Dictionary<string, string> m_CameraTransformQueryValue = new Dictionary<string, string>();
+        string m_CurrentServerProjectId = "";
+
+        IUISelector<IPicker> m_TeleportPickerSelector;
+        float m_PanningScale = 1.0f;
         public FreeFlyCameraSettings settings
         {
             get => m_Settings;
@@ -69,6 +80,67 @@ namespace Unity.Reflect.Viewer.UI
             m_DesiredRotationEuler = m_DesiredRotation.eulerAngles;
 
             m_IsSphericalMovement = false;
+
+            QueryArgHandler.Register(this, k_CameraTransformKey, CameraTransformFromQueryValue, CameraTransformToQueryValue);
+            UISelectorFactory.createSelector<Project>(ProjectManagementContext<Project>.current, nameof(IProjectDataProvider<Project>.activeProject), OnActiveProjectChanged);
+
+            m_TeleportPickerSelector = UISelectorFactory.createSelector<IPicker>(ProjectContext.current, nameof(ITeleportDataProvider.teleportPicker));
+        }
+
+        void OnDestroy()
+        {
+            QueryArgHandler.Unregister(this);
+            m_TeleportPickerSelector?.Dispose();
+        }
+
+        void OnActiveProjectChanged(Project newData)
+        {
+            if (m_CameraTransformQueryValue.ContainsKey(m_CurrentServerProjectId))
+            {
+                m_CameraTransformQueryValue.Remove(m_CurrentServerProjectId);
+            }
+            m_CurrentServerProjectId = newData?.serverProjectId ?? "";
+        }
+
+        public string CameraTransformToQueryValue()
+        {
+            return $"{UIUtils.Vector3UrlFormat(m_Camera.transform.position)},"
+                + $"{UIUtils.Vector3UrlFormat(m_Camera.transform.rotation.eulerAngles)},"
+                + $"{UIUtils.Vector3UrlFormat(m_Camera.transform.forward)}";
+        }
+
+        public void CameraTransformFromQueryValue(string cameraTransformStringValue)
+        {
+            // Save to memory to later apply in SetupInitialCameraPosition
+            if (!m_CameraTransformQueryValue.ContainsKey(m_CurrentServerProjectId))
+            {
+                m_CameraTransformQueryValue.Add(m_CurrentServerProjectId, cameraTransformStringValue);
+            }
+            else
+            {
+                m_CameraTransformQueryValue[m_CurrentServerProjectId] = cameraTransformStringValue;
+            }
+            ApplyQueryStringToTransform(cameraTransformStringValue);
+        }
+
+        void ApplyQueryStringToTransform(string queryValue)
+        {
+            var splitValue = queryValue.Split(',').Select(i => float.TryParse(i, out float result) ? result : 0.0f).ToList();
+            if (splitValue.Count > 8)
+            {
+                var newPosition = new Vector3(splitValue[0], splitValue[1], splitValue[2]);
+                var newEulerAngle = new Vector3(splitValue[3], splitValue[4], splitValue[5]);
+                var newRotation = Quaternion.Euler(newEulerAngle);
+                var newForward = new Vector3(splitValue[6], splitValue[7], splitValue[8]);
+
+                m_Camera.transform.position = newPosition;
+                m_Camera.transform.rotation = newRotation;
+                m_DesiredRotation = newRotation;
+                m_DesiredRotationEuler = newRotation.eulerAngles;
+                m_DesiredLookAt = newForward;
+                m_DesiredPosition = newPosition;
+                m_IsSphericalMovement = false;
+            }
         }
 
         public void ForceStop()
@@ -77,14 +149,21 @@ namespace Unity.Reflect.Viewer.UI
             m_MovingDirection = Vector3.zero;
         }
 
+        public void SetRotation(Quaternion quaternion)
+        {
+            m_Camera.transform.rotation = quaternion;
+            m_DesiredRotation = quaternion;
+            m_DesiredRotationEuler = quaternion.eulerAngles;
+            m_DesiredLookAt = m_DesiredRotation * new Vector3(0.0f, 0.0f, (m_DesiredLookAt - m_DesiredPosition).magnitude) + m_DesiredPosition;
+        }
+
         public void TransformTo(Transform newTransform)
         {
-            m_Camera.transform.position = newTransform.position;
-            m_Camera.transform.rotation = newTransform.rotation;
             m_DesiredRotation = newTransform.rotation;
             m_DesiredRotationEuler = newTransform.rotation.eulerAngles;
             m_DesiredLookAt = newTransform.forward;
             m_DesiredPosition = newTransform.position;
+            m_IsSphericalMovement = false;
         }
 
         void Update()
@@ -166,16 +245,6 @@ namespace Unity.Reflect.Viewer.UI
             UpdateSphericalMovement(false);
         }
 
-        public void SetMovePosition(Vector3 pos, Quaternion rot)
-        {
-            m_DesiredPosition = pos;
-            m_DesiredRotation = rot;
-            m_DesiredRotationEuler = rot.eulerAngles;
-            m_DesiredLookAt = m_DesiredRotation * new Vector3(0.0f, 0.0f, (m_DesiredLookAt - m_DesiredPosition).magnitude) + m_DesiredPosition;
-            UpdateSphericalMovement(true);
-            ForceStop();
-        }
-
         /// <summary>
         ///     Drag the camera on the current frustum plane. If the
         ///     camera is looking forward, <see cref="Pan"/> will drag
@@ -184,10 +253,31 @@ namespace Unity.Reflect.Viewer.UI
         /// <param name="offset"></param>
         public void Pan(Vector3 offset)
         {
-            offset = m_DesiredRotation * offset * GetDistanceFromLookAt() * m_Settings.panScaling;
+            offset = m_DesiredRotation * (offset * m_PanningScale);
             MovePosition(offset, LookAtConstraint.Follow);
-
             UpdateSphericalMovement(false);
+        }
+
+        public void PanStart(Vector2 pos)
+        {
+            Vector3[] frustumCorners = new Vector3[4];
+            var depth = -m_DesiredPosition.magnitude;
+            camera.CalculateFrustumCorners(new Rect(0, 0, 1, 1), depth, Camera.MonoOrStereoscopicEye.Mono, frustumCorners);
+            m_PanningScale = Mathf.Abs((frustumCorners[2].x - frustumCorners[1].x) / Screen.width);
+
+            var picker = (ISpatialPickerAsync<Tuple<GameObject, RaycastHit>>) m_TeleportPickerSelector.GetValue();
+            picker.Pick(m_Camera.ScreenPointToRay(pos), result =>
+            {
+                var selected = result.Select(x => x.Item2).ToList();
+                if(selected.Count > 0)
+                {
+                    var selectedPoint = selected[0].point;
+                    Vector3[] frustumCorners = new Vector3[4];
+                    var depth = (selectedPoint - m_DesiredPosition).magnitude;
+                    camera.CalculateFrustumCorners(new Rect(0, 0, 1, 1), depth, Camera.MonoOrStereoscopicEye.Mono, frustumCorners);
+                    m_PanningScale = Mathf.Abs((frustumCorners[2].x - frustumCorners[1].x) / Screen.width);
+                }
+            }, new string[] {});
         }
 
         /// <summary>
@@ -280,11 +370,6 @@ namespace Unity.Reflect.Viewer.UI
             var forward = m_DesiredRotation * Vector3.forward;
 
             var pos = m_DesiredPosition + forward * nbUnits;
-            // Don't block max distance from look at (requested)
-            //if (nbUnits < 0.0f && (pos - m_DesiredLookAt).sqrMagnitude > m_SqrCameraMaxDistance)
-            //{
-            //    return;
-            //}
 
             m_DesiredPosition = pos;
 
@@ -300,10 +385,8 @@ namespace Unity.Reflect.Viewer.UI
         {
             var cameraPlane = new Plane(transform.forward, transform.position);
             var targetCameraPos = cameraPlane.ClosestPointOnPlane(value);
-            if(m_DesiredLookAt != value)
-                m_DesiredLookAt = value;
-            if(m_DesiredPosition != targetCameraPos)
-                m_DesiredPosition = targetCameraPos;
+            m_DesiredLookAt = value;
+            m_DesiredPosition = targetCameraPos;
 
             UpdateSphericalMovement(true);
         }
@@ -316,18 +399,26 @@ namespace Unity.Reflect.Viewer.UI
         /// <param name="percentOfView">The percentage of the <see cref="bb"/> that will be visible</param>
         public void SetupInitialCameraPosition(Bounds bb, float pitch, float percentOfView)
         {
-            m_CameraCenter = bb.center;
-            m_SqrCameraMaxDistance = bb.extents.magnitude * bb.extents.magnitude * m_Settings.maxLookAtDistanceScaling * m_Settings.maxLookAtDistanceScaling;
-
-            FitInView(bb, pitch, percentOfView);
-            SetupCameraSpeed(bb);
-            m_AngleOffset = Vector2.zero;
+            if (!string.IsNullOrEmpty(m_CurrentServerProjectId))
+            {
+                if (m_CameraTransformQueryValue.ContainsKey(m_CurrentServerProjectId))
+                {
+                    ApplyQueryStringToTransform(m_CameraTransformQueryValue[m_CurrentServerProjectId]);
+                    SetupCameraSpeed(bb);
+                }
+                else
+                {
+                    FitInView(bb, pitch, percentOfView);
+                    SetupCameraSpeed(bb);
+                    m_AngleOffset = Vector2.zero;
+                }
+            }
         }
 
         public void SetupInitialCameraPosition()
         {
             m_Camera.transform.rotation = Quaternion.identity;
-            m_Camera.transform.position = new Vector3(0,0, -10);
+            m_Camera.transform.position = new Vector3(0, 0, -10);
             ForceStop();
         }
 
@@ -352,7 +443,7 @@ namespace Unity.Reflect.Viewer.UI
 
         void FitInView(Bounds bb, float pitch, float percentOfView)
         {
-            var fitPosition = CalculateViewFitPosition(bb, pitch, percentOfView, m_Camera.fieldOfView);
+            var fitPosition = CalculateViewFitPosition(bb, pitch, percentOfView, m_Camera.fieldOfView, m_Camera.aspect);
 
             m_DesiredPosition = fitPosition.position;
             m_DesiredRotation = Quaternion.Euler(fitPosition.rotation);
@@ -363,24 +454,44 @@ namespace Unity.Reflect.Viewer.UI
             m_Camera.transform.position = m_DesiredPosition;
         }
 
-        public static CameraTransformInfo CalculateViewFitPosition(Bounds bb, float pitch, float percentOfView, float fov)
+        public static CameraTransformInfo CalculateViewFitPosition(Bounds bb, float pitch, float percentOfView, float fov, float aspectRatio)
         {
+            var desiredEuler = new Vector3(pitch, 0, 0);
+
+            using (var rootGetter = UISelectorFactory.createSelector<Transform>(PipelineContext.current, nameof(IPipelineDataProvider.rootNode), null))
+            {
+
+                var (lookAt, distanceFromLookAtX, distanceFomFromLookAtY) = GetDistanceFromLookAt(bb, percentOfView, fov, aspectRatio);
+
+                var distanceFromLookAt = Mathf.Max(distanceFromLookAtX, distanceFomFromLookAtY);
+
+                return new CameraTransformInfo
+                {
+                    rotation = rootGetter.GetValue().rotation * desiredEuler,
+                    position = rootGetter.GetValue().TransformPoint(lookAt - distanceFromLookAt * (Quaternion.Euler(desiredEuler) * Vector3.forward))
+                };
+            }
+        }
+
+        static (Vector3 LookAt, float DistanceFromLookAtX, float DistanceFromLookAtY) GetDistanceFromLookAt(Bounds bb, float percentOfView, float fov, float aspectRatio)
+        {
+            var lookAt = bb.center;
+
             var adjacent = bb.extents.x;
             var angle = (180.0f - fov) / 2.0f;
             var ratio = Mathf.Tan(Mathf.Deg2Rad * angle);
             var opposite = ratio * adjacent;
-            var distanceFromBoundSurface = opposite;
+            var distanceFromBoundSurfaceX = opposite;
+            var distanceFromLookAtX = lookAt.z - bb.min.z + distanceFromBoundSurfaceX / (aspectRatio * percentOfView);
 
-            var lookAt = bb.center;
+            adjacent = bb.extents.y;
+            angle = (180.0f - fov) / 2.0f;
+            ratio = Mathf.Tan(Mathf.Deg2Rad * angle);
+            opposite = ratio * adjacent;
+            var distanceFromBoundSurfaceY = opposite;
+            var distanceFromLookAtY = lookAt.z - bb.min.z + distanceFromBoundSurfaceY * aspectRatio / percentOfView;
 
-            var distanceFromLookAt = lookAt.z - bb.min.z + distanceFromBoundSurface * percentOfView;
-            var desiredEuler = new Vector3(pitch, 0, 0);
-
-            return new CameraTransformInfo()
-            {
-                rotation = UIStateManager.current.m_RootNode.transform.rotation*desiredEuler,
-                position = UIStateManager.current.m_RootNode.transform.TransformPoint(lookAt - distanceFromLookAt * (Quaternion.Euler(desiredEuler) * Vector3.forward)),
-            };
+            return (lookAt, distanceFromLookAtX, distanceFromLookAtY);
         }
 
         void SetupCameraSpeed(Bounds bb)
@@ -388,7 +499,7 @@ namespace Unity.Reflect.Viewer.UI
             var maxDistanceToMove = bb.extents.magnitude;
 
             m_MinSpeed = maxDistanceToMove / m_Settings.maxTimeToTravelMinSpeed * m_Settings.minSpeedScaling;
-            m_MaxSpeed = maxDistanceToMove / m_Settings.maxTimeToTravelFullSpeed* m_Settings.maxSpeedScaling;
+            m_MaxSpeed = maxDistanceToMove / m_Settings.maxTimeToTravelFullSpeed * m_Settings.maxSpeedScaling;
             m_Acceleration = (m_MaxSpeed - m_MinSpeed) / m_Settings.maxTimeToAccelerate * m_Settings.accelerationScaling;
             m_WaitingDeceleration = m_Acceleration * m_Settings.waitingDecelerationScaling;
         }

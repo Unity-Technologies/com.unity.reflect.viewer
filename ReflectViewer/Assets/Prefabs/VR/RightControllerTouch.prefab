@@ -177,6 +177,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 2147483647
+  m_RaycastTriggerInteraction: 1
 --- !u!1 &4385356283173743162
 GameObject:
   m_ObjectHideFlags: 0
@@ -295,6 +296,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 2147483647
+  m_RaycastTriggerInteraction: 1
 --- !u!1 &4385356283493745700
 GameObject:
   m_ObjectHideFlags: 0
@@ -413,20 +415,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 2147483647
---- !u!114 &8812502128664011989
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4385356283989763430}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3a445ee08530de44f88c1831dbe06328, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Offset: {x: 45, y: 0, z: 0}
-  m_IsLeftHand: 0
+  m_RaycastTriggerInteraction: 1
 --- !u!1 &4385356284678440550
 GameObject:
   m_ObjectHideFlags: 0
@@ -545,6 +534,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 2147483647
+  m_RaycastTriggerInteraction: 1
 --- !u!1 &4385356285043609867
 GameObject:
   m_ObjectHideFlags: 0
@@ -612,12 +602,6 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d34262fb62f38944b97137c536cddf4b, type: 3}
---- !u!1 &4385356283989763430 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 141214, guid: d34262fb62f38944b97137c536cddf4b,
-    type: 3}
-  m_PrefabInstance: {fileID: 4385356283989885688}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &4385356283989500824 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 401760, guid: d34262fb62f38944b97137c536cddf4b,

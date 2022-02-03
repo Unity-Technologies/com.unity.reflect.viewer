@@ -1,15 +1,30 @@
 using System;
 using System.Collections.Generic;
-using Unity.Reflect.Multiplayer;
+using Unity.Properties;
+using UnityEngine;
 using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
 
 namespace Unity.Reflect.Viewer
 {
-    [Serializable]
-    public struct RoomConnectionStateData : IEquatable<RoomConnectionStateData>
+    [Serializable, GeneratePropertyBag]
+    public struct RoomConnectionStateData : IEquatable<RoomConnectionStateData>, IRoomConnectionDataProvider<NetworkUserData>, IVivoxDataProvider<VivoxManager>
     {
-        public NetworkUserData localUser;
-        public List<NetworkUserData> users;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public string userToMute { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public NetworkUserData localUser { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public List<NetworkUserData> users { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public VivoxManager vivoxManager { get; set; }
 
         public static bool operator ==(RoomConnectionStateData a, RoomConnectionStateData b)
         {
@@ -24,7 +39,9 @@ namespace Unity.Reflect.Viewer
         public bool Equals(RoomConnectionStateData other)
         {
             return localUser == other.localUser &&
-                EnumerableExtension.SafeSequenceEquals(users, other.users);
+                EnumerableExtension.SafeSequenceEquals(users, other.users) &&
+                vivoxManager == other.vivoxManager &&
+                userToMute == other.userToMute;
         }
 
         public override bool Equals(object obj)
@@ -39,6 +56,7 @@ namespace Unity.Reflect.Viewer
                 var hashCode = localUser.GetHashCode();
                 foreach (var user in users)
                     hashCode = (hashCode * 397) ^ user.GetHashCode();
+                hashCode = (hashCode * 397) ^ userToMute.GetHashCode();
                 return hashCode;
             }
         }

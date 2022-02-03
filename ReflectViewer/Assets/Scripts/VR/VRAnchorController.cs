@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using Unity.Reflect.Viewer.UI;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.SceneManagement;
 using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
@@ -22,13 +24,18 @@ namespace UnityEngine.Reflect.Viewer
         List<TrackedDeviceGraphicRaycaster> m_TrackedDeviceGraphicRaycasters;
         List<VRAnchor.DeviceAlignmentAnchor> m_Anchors;
         List<VRAnchor> m_VrAnchors;
+        IUISelector<CameraTransformInfo> m_CamInfoGetter;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
 
-        bool m_WasPressed;
-        CameraTransformInfo m_CameraTransformInfo;
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
         void Awake()
         {
-            UIStateManager.projectStateChanged += OnProjectStateDataChanged;
+           m_DisposeOnDestroy.Add(m_CamInfoGetter = UISelectorFactory.createSelector<CameraTransformInfo>(ProjectContext.current, nameof(ITeleportDataProvider.cameraTransformInfo) , OnCameraTransformInfoChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<Project>(ProjectManagementContext<Project>.current, nameof(IProjectDataProvider<Project>.activeProject), OnActiveProjectChanged));
 
             if (m_XrRig == null)
                 m_XrRig = FindObjectOfType<XRRig>();
@@ -38,6 +45,11 @@ namespace UnityEngine.Reflect.Viewer
             m_TrackedDeviceGraphicRaycasters = new List<TrackedDeviceGraphicRaycaster>();
             m_VrAnchors = new List<VRAnchor>();
             m_Anchors = new List<VRAnchor.DeviceAlignmentAnchor>();
+        }
+
+        void OnActiveProjectChanged(Project obj)
+        {
+            OnCameraTransformInfoChanged(m_CamInfoGetter.GetValue());
         }
 
         public void Load()
@@ -77,6 +89,9 @@ namespace UnityEngine.Reflect.Viewer
             m_RootCanvas.GetComponentsInChildren(true, m_VrAnchors);
             foreach (var anchor in m_VrAnchors)
                 anchor.Attach(m_Anchors);
+
+            //Reset XR camera position after VR launch
+            OnCameraTransformInfoChanged(m_CamInfoGetter.GetValue());
         }
 
         public void Unload()
@@ -101,16 +116,14 @@ namespace UnityEngine.Reflect.Viewer
             m_TrackedDeviceGraphicRaycasters.Clear();
         }
 
-        void OnProjectStateDataChanged(UIProjectStateData data)
+        void OnCameraTransformInfoChanged(CameraTransformInfo newData)
         {
-            if (m_XrRig == null || m_CameraTransformInfo == data.cameraTransformInfo)
+            if (m_XrRig == null)
                 return;
 
-            m_XrRig.MoveCameraToWorldLocation(data.cameraTransformInfo.position);
-            var rotation = data.cameraTransformInfo.rotation.y - m_XrRig.transform.eulerAngles.y;
+            m_XrRig.MoveCameraToWorldLocation(newData.position);
+            var rotation = newData.rotation.y - m_XrRig.transform.eulerAngles.y;
             m_XrRig.RotateAroundCameraUsingRigUp(rotation);
-
-            m_CameraTransformInfo = data.cameraTransformInfo;
         }
     }
 }

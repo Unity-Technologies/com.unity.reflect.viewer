@@ -1,9 +1,10 @@
-﻿using System.Collections.Generic;
-using SharpFlux;
+using System.Collections.Generic;
 using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -24,32 +25,31 @@ namespace Unity.Reflect.Viewer.UI
 #pragma warning restore CS0649
 
         ButtonControl m_ActiveButtonControl;
-        ClippingTool? m_cachedClippingTool;
+        IUISelector m_ClippingToolSelector;
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-
             foreach (var buttonControl in m_ButtonControls)
             {
                 buttonControl.onControlTap.AddListener(OnButtonTap);
             }
+
+            m_ClippingToolSelector = UISelectorFactory.createSelector<SetClippingToolAction.ClippingTool>(ToolStateContext.current, nameof(IToolStateDataProvider.clippingTool),
+                data =>
+                {
+                    var i = 0;
+                    foreach (var buttonControl in m_ButtonControls)
+                    {
+                        var on = i == (int)data;
+                        buttonControl.@on = on;
+                        i++;
+                    }
+                });
         }
 
-        void OnStateDataChanged(UIStateData stateData)
+        void OnDestroy()
         {
-            if (m_cachedClippingTool == null || m_cachedClippingTool != stateData.toolState.clippingTool)
-            {
-                m_cachedClippingTool = stateData.toolState.clippingTool;
-
-                var i = 0;
-                foreach (var buttonControl in m_ButtonControls)
-                {
-                    var on = (i == (int) stateData.toolState.clippingTool);
-                    buttonControl.@on = on;
-                    i++;
-                }
-            }
+            m_ClippingToolSelector?.Dispose();
         }
 
         void OnButtonTap(BaseEventData eventData)
@@ -58,16 +58,14 @@ namespace Unity.Reflect.Viewer.UI
             if (buttonControl == null)
                 return;
 
-            var clippingTool = (ClippingTool)m_ButtonControls.IndexOf(buttonControl);
+            var clippingTool = (SetClippingToolAction.ClippingTool)m_ButtonControls.IndexOf(buttonControl);
 
             if (m_CloseOnSelect)
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(OpenDialogAction.From(OpenDialogAction.DialogType.None));
             }
 
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.clippingTool = clippingTool;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            Dispatcher.Dispatch(SetClippingToolAction.From(clippingTool));
         }
     }
 }

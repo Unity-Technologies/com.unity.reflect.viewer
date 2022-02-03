@@ -1,0 +1,33 @@
+.unity-properties__property__container
+{
+    
+}
+
+.unity-properties__property__name
+{
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.unity-properties__property__type-name
+{
+    padding-left: 2px;
+    padding-right: 2px;
+    border-width: 1px;
+    border-radius: 5px;
+    flex-shrink: 0;
+    min-width: 0;
+    margin: 2px 2px 2px 2px;
+    margin-right:15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.unity-properties__property__attributes
+{
+    flex-wrap: wrap;
+    white-space: normal;
+}

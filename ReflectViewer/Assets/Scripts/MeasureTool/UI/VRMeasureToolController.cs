@@ -12,7 +12,7 @@ namespace UnityEngine.Reflect.MeasureTool
         [SerializeField]
         ZoneScale m_ZoneScale;
 
-        UIMeasureToolController m_UIMeasureToolController;
+        MeasureToolUIController m_MeasureToolUIController;
         BaseHandle m_BaseHandleCursorA;
         BaseHandle m_BaseHandleCursorB;
         GameObject m_VRCursorA;
@@ -21,7 +21,7 @@ namespace UnityEngine.Reflect.MeasureTool
 
         void Awake()
         {
-            m_UIMeasureToolController = GetComponent<UIMeasureToolController>();
+            m_MeasureToolUIController = GetComponent<MeasureToolUIController>();
         }
 
         public void InitVR()
@@ -39,7 +39,7 @@ namespace UnityEngine.Reflect.MeasureTool
             InitHandle(ref m_BaseHandleCursorB);
 
             m_ZoneScale.enabled = true;
-            m_UIMeasureToolController.SetCurrentCursor(ref m_VRCursorA, ref m_VRCursorB);
+            m_MeasureToolUIController.SetCurrentCursor(m_VRCursorA, m_VRCursorB);
         }
 
         void InitHandle(ref BaseHandle handle)
@@ -72,18 +72,18 @@ namespace UnityEngine.Reflect.MeasureTool
         void OnHoverHandleEnded(BaseHandle handle, HandleEventData eventData)
         {
             if (!m_IsDragging)
-                m_UIMeasureToolController.UnselectVRCursor();
+                m_MeasureToolUIController.UnselectVRCursor();
         }
 
         void OnHoverHandleStart(BaseHandle handle, HandleEventData eventData)
         {
             if (!m_IsDragging)
-                m_UIMeasureToolController.SelectVRCursor(handle.gameObject);
+                m_MeasureToolUIController.SelectVRCursor(handle.gameObject);
         }
 
         void OnPanelHandleDragging(BaseHandle handle, HandleEventData eventData)
         {
-            m_UIMeasureToolController.OnDrag(eventData.rayOrigin.position);
+            m_MeasureToolUIController.OnDrag(eventData.rayOrigin.position);
             m_IsDragging = true;
         }
 

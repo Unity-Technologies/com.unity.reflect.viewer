@@ -1,7 +1,9 @@
 ﻿using System;
-using SharpFlux;
+using System.Collections.Generic;
 using SharpFlux.Dispatching;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -24,92 +26,116 @@ namespace Unity.Reflect.Viewer.UI
         GameObject m_ScaleRadial;
 #pragma warning restore CS0649
 
-        bool m_ToolbarsEnabled;
-        ToolType? m_CurrentActiveTool;
-        NavigationMode? m_CurrentNavigationMode;
-        InstructionUIState? m_CurrentInstructionUI;
+        SetActiveToolAction.ToolType? m_CurrentActiveTool;
         bool? m_CachedPlacementGesturesEnabled;
-        ARToolStateData? m_CachedARToolStateData;
+        IUISelector<IARInstructionUI> m_CurrentARInstructionUISelector;
+
+        SetARToolStateAction.IUIButtonValidator m_Validator;
+        LeftSideBarController m_LeftSideBarController;
+
+        IUISelector<bool> m_ToolBarEnabledSelector;
+        List<IDisposable> m_DisposableSelectors = new List<IDisposable>();
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.arStateChanged += OnARStateDataChanged;
-
             m_BackButton.buttonClicked += OnBackButtonClicked;
             m_OkButton.buttonClicked += OnOkButtonClicked;
             m_CancelButton.buttonClicked += OnCancelButtonClicked;
             m_ScaleButton.buttonClicked += OnScaleButtonClicked;
+            m_LeftSideBarController = GameObject.FindObjectOfType<LeftSideBarController>();
 
-            OnStateDataChanged(UIStateManager.current.stateData);
+            m_DisposableSelectors.Add(m_ToolBarEnabledSelector = UISelectorFactory.createSelector<bool>(UIStateContext.current, nameof(IToolBarDataProvider.toolbarsEnabled)));
+            m_DisposableSelectors.Add(m_CurrentARInstructionUISelector = UISelectorFactory.createSelector<IARInstructionUI>(ARContext.current, nameof(IARModeDataProvider.currentARInstructionUI)));
+
+            m_DisposableSelectors.Add(UISelectorFactory.createSelector<bool>(ARToolStateContext.current, nameof(IARToolStatePropertiesDataProvider.previousStepEnabled),
+                data =>
+                {
+                    m_BackButton.button.interactable = m_ToolBarEnabledSelector.GetValue() && data;
+                } ));
+
+            m_DisposableSelectors.Add(UISelectorFactory.createSelector<bool>(ARToolStateContext.current, nameof(IARToolStatePropertiesDataProvider.okEnabled),
+                data =>
+                {
+                    m_OkButton.button.interactable = m_ToolBarEnabledSelector.GetValue() && data;
+                    m_OkButton.selected = m_OkButton.button.interactable;
+                } ));
+
+            m_DisposableSelectors.Add(UISelectorFactory.createSelector<bool>(ARToolStateContext.current, nameof(IARToolStatePropertiesDataProvider.cancelEnabled),
+                data =>
+                {
+                    m_CancelButton.transform.parent.gameObject.SetActive(m_ToolBarEnabledSelector.GetValue() && data);
+                    m_LeftSideBarController.UpdateLayout();
+                } ));
+
+            m_DisposableSelectors.Add(UISelectorFactory.createSelector<bool>(ARToolStateContext.current, nameof(IARToolStatePropertiesDataProvider.scaleEnabled),
+                data =>
+                {
+                    m_ScaleButton.transform.parent.gameObject.SetActive(m_ToolBarEnabledSelector.GetValue() && data);
+                    m_LeftSideBarController.UpdateLayout();
+                } ));
+
+            m_DisposableSelectors.Add(UISelectorFactory.createSelector<SetARToolStateAction.IUIButtonValidator>(ARToolStateContext.current, nameof(IARToolStatePropertiesDataProvider.okButtonValidator),
+                data =>
+                {
+                    m_Validator = data;
+                    CheckButtonValidations();
+                } ));
+
+            m_DisposableSelectors.Add(UISelectorFactory.createSelector<bool>(ARPlacementContext.current, nameof(IARPlacementDataProvider.validTarget),
+                data =>
+                {
+                    CheckButtonValidations();
+                } ));
         }
 
-        void OnStateDataChanged(UIStateData data)
+        void OnDestroy()
         {
-            if (m_ToolbarsEnabled != data.toolbarsEnabled)
+            foreach(var disposable in m_DisposableSelectors)
             {
-                m_ToolbarsEnabled = data.toolbarsEnabled;
-                OnARStateDataChanged(UIStateManager.current.arStateData);
+                disposable.Dispose();
             }
-
-            if (m_CurrentNavigationMode != data.navigationState.navigationMode)
-            {
-                m_CurrentNavigationMode = data.navigationState.navigationMode;
-                OnARStateDataChanged(UIStateManager.current.arStateData);
-            }
-        }
-
-        void OnARStateDataChanged(UIARStateData arData)
-        {
-            if (m_CachedARToolStateData != arData.arToolStateData)
-            {
-                m_BackButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.previousStepEnabled;
-                m_OkButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.okEnabled;
-                m_OkButton.selected = m_OkButton.button.interactable;
-                m_CancelButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.cancelEnabled;
-                m_ScaleButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.scaleEnabled;
-
-                m_CachedARToolStateData = arData.arToolStateData;
-            }
-            CheckButtonValidations();
+            m_DisposableSelectors.Clear();
         }
 
         void CheckButtonValidations()
         {
-            if (UIStateManager.current.arStateData.arToolStateData.okButtonValidator != null)
-            {
-                m_OkButton.button.interactable = m_ToolbarsEnabled && UIStateManager.current.arStateData.arToolStateData.okButtonValidator.ButtonValidate();
-                m_OkButton.selected = m_OkButton.button.interactable;
-            }
+            if (m_Validator == null)
+                return;
+
+            if (m_Validator is SetARToolStateAction.EmptyUIButtonValidator)
+                return;
+
+            m_OkButton.button.interactable = m_ToolBarEnabledSelector.GetValue() && m_Validator.ButtonValidate();
+            m_OkButton.selected = m_OkButton.button.interactable;
         }
 
         void OnCancelButtonClicked()
         {
             // Helpmode
-            if (HelpDialogController.SetHelpID(HelpModeEntryID.Cancel)) return;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Cancel, true ));
+            if (HelpDialogController.SetHelpID(SetHelpModeIDAction.HelpModeEntryID.Cancel)) return;
+            Dispatcher.Dispatch(CancelAction.From(true));
         }
 
         void OnOkButtonClicked()
         {
             // Helpmode
-            if (HelpDialogController.SetHelpID(HelpModeEntryID.Ok)) return;
-            UIStateManager.current.arStateData.currentInstructionUI.Next();
+            if (HelpDialogController.SetHelpID(SetHelpModeIDAction.HelpModeEntryID.Ok)) return;
+            m_CurrentARInstructionUISelector.GetValue().Next();
         }
 
         void OnBackButtonClicked()
         {
             // Helpmode
-            if (HelpDialogController.SetHelpID(HelpModeEntryID.Back)) return;
-            UIStateManager.current.arStateData.currentInstructionUI.Back();
+            if (HelpDialogController.SetHelpID(SetHelpModeIDAction.HelpModeEntryID.Back)) return;
+            m_CurrentARInstructionUISelector.GetValue().Back();
         }
 
         void OnScaleButtonClicked()
         {
             // Helpmode
-            if (HelpDialogController.SetHelpID(HelpModeEntryID.Scale)) return;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.ARScaleDial));
-            ARScaleRadialUIController.m_previousToolbar = ToolbarType.ARInstructionSidebar;
+            if (HelpDialogController.SetHelpID(SetHelpModeIDAction.HelpModeEntryID.Scale)) return;
+            Dispatcher.Dispatch(SetActiveToolBarAction.From(SetActiveToolBarAction.ToolbarType.ARScaleDial));
+            ARScaleRadialUIController.m_previousToolbar = SetActiveToolBarAction.ToolbarType.ARInstructionSidebar;
 
             var radialPosition = m_ScaleRadial.transform.position;
             radialPosition.y = m_ScaleButton.transform.position.y;

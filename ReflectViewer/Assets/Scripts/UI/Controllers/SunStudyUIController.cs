@@ -6,12 +6,14 @@ using SharpFlux.Dispatching;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
 {
     [RequireComponent(typeof(DialogWindow))]
-    public class SunStudyUIController : MonoBehaviour
+    public class SunStudyUIController: MonoBehaviour
     {
 #pragma warning disable CS0649
         [SerializeField]
@@ -27,7 +29,7 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         MinMaxPropertyControl m_NorthAngleControl;
         [SerializeField]
-        Button m_DialogButton;
+        ToolButton m_DialogButton;
         [SerializeField]
         TextMeshProUGUI m_TimeOfDayText;
         [SerializeField]
@@ -40,37 +42,31 @@ namespace Unity.Reflect.Viewer.UI
         TextMeshProUGUI m_LongitudeText;
         [SerializeField]
         TextMeshProUGUI m_NorthAngleText;
-
-        [SerializeField]
-        GameObject m_Panel;
-        [SerializeField]
-        TextMeshProUGUI m_TimeOfDayLabel;
-        [SerializeField]
-        TextMeshProUGUI m_TimeOfYearLabel;
-        [SerializeField]
-        TextMeshProUGUI m_UtcOffsetLabel;
-        [SerializeField]
-        TextMeshProUGUI m_LatitudeLabel;
-        [SerializeField]
-        TextMeshProUGUI m_LongitudeLabel;
-        [SerializeField]
-        Image m_TimeOfDaySlider;
-        [SerializeField]
-        Image m_TimeOfYearSlider;
-        [SerializeField]
-        Image m_UtcOffsetSlider;
-        [SerializeField]
-        Image m_LatitudeSlider;
-        [SerializeField]
-        Image m_LongitudeSlider;
-
 #pragma warning restore CS0649
 
         DialogWindow m_DialogWindow;
-        Image m_DialogButtonImage;
-        SunStudyData m_CurrentSunStudyData;
-        Color m_TextColor, m_SliderColor, m_SliderBackgroundColor;
-        bool m_CurrentIsStaticMode;
+
+        readonly string k_TimeOfDayQueryKey = "dm";
+        readonly string k_TimeOfYearQueryKey = "yd";
+        readonly string k_NorthAngleQueryKey = "na";
+        readonly string k_UtcOffsetQueryKey = "uo";
+        readonly string k_LatitudeQueryKey = "lat";
+        readonly string k_LongitudeQueryKey = "lng";
+
+        IUISelector m_ActiveDialogSelector;
+        IUISelector<int> NorthAngleSelector;
+        IUISelector<int> TimeOfDaySelector;
+        IUISelector<int> TimeOfYearSelector;
+        IUISelector<int> UtcOffsetSelector;
+        IUISelector<int> LatitudeSelector;
+        IUISelector<int> LongitudeSelector;
+
+        public string NorthAngleQueryValue() => $"{NorthAngleSelector.GetValue()}";
+        public string TimeOfDayQueryValue() => $"{TimeOfDaySelector.GetValue()}";
+        public string TimeOfYearQueryValue() => $"{TimeOfYearSelector.GetValue()}";
+        public string UtcOffsetQueryValue() => $"{UtcOffsetSelector.GetValue()}";
+        public string LatitudeQueryValue() => $"{LatitudeSelector.GetValue()}";
+        public string LongitudeQueryValue() => $"{LongitudeSelector.GetValue()}";
 
         public static string GetFormattedUtc(int offset)
         {
@@ -87,7 +83,7 @@ namespace Unity.Reflect.Viewer.UI
             return hour * 60 + minute;
         }
 
-        public static (int hour, int min) GetHourMinute (int minuteOfDay)
+        public static (int hour, int min) GetHourMinute(int minuteOfDay)
         {
             minuteOfDay = Mathf.Clamp(minuteOfDay, 0, 1439);
             var hour = (minuteOfDay / 60);
@@ -159,36 +155,57 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        void ChangeSliderAlpha(TextMeshProUGUI label, TextMeshProUGUI text, MinMaxPropertyControl control, Image slider, float alpha)
-        {
-            var textColor = m_TextColor;
-            var sliderColor = m_SliderColor;
-            var sliderBackColor = m_SliderBackgroundColor;
-            textColor.a = alpha;
-            sliderColor.a = alpha;
-            sliderBackColor.a = alpha;
-
-            label.color = textColor;
-            text.color = textColor;
-            control.GetComponent<Image>().color = sliderBackColor;
-            slider.color = sliderColor;
-        }
-
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-
-            m_DialogButtonImage = m_DialogButton.GetComponent<Image>();
             m_DialogWindow = GetComponent<DialogWindow>();
 
-            m_TextColor = m_TimeOfDayLabel.color;
-            m_SliderBackgroundColor = m_TimeOfDayControl.GetComponent<Image>().color;
-            m_SliderColor = m_TimeOfDaySlider.color;
+            m_ActiveDialogSelector = UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog),
+                type =>
+                {
+                    m_DialogButton.selected = type == OpenDialogAction.DialogType.SunStudy;
+                });
+
+            TimeOfDaySelector = UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.timeOfDay), OnTimeOfDayChanged);
+            TimeOfYearSelector = UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.timeOfYear), OnTimeOfYearChanged);
+            UtcOffsetSelector = UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.utcOffset), OnUtcChanged);
+            LatitudeSelector = UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.latitude), OnLatitudeChanged);
+            LongitudeSelector = UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.longitude), OnLongitudeChanged);
+            NorthAngleSelector = UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.northAngle), OnNorthAngleChanged);
+
+            // Initialize controls with current values
+            OnTimeOfDayChanged(TimeOfDaySelector.GetValue());
+            OnTimeOfYearChanged(TimeOfYearSelector.GetValue());
+            OnUtcChanged(UtcOffsetSelector.GetValue());
+            OnLatitudeChanged(LatitudeSelector.GetValue());
+            OnLongitudeChanged(LongitudeSelector.GetValue());
+            OnNorthAngleChanged(NorthAngleSelector.GetValue());
+
+            QueryArgHandler.Register(this, k_NorthAngleQueryKey, OnNorthAngleControlChanged, NorthAngleQueryValue);
+            QueryArgHandler.Register(this, k_TimeOfDayQueryKey, OnTimeOfDayControlChanged, TimeOfDayQueryValue);
+            QueryArgHandler.Register(this, k_TimeOfYearQueryKey, OnTimeOfYearControlChanged, TimeOfYearQueryValue);
+            QueryArgHandler.Register(this, k_UtcOffsetQueryKey, OnUtcOffsetControlChanged, UtcOffsetQueryValue);
+            QueryArgHandler.Register(this, k_LatitudeQueryKey, OnLatitudeControlChanged, LatitudeQueryValue);
+            QueryArgHandler.Register(this, k_LongitudeQueryKey, OnLongitudeControlChanged, LongitudeQueryValue);
+        }
+
+        void OnDestroy()
+        {
+            m_ActiveDialogSelector?.Dispose();
+            TimeOfDaySelector?.Dispose();
+            TimeOfYearSelector?.Dispose();
+            UtcOffsetSelector?.Dispose();
+            LatitudeSelector?.Dispose();
+            LongitudeSelector?.Dispose();
+            NorthAngleSelector?.Dispose();
+
+            m_DialogButton.buttonClicked -= OnDialogButtonClicked;
+
+            QueryArgHandler.Unregister(this);
         }
 
         void Start()
         {
-            m_DialogButton.onClick.AddListener(OnDialogButtonClicked);
+            m_DialogButton.buttonClicked += OnDialogButtonClicked;
             m_TimeOfDayControl.onIntValueChanged.AddListener(OnTimeOfDayControlChanged);
             m_TimeOfYearControl.onIntValueChanged.AddListener(OnTimeOfYearControlChanged);
             m_UtcOffsetControl.onIntValueChanged.AddListener(OnUtcOffsetControlChanged);
@@ -199,133 +216,78 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnDialogButtonClicked()
         {
-            var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.SunStudy;
-            var toolbarType = m_DialogWindow.open ? TimeRadialUIController.m_previousToolbar : ToolbarType.TimeOfDayYearDial;
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.activeTool = m_DialogWindow.open ? ToolType.None : ToolType.SunstudyTool;
+            var dialogType = m_DialogWindow.open ? OpenDialogAction.DialogType.None : OpenDialogAction.DialogType.SunStudy;
 
-            var data = UIStateManager.current.stateData;
-            if (m_DialogWindow.open || data.dialogMode == DialogMode.Help)
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
-            else
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, TimeRadialUIController.GetTimeStatusMessage(data.sunStudyData)));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
+            Dispatcher.Dispatch(OpenDialogAction.From(dialogType));
+            Dispatcher.Dispatch(OpenSubDialogAction.From(OpenDialogAction.DialogType.None));
 
-            // don't use dial in VR or Help Mode
-            if (data.navigationState.navigationMode != NavigationMode.VR && data.dialogMode != DialogMode.Help)
-            {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, toolbarType));
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-            }
-            // Always change mode back to Geographic since dial will be Time or closed
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, false));
-        }
-
-        void OnStateDataChanged(UIStateData data)
-        {
-            m_DialogButtonImage.enabled = data.activeDialog == DialogType.SunStudy;
-
-            if (m_CurrentSunStudyData == data.sunStudyData)
-            {
-                return;
-            }
-
-            if (m_CurrentIsStaticMode != data.sunStudyData.isStaticMode)
-            {
-                if (data.sunStudyData.isStaticMode)
-                {
-                    m_Panel.SetActive(true);
-                    ChangeSliderAlpha(m_TimeOfDayLabel, m_TimeOfDayText, m_TimeOfDayControl, m_TimeOfDaySlider, 0.5f);
-                    ChangeSliderAlpha(m_TimeOfYearLabel, m_TimeOfYearText, m_TimeOfYearControl, m_TimeOfYearSlider, 0.5f);
-                    ChangeSliderAlpha(m_UtcOffsetLabel, m_UtcOffsetText, m_UtcOffsetControl, m_UtcOffsetSlider, 0.5f);
-                    ChangeSliderAlpha(m_LatitudeLabel, m_LatitudeText, m_LatitudeControl, m_LatitudeSlider, 0.5f);
-                    ChangeSliderAlpha(m_LongitudeLabel, m_LongitudeText, m_LongitudeControl, m_LongitudeSlider, 0.5f);
-                }
-                else
-                {
-                    m_Panel.SetActive(false);
-                    ChangeSliderAlpha(m_TimeOfDayLabel, m_TimeOfDayText, m_TimeOfDayControl, m_TimeOfDaySlider, 1f);
-                    ChangeSliderAlpha(m_TimeOfYearLabel, m_TimeOfYearText, m_TimeOfYearControl, m_TimeOfYearSlider, 1f);
-                    ChangeSliderAlpha(m_UtcOffsetLabel, m_UtcOffsetText, m_UtcOffsetControl, m_UtcOffsetSlider, 1f);
-                    ChangeSliderAlpha(m_LatitudeLabel, m_LatitudeText, m_LatitudeControl, m_LatitudeSlider, 1f);
-                    ChangeSliderAlpha(m_LongitudeLabel, m_LongitudeText, m_LongitudeControl, m_LongitudeSlider, 1f);
-                }
-                m_CurrentIsStaticMode = data.sunStudyData.isStaticMode;
-            }
-
-            m_TimeOfDayControl.SetValue(data.sunStudyData.timeOfDay);
-            m_TimeOfYearControl.SetValue(data.sunStudyData.timeOfYear);
-            m_UtcOffsetControl.SetValue(data.sunStudyData.utcOffset);
-            m_LatitudeControl.SetValue(data.sunStudyData.latitude);
-            m_LongitudeControl.SetValue(data.sunStudyData.longitude);
-            m_NorthAngleControl.SetValue(data.sunStudyData.northAngle);
-
-            m_TimeOfDayText.SetText(GetFormattedMinuteOfDay(data.sunStudyData.timeOfDay));
-            m_TimeOfYearText.SetText(GetFormattedDayOfYear(DateTime.Now.Year, data.sunStudyData.timeOfYear));
-            m_UtcOffsetText.SetText(GetFormattedUtc(data.sunStudyData.utcOffset));
-            m_LatitudeText.SetText($"{data.sunStudyData.latitude}");
-            m_LongitudeText.SetText($"{data.sunStudyData.longitude}");
-            m_NorthAngleText.SetText($"{data.sunStudyData.northAngle}");
-
-            m_CurrentSunStudyData = data.sunStudyData;
+            // TODO Always change mode back to Geographic since dial will be Time or closed
         }
 
         void OnTimeOfDayControlChanged(int value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            if (!data.isStaticMode)
-            {
-                data.timeOfDay = value;
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
-            }
+            Dispatcher.Dispatch(SetTimeOfDayAction.From(value));
         }
 
         void OnTimeOfYearControlChanged(int value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            if (!data.isStaticMode)
-            {
-                data.timeOfYear = value;
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
-            }
+            Dispatcher.Dispatch(SetTimeOfYearAction.From(value));
         }
 
         void OnUtcOffsetControlChanged(int value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            if (!data.isStaticMode)
-            {
-                data.utcOffset = value;
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
-            }
+            Dispatcher.Dispatch(SetUtcAction.From(value));
         }
 
         void OnLatitudeControlChanged(int value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            if (!data.isStaticMode)
-            {
-                data.latitude = value;
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
-            }
+            Dispatcher.Dispatch(SetLatitudeAction.From(value));
         }
 
         void OnLongitudeControlChanged(int value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            if (!data.isStaticMode)
-            {
-                data.longitude = value;
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
-            }
+            Dispatcher.Dispatch(SetLongitudeAction.From(value));
         }
 
         void OnNorthAngleControlChanged(int value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            data.northAngle = value;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+            Dispatcher.Dispatch(SetNorthAngleAction.From(value));
+        }
+
+        void OnTimeOfDayChanged(int timeOfDay)
+        {
+            m_TimeOfDayControl.SetValue(timeOfDay);
+            m_TimeOfDayText.SetText(GetFormattedMinuteOfDay(timeOfDay));
+        }
+
+        void OnTimeOfYearChanged(int timeOfYear)
+        {
+            m_TimeOfYearControl.SetValue(timeOfYear);
+            m_TimeOfYearText.SetText(GetFormattedDayOfYear(DateTime.Now.Year, timeOfYear));
+        }
+
+        void OnUtcChanged(int utc)
+        {
+            m_UtcOffsetControl.SetValue(utc);
+            m_UtcOffsetText.SetText(GetFormattedUtc(utc));
+        }
+
+        void OnLatitudeChanged(int latitude)
+        {
+            m_LatitudeControl.SetValue(latitude);
+            m_LatitudeText.SetText($"{latitude}");
+        }
+
+        void OnLongitudeChanged(int longitude)
+        {
+            m_LongitudeControl.SetValue(longitude);
+            m_LongitudeText.SetText($"{longitude}");
+        }
+
+        void OnNorthAngleChanged(int northAngle)
+        {
+            m_NorthAngleControl.SetValue(northAngle);
+            m_NorthAngleText.SetText($"{northAngle}");
         }
     }
 }

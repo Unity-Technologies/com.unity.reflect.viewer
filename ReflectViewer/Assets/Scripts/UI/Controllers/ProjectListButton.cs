@@ -1,84 +1,165 @@
 using System;
-using SharpFlux;
+using System.Collections.Generic;
 using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
 {
     [RequireComponent(typeof(Button))]
-    public class ProjectListButton : MonoBehaviour
+    public class ProjectListButton: MonoBehaviour
     {
-        [SerializeField, Tooltip("Button Image")]
-        Image m_ProjectsButtonBackground;
+        [SerializeField, Tooltip("Project List Button")]
+        ToolButton m_ProjectListButton;
         [SerializeField, Tooltip("Refresh Button")]
         Button m_RefreshButton;
 
-        Button m_ProjectListButton;
+        IUISelector<Project> m_ActiveProjectSelector;
+        bool m_RefreshVisibility;
+        IUISelector<OpenDialogAction.DialogType> m_ActiveDialogSelector;
+        IUISelector<SetDialogModeAction.DialogMode> m_DialogModeSelector;
+        IUISelector<LoginState> m_LoginStateSelector;
+        bool m_Interactable;
+
+        List<IDisposable> m_DisposeOnDisable = new List<IDisposable>();
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
         void Awake()
         {
-            m_ProjectListButton = GetComponent<Button>();
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<IButtonVisibility>(AppBarContext.current, nameof(IAppBarDataProvider.buttonVisibility), OnButtonVisibilityChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<IButtonInteractable>(AppBarContext.current, nameof(IAppBarDataProvider.buttonInteractable), OnButtonInteractableChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetHelpModeIDAction.HelpModeEntryID>(UIStateContext.current, nameof(IHelpModeDataProvider.helpModeEntryId), OnHelpModeEntryChanged));
+
+            m_RefreshVisibility = true;
+            m_Interactable = true;
         }
 
         void OnEnable()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.projectStateChanged += OnProjectStateDataChanged;
+            m_DisposeOnDisable.Add(m_ActiveProjectSelector = UISelectorFactory.createSelector<Project>(ProjectManagementContext<Project>.current, nameof(IProjectDataProvider<Project>.activeProject), OnActiveProjectChanged));
+            m_DisposeOnDisable.Add(m_ActiveDialogSelector = UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog), OnActiveDialogChanged));
+            m_DisposeOnDisable.Add(m_DialogModeSelector = UISelectorFactory.createSelector<SetDialogModeAction.DialogMode>(UIStateContext.current, nameof(IDialogDataProvider.dialogMode), OnDialogModeChanged));
+            m_DisposeOnDestroy.Add(m_LoginStateSelector = UISelectorFactory.createSelector<LoginState>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.loggedState)));
         }
 
         void OnDisable()
         {
-            UIStateManager.stateChanged -= OnStateDataChanged;
-            UIStateManager.projectStateChanged -= OnProjectStateDataChanged;
+            m_DisposeOnDisable.ForEach(x => x.Dispose());
+            m_DisposeOnDisable.Clear();
         }
 
         void Start()
         {
-            m_ProjectListButton.interactable = false;
+            m_ProjectListButton.button.interactable = false;
             m_RefreshButton.onClick.AddListener(OnRefreshClicked);
-            m_ProjectListButton.onClick.AddListener(OnProjectListButtonClick);
+            m_ProjectListButton.buttonClicked += OnProjectListButtonClick;
         }
 
         void OnRefreshClicked()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.RefreshProjectList, null));
+            Dispatcher.Dispatch(RefreshProjectListAction.From(ProjectListState.AwaitingUserData));
         }
 
-        void OnStateDataChanged(UIStateData stateData)
+        void OnActiveDialogChanged(OpenDialogAction.DialogType newData)
         {
-            if (stateData.activeDialog == DialogType.LandingScreen && stateData.dialogMode == DialogMode.Normal)
+            UpdateButtons();
+        }
+
+        void OnDialogModeChanged(SetDialogModeAction.DialogMode newData)
+        {
+            UpdateButtons();
+        }
+
+        public void UpdateButtons()
+        {
+            if (m_ActiveDialogSelector?.GetValue() == OpenDialogAction.DialogType.LandingScreen && m_DialogModeSelector?.GetValue() == SetDialogModeAction.DialogMode.Normal)
             {
-                m_ProjectListButton.interactable = UIStateManager.current.projectStateData.activeProject != Project.Empty;
-                m_RefreshButton.transform.parent.gameObject.SetActive(true);
-                m_ProjectsButtonBackground.color = UIConfig.propertySelectedColor;
+                if (m_DialogModeSelector.GetValue() == SetDialogModeAction.DialogMode.Normal)
+                {
+                    m_ProjectListButton.button.interactable = m_Interactable &&
+                        m_ActiveProjectSelector.GetValue() != null &&
+                        m_ActiveProjectSelector.GetValue() != Project.Empty &&
+                        m_LoginStateSelector.GetValue() == LoginState.LoggedIn;
+                    m_RefreshButton.transform.parent.gameObject.SetActive(m_RefreshVisibility);
+                }
+
+                m_ProjectListButton.selected = true;
             }
             else
             {
-                m_ProjectListButton.interactable = true;
+                m_ProjectListButton.button.interactable = m_Interactable;
                 m_RefreshButton.transform.parent.gameObject.SetActive(false);
-                m_ProjectsButtonBackground.color = Color.clear;
+                m_ProjectListButton.selected = false;
             }
         }
 
-        void OnProjectStateDataChanged(UIProjectStateData data)
+        void OnActiveProjectChanged(Project newData)
         {
-            m_ProjectListButton.interactable = data.activeProject != Project.Empty;
+            UpdateButtons();
         }
 
         void OnProjectListButtonClick()
         {
-            var dialogType = UIStateManager.current.stateData.activeDialog == DialogType.LandingScreen ? DialogType.None : DialogType.LandingScreen;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
-            if (dialogType == DialogType.None)
+            // Helpmode
+            if (HelpDialogController.SetHelpID(SetHelpModeIDAction.HelpModeEntryID.Projects))
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenOptionDialog, OptionDialogType.None));
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ResetToolbars, null));
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ResetExternalTools, null));
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
+                m_ProjectListButton.selected = true;
+                return;
+            }
+
+            Dispatcher.Dispatch(OpenSubDialogAction.From(OpenDialogAction.DialogType.None));
+            var dialogType = m_ActiveDialogSelector.GetValue() == OpenDialogAction.DialogType.LandingScreen ? OpenDialogAction.DialogType.None : OpenDialogAction.DialogType.LandingScreen;
+            Dispatcher.Dispatch(OpenDialogAction.From(dialogType));
+            if (dialogType == OpenDialogAction.DialogType.None)
+            {
+                Dispatcher.Dispatch(CloseAllDialogsAction.From(null));
+                Dispatcher.Dispatch(ResetToolBarAction.From(null));
+                Dispatcher.Dispatch(ToggleMeasureToolAction.From(ToggleMeasureToolAction.ToggleMeasureToolData.defaultData));
+                Dispatcher.Dispatch(ClearStatusAction.From(true));
+                Dispatcher.Dispatch(ClearStatusAction.From(false));
+            }
+        }
+
+        void OnButtonVisibilityChanged(IButtonVisibility data)
+        {
+            if (data?.type == (int)ButtonType.ProjectList)
+            {
+                m_ProjectListButton.transform.parent.gameObject.SetActive(data.visible);
+            }
+            else if (data?.type == (int)ButtonType.Refresh)
+            {
+                m_RefreshVisibility = data.visible;
+                m_RefreshButton.transform.parent.gameObject.SetActive(m_RefreshVisibility &&
+                    m_ActiveDialogSelector.GetValue() == OpenDialogAction.DialogType.LandingScreen &&
+                    m_DialogModeSelector.GetValue() == SetDialogModeAction.DialogMode.Normal
+                    );
+            }
+        }
+
+
+        void OnButtonInteractableChanged(IButtonInteractable data)
+        {
+            if (data?.type == (int)ButtonType.ProjectList)
+            {
+                m_Interactable = data.interactable;
+                UpdateButtons();
+            }
+        }
+
+        void OnHelpModeEntryChanged(SetHelpModeIDAction.HelpModeEntryID newData)
+        {
+            if (newData == SetHelpModeIDAction.HelpModeEntryID.None)
+            {
+                m_ProjectListButton.selected = false;
             }
         }
     }

@@ -1,80 +1,154 @@
 using System;
-using SharpFlux;
 using System.Collections.Generic;
 using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
-using UnityEngine.Reflect.MeasureTool;
 using UnityEngine.Reflect.Utils;
 using UnityEngine.UI;
 using UnityEngine.XR.OpenXR;
 using UnityEngine.Events;
 using System.IO;
 using System.Collections;
+using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.XR.Management;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
-
     [Serializable]
-    public class BadVRConfigurationEvent : UnityEvent<bool, Action> { }
+    public class BadVRConfigurationEvent : UnityEvent<Action> { }
 
     /// <summary>
     /// Controller responsible for managing the selection of the type of orbit tool
     /// </summary>
-    [RequireComponent(typeof(FanOutWindow))]
-    public class NavigationModeUIController : MonoBehaviour
+    public class NavigationModeUIController: MonoBehaviour
     {
 #pragma warning disable CS0649
-        [SerializeField]
-        GameObject m_FanOutControl;
         [SerializeField, Tooltip("Button to toggle the dialog.")]
         ToolButton m_NavigationButton;
         [SerializeField]
-        ToolButton m_OrbitButton;
+        ToolButton m_FlyButton;
         [SerializeField]
         ToolButton m_ARButton;
         [SerializeField]
         ToolButton m_VRButton;
         [SerializeField]
         ToolButton m_WalkButton;
-
-        [SerializeField]
-        Transform m_RadialLayoutParent;
-        [SerializeField]
-        Transform m_LinearLayoutParent;
 #pragma warning restore CS0649
-        bool m_ToolbarsEnabled;
-        FanOutWindow m_FanOutgWindow;
         ButtonControl m_ActiveButtonControl;
-        DeviceCapability? m_DeviceCapability;
-        ARMode? m_CachedARMode;
-        NavigationMode? m_NavigationMode;
-        DialogType? m_ActiveDialog;
 
-        Dictionary<NavigationMode, string> m_SceneDictionary = new Dictionary<NavigationMode, string>();
+        Dictionary<SetNavigationModeAction.NavigationMode, string> m_SceneDictionary = new Dictionary<SetNavigationModeAction.NavigationMode, string>();
 
         public BadVRConfigurationEvent badVRConfigurationEvent;
+        IUISelector<SetVREnableAction.DeviceCapability> m_DeviceCapabilitySelector;
+        IUISelector<IWalkInstructionUI> m_WalkInstructionSelector;
+        IUISelector<SetNavigationModeAction.NavigationMode> m_NavigationModeSelector;
+        IUISelector<OpenDialogAction.DialogType> m_ActiveSubDialogSelector;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.walkStateChanged += OnWalkStateDataChanged;
-
-            m_FanOutgWindow = GetComponent<FanOutWindow>();
+            m_DisposeOnDestroy.Add(m_DeviceCapabilitySelector = UISelectorFactory.createSelector<SetVREnableAction.DeviceCapability>(PipelineContext.current, nameof(IPipelineDataProvider.deviceCapability), OnDeviceCapabilityChanged));
+            m_DisposeOnDestroy.Add(m_WalkInstructionSelector = UISelectorFactory.createSelector<IWalkInstructionUI>(WalkModeContext.current, nameof(IWalkModeDataProvider.instruction)));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetForceNavigationModeAction.ForceNavigationModeTrigger>(ForceNavigationModeContext.current, nameof(IForceNavigationModeDataProvider.navigationMode), OnForceNavigationMode));
+            m_DisposeOnDestroy.Add(m_ActiveSubDialogSelector = UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeSubDialog), OnActiveSubDialogChanged));
+            m_DisposeOnDestroy.Add(m_NavigationModeSelector = UISelectorFactory.createSelector<SetNavigationModeAction.NavigationMode>(NavigationContext.current, nameof(INavigationDataProvider.navigationMode), OnNavigationModeChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(UIStateContext.current, nameof(IToolBarDataProvider.toolbarsEnabled), OnToolBarEnabledChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<List<NavigationModeInfo>>(NavigationContext.current, nameof(INavigationModeInfosDataProvider<NavigationModeInfo>.navigationModeInfos),
+                list =>
+                {
+                    if (list != null)
+                    {
+                        foreach (var info in list)
+                        {
+                            m_SceneDictionary[info.navigationMode] = info.modeScenePath;
+                        }
+                    }
+                }));
 
             m_NavigationButton.buttonClicked += OnNavigationButtonClicked;
 
-            m_OrbitButton.buttonClicked += OnOrbitButtonClicked;
+            m_FlyButton.selected = true;
+            m_FlyButton.buttonClicked += OnFlyButtonClicked;
             m_ARButton.buttonClicked += OnARButtonClicked;
             m_VRButton.buttonClicked += OnVRButtonClicked;
             m_WalkButton.buttonClicked += OnWalkButtonClicked;
+        }
 
-            foreach (var info in UIStateManager.current.stateData.navigationState.navigationModeInfos)
+        void OnToolBarEnabledChanged(bool newData)
+        {
+            m_NavigationButton.button.interactable = newData;
+        }
+
+        void OnNavigationModeChanged(SetNavigationModeAction.NavigationMode newData)
+        {
+            SetNavigationButtonIcon(newData);
+            SetNavigationButtonSelected(newData);
+        }
+
+        void OnActiveSubDialogChanged(OpenDialogAction.DialogType newData)
+        {
+            if (newData == OpenDialogAction.DialogType.ARCardSelection)
             {
-                m_SceneDictionary[info.navigationMode] = info.modeScenePath;
+                m_NavigationButton.SetIcon(m_ARButton.buttonIcon.sprite);
+                m_NavigationButton.selected = true;
             }
+            else
+            {
+                if (m_NavigationButton.selected != (newData == OpenDialogAction.DialogType.NavigationMode))
+                {
+                    SetNavigationButtonIcon(m_NavigationModeSelector.GetValue());
+                }
 
-            InitFanMode();
+                m_NavigationButton.selected = newData == OpenDialogAction.DialogType.NavigationMode;
+            }
+        }
+
+        void OnForceNavigationMode(SetForceNavigationModeAction.ForceNavigationModeTrigger data)
+        {
+            if (data.trigger)
+            {
+                IEnumerator WaitOneFrame()
+                {
+                    yield return null;
+                    switch ((SetNavigationModeAction.NavigationMode)data.mode)
+                    {
+                        case SetNavigationModeAction.NavigationMode.Orbit:
+                        case SetNavigationModeAction.NavigationMode.Fly:
+                        {
+                                OnFlyButtonClicked();
+                                break;
+                            }
+                        case SetNavigationModeAction.NavigationMode.Walk:
+                            {
+                                OnWalkButtonClicked();
+                                break;
+                            }
+                        case SetNavigationModeAction.NavigationMode.AR:
+                            {
+                                OnARButtonClicked();
+                                break;
+                            }
+                        case SetNavigationModeAction.NavigationMode.VR:
+                            {
+                                OnVRButtonClicked();
+                                break;
+                            }
+                    }
+                }
+                StartCoroutine(WaitOneFrame());
+            }
+        }
+
+        void OnDeviceCapabilityChanged(SetVREnableAction.DeviceCapability newData)
+        {
+            CheckDeviceCapability(newData);
         }
 
         void OnWalkStateDataChanged(UIWalkStateData walkData)
@@ -86,236 +160,194 @@ namespace Unity.Reflect.Viewer.UI
         [ContextMenu(nameof(OnWalkButtonClicked))]
         void OnWalkButtonClicked()
         {
-            if (UIStateManager.current.stateData.navigationState.navigationMode == NavigationMode.AR)
+            if (m_NavigationModeSelector.GetValue() == SetNavigationModeAction.NavigationMode.AR)
             {
-                OnOrbitButtonClicked();
+                OnFlyButtonClicked();
             }
 
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            navigationState.navigationMode = NavigationMode.Walk;
-            m_ARButton.button.interactable = false;
+            Dispatcher.Dispatch(CloseAllDialogsAction.From(null));
+            Dispatcher.Dispatch(SetNavigationModeAction.From(SetNavigationModeAction.NavigationMode.Walk));
+            Dispatcher.Dispatch(SetWalkEnableAction.From(true));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableWalk, true));
-
-            UIStateManager.current.walkStateData.instruction.Next();
+            m_WalkInstructionSelector.GetValue().Next();
         }
 
         [ContextMenu(nameof(OnVRButtonClicked))]
         void OnVRButtonClicked()
         {
+            StartCoroutine(DetectVRDevice());
+        }
 
-#if !UNITY_EDITOR
-            DetectOpenXRSetup(out bool APIDetectedRuntime, out bool VRDeviceDisconnected);
+        IEnumerator DetectVRDevice()
+        {
+            XRGeneralSettings.Instance.Manager.DeinitializeLoader();
+            yield return XRGeneralSettings.Instance.Manager.InitializeLoader();
 
-            if (!APIDetectedRuntime)
-            {
-                badVRConfigurationEvent?.Invoke(VRDeviceDisconnected, StartDelayActivateVRmode);
-            }
-            else
+            if (XRGeneralSettings.Instance.Manager.activeLoader != null)
             {
                 ActivateVRmode();
             }
-#else
-            // No possible detection from OpenXRRuntime Class in the Editor
-            // User will configure its OpenXR setup in the Player Settings
-            ActivateVRmode();
-#endif
-
+            else
+            {
+                badVRConfigurationEvent?.Invoke(OnVRButtonClicked);
+            }
         }
 
-        void StartDelayActivateVRmode()
+        void ActivateVRmode()
         {
-            StartCoroutine(DelayActivateVRmode());
-        }
-
-        IEnumerator DelayActivateVRmode()
-        {
-            yield return new WaitForSeconds(1);
-            ActivateVRmode();
-        }
-
-        void ActivateVRmode() {
             m_WalkButton.button.interactable = false;
             m_VRButton.button.interactable = false;
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            var currentNavigationMode = navigationState.navigationMode;
+            var currentNavigationMode = m_NavigationModeSelector.GetValue();
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableAR, false));
+            Dispatcher.Dispatch(SetAREnabledAction.From(false));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
+            Dispatcher.Dispatch(ClearStatusAction.From(true));
+            Dispatcher.Dispatch(ClearStatusAction.From(false));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusInstructionMode, false));
+            Dispatcher.Dispatch(SetInstructionMode.From(false));
 
-            if (currentNavigationMode != NavigationMode.Walk)
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.UnloadScene, m_SceneDictionary[currentNavigationMode]));
+            if (currentNavigationMode != SetNavigationModeAction.NavigationMode.Walk)
+                Dispatcher.Dispatch(UnloadSceneActions<Project>.From(m_SceneDictionary[currentNavigationMode]));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
+            Dispatcher.Dispatch(CloseAllDialogsAction.From(null));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.VRSidebar));
+            Dispatcher.Dispatch(SetActiveToolBarAction.From(SetActiveToolBarAction.ToolbarType.VRSidebar));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetTheme, ThemeController.k_VROpaque));
+            Dispatcher.Dispatch(SetThemeAction.From(ThemeController.k_VROpaque));
 
-            if(UIStateManager.current.walkStateData.walkEnabled)
-                UIStateManager.current.walkStateData.instruction.Cancel();
+            Dispatcher.Dispatch(SetWalkEnableAction.From(false));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableVR, true));
+            Dispatcher.Dispatch(SetVREnableAction.From(true));
 
-            navigationState.EnableAllNavigation(true);
-            navigationState.navigationMode = NavigationMode.VR;
-            navigationState.showScaleReference = false;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+            Dispatcher.Dispatch(EnableAllNavigationAction.From(true));
+            Dispatcher.Dispatch(SetNavigationModeAction.From(SetNavigationModeAction.NavigationMode.VR));
+            Dispatcher.Dispatch(SetShowScaleReferenceAction.From(false));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.LoadScene, m_SceneDictionary[NavigationMode.VR]));
+            Dispatcher.Dispatch(LoadSceneActions<Project>.From(m_SceneDictionary[SetNavigationModeAction.NavigationMode.VR]));
 
-            SettingsToolStateData settingsToolState = SettingsToolStateData.defaultData;
-            settingsToolState.bimFilterEnabled = true;
-            settingsToolState.sceneOptionEnabled = true;
-            settingsToolState.sunStudyEnabled = true;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSettingsToolState, settingsToolState));
+            Dispatcher.Dispatch(EnableBimFilterAction.From(true));
+            Dispatcher.Dispatch(EnableSceneSettingsAction.From(true));
+            Dispatcher.Dispatch(EnableSunStudyAction.From(true));
+            Dispatcher.Dispatch(EnableMarkerSettingsAction.From(true));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetMeasureToolOptions,  MeasureToolStateData.defaultData));
+            Dispatcher.Dispatch(ToggleMeasureToolAction.From(ToggleMeasureToolAction.ToggleMeasureToolData.defaultData));
         }
 
         [ContextMenu(nameof(OnARButtonClicked))]
         void OnARButtonClicked()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.ARCardSelection));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableVR, false));
+            Dispatcher.Dispatch(OpenSubDialogAction.From(OpenDialogAction.DialogType.None));
+            Dispatcher.Dispatch(OpenDialogAction.From(OpenDialogAction.DialogType.ARCardSelection));
+            Dispatcher.Dispatch(SetVREnableAction.From(false));
         }
 
-        [ContextMenu(nameof(OnOrbitButtonClicked))]
-        void OnOrbitButtonClicked()
+        [ContextMenu(nameof(OnFlyButtonClicked))]
+        void OnFlyButtonClicked()
         {
-            m_WalkButton.button.interactable = true;
+            Dispatcher.Dispatch(CloseAllDialogsAction.From(null));
 
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            var currentNavigationMode = navigationState.navigationMode;
-            CheckDeviceCapability(UIStateManager.current.stateData.deviceCapability);
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ShowModel, true));
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableAR, false));
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableVR, false));
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusInstructionMode, false));
-
-            if (currentNavigationMode != NavigationMode.Walk)
+            var currentNavigationMode = m_NavigationModeSelector.GetValue();
+            if (currentNavigationMode == SetNavigationModeAction.NavigationMode.Orbit ||
+                currentNavigationMode == SetNavigationModeAction.NavigationMode.Fly)
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.UnloadScene, m_SceneDictionary[currentNavigationMode]));
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ResetHomeView, null));
+                return;
             }
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
+            m_WalkButton.button.interactable = true;
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.OrbitSidebar));
+            CheckDeviceCapability(m_DeviceCapabilitySelector.GetValue());
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetTheme, ThemeController.k_Default));
+            Dispatcher.Dispatch(ShowModelAction.From(true));
 
-            if(UIStateManager.current.walkStateData.walkEnabled)
-                UIStateManager.current.walkStateData.instruction.Cancel();
+            Dispatcher.Dispatch(SetAREnabledAction.From(false));
 
-            navigationState.EnableAllNavigation(true);
-            navigationState.navigationMode = NavigationMode.Orbit;
-            navigationState.showScaleReference = false;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+            Dispatcher.Dispatch(SetVREnableAction.From(false));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.LoadScene, m_SceneDictionary[NavigationMode.Orbit]));
+            Dispatcher.Dispatch(ClearStatusAction.From(true));
+            Dispatcher.Dispatch(ClearStatusAction.From(false));
+            Dispatcher.Dispatch(SetInstructionMode.From(false));
 
-            SettingsToolStateData settingsToolState = SettingsToolStateData.defaultData;
-            settingsToolState.bimFilterEnabled = true;
-            settingsToolState.sceneOptionEnabled = true;
-            settingsToolState.sunStudyEnabled = true;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSettingsToolState, settingsToolState));
+            if (currentNavigationMode != SetNavigationModeAction.NavigationMode.Walk)
+            {
+                Dispatcher.Dispatch(UnloadSceneActions<Project>.From(m_SceneDictionary[currentNavigationMode]));
+                Dispatcher.Dispatch(SetCameraViewTypeAction.From(SetCameraViewTypeAction.CameraViewType.Default));
+            }
+
+            Dispatcher.Dispatch(SetActiveToolBarAction.From(SetActiveToolBarAction.ToolbarType.OrbitSidebar));
+
+            Dispatcher.Dispatch(SetThemeAction.From(ThemeController.k_Default));
+
+            Dispatcher.Dispatch(SetWalkEnableAction.From(false));
+
+            Dispatcher.Dispatch(EnableAllNavigationAction.From(true));
+            Dispatcher.Dispatch(SetNavigationModeAction.From(SetNavigationModeAction.NavigationMode.Orbit));
+            Dispatcher.Dispatch(SetShowScaleReferenceAction.From(false));
+
+            Dispatcher.Dispatch(LoadSceneActions<Project>.From(m_SceneDictionary[SetNavigationModeAction.NavigationMode.Orbit]));
+
+            Dispatcher.Dispatch(EnableBimFilterAction.From(true));
+            Dispatcher.Dispatch(EnableSceneSettingsAction.From(true));
+            Dispatcher.Dispatch(EnableSunStudyAction.From(true));
+            Dispatcher.Dispatch(EnableMarkerSettingsAction.From(true));
+
+            var arToolStateData = SetARToolStateAction.SetARToolStateData.defaultData;
+            arToolStateData.selectionEnabled = true;
+            arToolStateData.measureToolEnabled = true;
+            Dispatcher.Dispatch(SetARToolStateAction.From(arToolStateData));
+        }
+
+        /// <summary>
+        /// Switch application to Orbit Mode
+        /// </summary>
+        public void StartOrbitMode()
+        {
+            OnFlyButtonClicked();
         }
 
         [ContextMenu(nameof(OnNavigationButtonClicked))]
         void OnNavigationButtonClicked()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
-
-            var dialogType = m_FanOutgWindow.open ? DialogType.None : DialogType.NavigationMode;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+            var dialogType = m_ActiveSubDialogSelector.GetValue() == OpenDialogAction.DialogType.NavigationMode ? OpenDialogAction.DialogType.None : OpenDialogAction.DialogType.NavigationMode;
+            Dispatcher.Dispatch(OpenSubDialogAction.From(dialogType));
         }
 
-        void OnStateDataChanged(UIStateData stateData)
+        void CheckDeviceCapability(SetVREnableAction.DeviceCapability deviceCapability)
         {
-            if (m_ActiveDialog != stateData.activeDialog)
-            {
-                if (stateData.activeDialog == DialogType.ARCardSelection)
-                {
-                    m_NavigationButton.SetIcon(m_ARButton.buttonIcon.sprite);
-                    m_NavigationButton.selected = true;
-                }
-                else
-                {
-                    if (m_NavigationButton.selected != (stateData.activeDialog == DialogType.NavigationMode))
-                    {
-                        SetNavigationButtonIcon(stateData.navigationState.navigationMode);
-                    }
-
-                    m_NavigationButton.selected = stateData.activeDialog == DialogType.NavigationMode;
-                }
-
-                m_ActiveDialog = stateData.activeDialog;
-            }
-
-            if (m_DeviceCapability != stateData.deviceCapability)
-            {
-               CheckDeviceCapability(stateData.deviceCapability);
-               m_DeviceCapability = stateData.deviceCapability;
-            }
-
-            if (m_ToolbarsEnabled != stateData.toolbarsEnabled)
-            {
-                m_NavigationButton.button.interactable = stateData.toolbarsEnabled;
-                m_ToolbarsEnabled = stateData.toolbarsEnabled;
-            }
-
-            if (m_NavigationMode != stateData.navigationState.navigationMode)
-            {
-                SetNavigationButtonIcon(stateData.navigationState.navigationMode);
-                m_NavigationMode = stateData.navigationState.navigationMode;
-            }
-        }
-
-        void CheckDeviceCapability(DeviceCapability deviceCapability)
-        {
+            m_ARButton.gameObject.SetActive(false);
             m_ARButton.button.interactable = false;
+
+            m_VRButton.gameObject.SetActive(false);
             m_VRButton.button.interactable = false;
 
-            if (deviceCapability.HasFlag(DeviceCapability.ARCapability))
+            if (deviceCapability.HasFlag(SetVREnableAction.DeviceCapability.ARCapability))
             {
+                m_ARButton.gameObject.SetActive(true);
                 m_ARButton.button.interactable = true;
             }
 
-            if (deviceCapability.HasFlag(DeviceCapability.VRCapability))
+            if (deviceCapability.HasFlag(SetVREnableAction.DeviceCapability.VRCapability))
             {
+                m_VRButton.gameObject.SetActive(true);
                 m_VRButton.button.interactable = true;
             }
         }
 
-        void SetNavigationButtonIcon(NavigationMode navigationMode)
+        void SetNavigationButtonIcon(SetNavigationModeAction.NavigationMode navigationMode)
         {
             Image buttonIcon = null;
             switch (navigationMode)
             {
-                case NavigationMode.Orbit:
-                    buttonIcon = m_OrbitButton.buttonIcon;
+                case SetNavigationModeAction.NavigationMode.Orbit:
+                case SetNavigationModeAction.NavigationMode.Fly:
+                    buttonIcon = m_FlyButton.buttonIcon;
                     break;
-                case NavigationMode.AR:
+                case SetNavigationModeAction.NavigationMode.AR:
                     buttonIcon = m_ARButton.buttonIcon;
                     break;
-                case NavigationMode.VR:
+                case SetNavigationModeAction.NavigationMode.VR:
                     buttonIcon = m_VRButton.buttonIcon;
                     break;
-                case NavigationMode.Walk:
+                case SetNavigationModeAction.NavigationMode.Walk:
                     buttonIcon = m_WalkButton.buttonIcon;
                     break;
             }
@@ -326,51 +358,28 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        void DetectOpenXRSetup(out bool APIDetectedRuntime, out bool VRDeviceDisconnected)
+        void SetNavigationButtonSelected(SetNavigationModeAction.NavigationMode mode)
         {
-            // 0.0.0 is the default value when no device is connected, or when no Krhonos registry ActiveRuntime key is provided
-            APIDetectedRuntime = !OpenXRRuntime.version.Equals("0.0.0");
-            VRDeviceDisconnected = false;
-
-            var enabledExtensions = string.Join(",", OpenXRRuntime.GetEnabledExtensions());
-            Debug.Log($"OPENXR API detected Capabilities: {OpenXRRuntime.name}, {OpenXRRuntime.apiVersion}, {OpenXRRuntime.pluginVersion}, {OpenXRRuntime.version}, {enabledExtensions}");
-
-#if UNITY_STANDALONE_WIN
-            // Lets see if we can differantiate a disconnected device from a missing OpenXR setup
-            if (!APIDetectedRuntime)
+            m_FlyButton.selected = false;
+            m_WalkButton.selected = false;
+            m_ARButton.selected = false;
+            m_VRButton.selected = false;
+            switch (mode)
             {
-                // Best effort detection as accessing LocalMachine registry key hive can be denied for security
-                try
-                {
-                    using (var reflectKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey("SOFTWARE\\Khronos\\OpenXR\\1"))
-                    {
-                        var detectedActiveRuntimeJson = reflectKey.GetValue("ActiveRuntime");
-                        if (detectedActiveRuntimeJson != null && File.Exists(detectedActiveRuntimeJson.ToString()))
-                        {
-                            VRDeviceDisconnected = true;
-                        }
-                    }
-                }
-                catch (Exception) { }
+                case SetNavigationModeAction.NavigationMode.Fly:
+                case SetNavigationModeAction.NavigationMode.Orbit:
+                    m_FlyButton.selected = true;
+                    break;
+                case SetNavigationModeAction.NavigationMode.Walk:
+                    m_WalkButton.selected = true;
+                    break;
+                case SetNavigationModeAction.NavigationMode.AR:
+                    m_ARButton.selected = true;
+                    break;
+                case SetNavigationModeAction.NavigationMode.VR:
+                    m_VRButton.selected = true;
+                    break;
             }
-#endif
-        }
-
-        void InitFanMode()
-        {
-            var screenDpi = UIUtils.GetScreenDpi();
-            var deviceType = UIUtils.GetDeviceType(Screen.width, Screen.height, screenDpi);
-            bool linearFanMode = deviceType == DisplayType.Phone;
-
-            var layoutParent = linearFanMode ? m_LinearLayoutParent : m_RadialLayoutParent;
-            m_ARButton.transform.parent.SetParent(layoutParent);
-            m_ARButton.transform.parent.localScale = Vector3.one;
-            m_VRButton.transform.parent.SetParent(layoutParent);
-            m_VRButton.transform.parent.localScale = Vector3.one;
-            m_OrbitButton.transform.parent.SetParent(layoutParent);
-            m_OrbitButton.transform.parent.localScale = Vector3.one;
-            m_WalkButton.transform.parent.SetParent(layoutParent);
-            m_WalkButton.transform.parent.localScale = Vector3.one;
         }
     }
 }

@@ -1,6 +1,10 @@
 {
     "name": "Unity.Reflect.Viewer.MeasureTool",
-    "references": [],
+    "rootNamespace": "",
+    "references": [
+        "GUID:807be9350277eff4182cd3600de41d3a",
+        "GUID:9b97b9672aeaf426fb164203d7837d84"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

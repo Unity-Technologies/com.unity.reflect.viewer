@@ -2,16 +2,18 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using SharpFlux;
 using SharpFlux.Dispatching;
 using TMPro;
+using Unity.Reflect.Runtime;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Reflect;
-using UnityEngine.Reflect.MeasureTool;
 using UnityEngine.UI;
 using Unity.Reflect.Utils;
+using UnityEngine.Reflect.Viewer;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -55,39 +57,62 @@ namespace Unity.Reflect.Viewer.UI
 
         const float k_VRLayoutOffsetUp = 500;
         RectTransform m_RectTransform;
-        Image m_DialogButtonImage;
-
-        Project m_CurrentActiveProject = Project.Empty;
-        Project m_CurrentSelectedProject = Project.Empty;
-        int m_CurrentOptionIndex;
-
-        List<ProjectListItem> m_ProjectListItems = new List<ProjectListItem>();
-        ProjectListItem m_LastHighlightedItem;
+        readonly List<ProjectListItem> m_ProjectListItems = new List<ProjectListItem>();
         ProjectListItem m_ActiveProjectListItem;
-
-        RectTransform m_OptionPopupRectTransform;
         RectTransform m_ScrollRectTransform;
-
-        ProjectListFilterData m_CurrentFilterData;
-        ProjectServerType m_CurrentServerType;
-
         LoginState? m_LoginState;
-        ProjectRoom[] m_Rooms;
+        ProjectListState? m_ProjectListState;
+        Coroutine m_SearchCoroutine;
+        IUISelector<Project> m_ActiveProjectGetter;
+        IUISelector<Sprite> m_ActiveProjectThumbnailGetter;
+        IUISelector<OpenDialogAction.DialogType> m_ActiveDialogGetter;
+        IUISelector<SetNavigationModeAction.NavigationMode> m_NavigationModeGetter;
+        IUISelector<SetLandingScreenFilterProjectServerAction.ProjectServerType> m_LandingScreenProjectServerTypeGetter;
+        static IUISelector<SetProgressStateAction.ProgressState> s_ProgressStateGetter;
+        IUISelector<string> m_LandingScreenSearchStringGetter;
+        IUISelector<LoginState> m_LoggedStateGetter;
+        IUISelector<ProjectListState> m_ProjectListStateGetter;
+        static IUISelector<IProjectRoom[]> s_RoomsGetter;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
 
-        ProjectListSortData m_CurrentProjectSortData;
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
         void Awake()
         {
-            m_ProjectOption.gameObject.SetActive(false);
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<ProjectListSortData>(ProjectContext.current, nameof(IProjectSortDataProvider.projectSortData), OnProjectSortDataChanged));
+            m_DisposeOnDestroy.Add(m_ActiveProjectGetter = UISelectorFactory.createSelector<Project>(ProjectManagementContext<Project>.current, nameof(IProjectDataProvider<Project>.activeProject), OnActiveProjectChanged));
+            m_DisposeOnDestroy.Add(m_ActiveProjectThumbnailGetter = UISelectorFactory.createSelector<Sprite>(ProjectManagementContext<Project>.current, nameof(IProjectDataProvider<Project>.activeProjectThumbnail), OnActiveProjectThumbnailChanged));
+            m_DisposeOnDestroy.Add(m_LoggedStateGetter = UISelectorFactory.createSelector<LoginState>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.loggedState), OnLoggedStateDataChanged));
+            m_DisposeOnDestroy.Add(m_ProjectListStateGetter = UISelectorFactory.createSelector<ProjectListState>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.projectListState)));
+            m_DisposeOnDestroy.Add(s_RoomsGetter = UISelectorFactory.createSelector<IProjectRoom[]>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.rooms), OnProjectRoomUpdate));
+            m_DisposeOnDestroy.Add(m_LandingScreenProjectServerTypeGetter = UISelectorFactory.createSelector<SetLandingScreenFilterProjectServerAction.ProjectServerType>(LandingScreenContext.current, nameof(IProjectListFilterDataProvider.projectServerType), OnProjectServerTypeChanged));
+            m_DisposeOnDestroy.Add(m_LandingScreenSearchStringGetter = UISelectorFactory.createSelector<string>(LandingScreenContext.current, nameof(IProjectListFilterDataProvider.searchString), OnFilterSearchStringChanged));
+            m_DisposeOnDestroy.Add(m_ActiveDialogGetter = UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog)));
+            m_DisposeOnDestroy.Add(m_NavigationModeGetter = UISelectorFactory.createSelector<SetNavigationModeAction.NavigationMode>(NavigationContext.current, nameof(INavigationDataProvider.navigationMode), OnNavigationModeChanged));
+            m_DisposeOnDestroy.Add(s_ProgressStateGetter = UISelectorFactory.createSelector<SetProgressStateAction.ProgressState>(ProgressContext.current, nameof(IProgressDataProvider.progressState)));
 
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.sessionStateChanged += OnSessionStateDataChanged;
-            UIStateManager.projectStateChanged += OnProjectStateDataChanged;
-
-            m_OptionPopupRectTransform = m_ProjectOption.GetComponent<RectTransform>();
             m_ScrollRectTransform = m_ScrollRect.GetComponent<RectTransform>();
 
             m_RectTransform = GetComponent<RectTransform>();
+
+            // Auto-close Option dialog events
+            m_ScrollRect.onValueChanged.AddListener((pos) => HideProjectOptionDialog());
+            m_ProjectOption.downloadButtonClicked += HideProjectOptionDialog;
+            m_ProjectOption.deleteButtonClicked += HideProjectOptionDialog;
+        }
+
+        void OnNavigationModeChanged(SetNavigationModeAction.NavigationMode newData)
+        {
+            if (m_ActiveDialogGetter.GetValue() == OpenDialogAction.DialogType.LandingScreen)
+            {
+                var top = (newData == SetNavigationModeAction.NavigationMode.VR) ? k_VRLayoutOffsetUp : 0f;
+                var bottom = (newData == SetNavigationModeAction.NavigationMode.VR) ? m_RectTransform.offsetMin.y : 0f;
+                m_RectTransform.offsetMax = new Vector2(m_RectTransform.offsetMax.x, top);
+                m_RectTransform.offsetMin = new Vector2(m_RectTransform.offsetMin.x, bottom);
+            }
         }
 
         void Start()
@@ -105,27 +130,25 @@ namespace Unity.Reflect.Viewer.UI
             m_SortDropdown.onValueChanged.AddListener(OnSortMethodValueChanged);
             m_Suspending.SetActive(true);
             m_NoProjectPanel.SetActive(false);
+            m_ProjectListItemPrefab.gameObject.SetActive(false);
         }
 
-        void OnSortMethodValueChanged(int value)
+        static void OnSortMethodValueChanged(int value)
         {
             ProjectSortField sortField = (ProjectSortField)value;
             switch (sortField)
             {
                 case ProjectSortField.SortByDate:
-                    Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetProjectSortMethod, ProjectSortField.SortByDate));
+                    Dispatcher.Dispatch(SetProjectSortMethodAction.From(ProjectSortField.SortByDate));
                     break;
                 case ProjectSortField.SortByName:
-                    Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetProjectSortMethod, ProjectSortField.SortByName));
+                    Dispatcher.Dispatch(SetProjectSortMethodAction.From(ProjectSortField.SortByName));
                     break;
                 default:
-                    Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetProjectSortMethod, ProjectSortField.SortByDate));
+                    Dispatcher.Dispatch(SetProjectSortMethodAction.From(ProjectSortField.SortByDate));
                     break;
             }
         }
-
-        Coroutine m_SearchCoroutine;
-        NavigationMode m_CurrentNavigationMode;
 
         void OnSearchInputTextChanged(string search)
         {
@@ -137,177 +160,121 @@ namespace Unity.Reflect.Viewer.UI
             m_SearchCoroutine = StartCoroutine(SearchStringChanged(search));
         }
 
-        void OnSearchInputSelected(string input)
+        static void OnSearchInputSelected(string input)
         {
             DisableMovementMapping(true);
         }
-        void OnSearchInputDeselected(string input)
+
+        static void OnSearchInputDeselected(string input)
         {
             DisableMovementMapping(false);
         }
 
-        public static void DisableMovementMapping(bool disableWASD)
+        static void DisableMovementMapping(bool disableWASD)
         {
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            navigationState.moveEnabled = !disableWASD;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+            Dispatcher.Dispatch(SetMoveEnabledAction.From(!disableWASD));
         }
 
         IEnumerator SearchStringChanged(string search)
         {
             yield return new WaitForSeconds(0.2f);
-            var data = UIStateManager.current.stateData.landingScreenFilterData;
-            data.searchString = search;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetLandingScreenFilter, data));
+            Dispatcher.Dispatch(SetLandingScreenFilterSearchStringAction.From(search));
         }
 
-        void OnProjectTabButtonClicked(ProjectServerType projectServerType)
+        void OnProjectTabButtonClicked(SetLandingScreenFilterProjectServerAction.ProjectServerType projectServerType)
         {
-            var data = UIStateManager.current.stateData.landingScreenFilterData;
-            data.projectServerType = projectServerType;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetLandingScreenFilter, data));
+            Dispatcher.Dispatch(SetLandingScreenFilterProjectServerAction.From(projectServerType));
         }
 
-        Vector2 GetOptionPosition(ProjectListItem item)
+        void OnFilterSearchStringChanged(string newData)
         {
-            var anchoredPositionY = m_ScrollViewContent.GetComponent<RectTransform>().anchoredPosition.y;
-            var localPositionY = item.transform.localPosition.y + anchoredPositionY;
-
-            var itemHeight = item.GetComponent<RectTransform>().rect.height;
-            var adjustY = m_OptionPopupRectTransform.rect.height - itemHeight;
-            if (localPositionY - m_OptionPopupRectTransform.rect.height < -m_ScrollRectTransform.rect.height)
-            {
-                return new Vector2(m_ProjectOption.transform.localPosition.x, localPositionY + adjustY);
-            }
-            else
-            {
-                return new Vector2(m_ProjectOption.transform.localPosition.x, localPositionY);
-            }
+            m_ScrollRect.verticalNormalizedPosition = 1;
+            FilterProjectList();
         }
 
-        void OnStateDataChanged(UIStateData data)
+        void OnProjectServerTypeChanged(SetLandingScreenFilterProjectServerAction.ProjectServerType newData)
         {
-            if (data.selectedProjectOption != m_CurrentSelectedProject)
-            {
-                if (m_LastHighlightedItem != null)
-                {
-                    m_LastHighlightedItem.SetHighlight(false);
-                    m_LastHighlightedItem = null;
-                }
-
-                if (data.selectedProjectOption != Project.Empty)
-                {
-                    var projectListItem = m_ProjectListItems.SingleOrDefault(e => e.room.project == data.selectedProjectOption);
-                    if (projectListItem != null)
-                    {
-                        projectListItem.SetHighlight(true);
-                        m_LastHighlightedItem = projectListItem;
-                    }
-
-                    m_ProjectOption.transform.SetParent(m_ScrollRect.transform);
-                    m_ProjectOption.transform.localPosition = GetOptionPosition(projectListItem);
-                    m_ProjectOption.transform.SetParent(m_ScrollRect.transform.parent);
-
-                    m_ScrollRect.StopMovement();
-                    m_ProjectOption.InitProjectOption(data.selectedProjectOption);
-                    m_ProjectOption.gameObject.SetActive(true);
-                    m_TapDetector.SetActive(true);
-                }
-                else
-                {
-                    m_ProjectOption.gameObject.SetActive(false);
-                    m_TapDetector.SetActive(false);
-                }
-                m_CurrentSelectedProject = data.selectedProjectOption;
-                m_CurrentOptionIndex = data.projectOptionIndex;
-            }
-            else if (data.projectOptionIndex != m_CurrentOptionIndex)
-            {
-                m_ProjectOption.InitProjectOption(data.selectedProjectOption);
-                m_CurrentOptionIndex = data.projectOptionIndex;
-            }
-
-            if (data.landingScreenFilterData != m_CurrentFilterData)
-            {
-                m_ScrollRect.verticalNormalizedPosition = 1;
-                FilterProjectList(data.landingScreenFilterData);
-                m_CurrentFilterData = data.landingScreenFilterData;
-
-                if (data.landingScreenFilterData.projectServerType != m_CurrentServerType)
-                {
-                    m_ProjectTabController.SelectButtonType(data.landingScreenFilterData.projectServerType);
-                    m_CurrentServerType = data.landingScreenFilterData.projectServerType;
-                }
-            }
-
-            UpdateLayout(data);
+            m_ScrollRect.verticalNormalizedPosition = 1;
+            FilterProjectList();
+            m_ProjectTabController.SelectButtonType(newData);
         }
 
-        void UpdateLayout(UIStateData data)
+        void FilterProjectList()
         {
-            if (data.activeDialog == DialogType.LandingScreen &&
-                data.navigationState.navigationMode != m_CurrentNavigationMode)
-            {
-                m_CurrentNavigationMode = data.navigationState.navigationMode;
-                var top = (m_CurrentNavigationMode == NavigationMode.VR) ? k_VRLayoutOffsetUp: 0f;
-                var bottom = (m_CurrentNavigationMode == NavigationMode.VR) ? m_RectTransform.offsetMin.y: 0f;
-                m_RectTransform.offsetMax = new Vector2(m_RectTransform.offsetMax.x, top);
-                m_RectTransform.offsetMin = new Vector2(m_RectTransform.offsetMin.x, bottom);
-            }
-        }
+            if (m_LandingScreenProjectServerTypeGetter == null)
+                return;
 
-        void FilterProjectList(ProjectListFilterData filterData)
-        {
-            bool stringFilter = !string.IsNullOrWhiteSpace(filterData.searchString);
-            int visibleCount = 0;
+            var stringFilter = m_LandingScreenSearchStringGetter != null && !string.IsNullOrWhiteSpace(m_LandingScreenSearchStringGetter.GetValue());
 
             foreach (var projectListItem in m_ProjectListItems)
             {
-                bool visible = filterData.projectServerType.HasFlag(projectListItem.projectServerType);
+                var visible = m_LandingScreenProjectServerTypeGetter.GetValue().HasFlag(projectListItem.projectServerType);
                 if (stringFilter)
                 {
-                    visible = visible && projectListItem.room.project.name.IndexOf(filterData.searchString, StringComparison.OrdinalIgnoreCase) >= 0;
+                    visible = visible && projectListItem.room.project.name.IndexOf(m_LandingScreenSearchStringGetter.GetValue(), StringComparison.OrdinalIgnoreCase) >= 0;
                 }
 
                 if (visible)
                 {
-                    projectListItem.SetHighlightString(filterData.searchString);
-                    visibleCount++;
+                    projectListItem.SetHighlightString(m_LandingScreenSearchStringGetter.GetValue());
                 }
 
                 projectListItem.gameObject.SetActive(visible);
             }
 
-            var isLoggedIn= UIStateManager.current.sessionStateData.sessionState.loggedState == LoginState.LoggedIn;
+            var isLoggedIn = m_LoggedStateGetter.GetValue() == LoginState.LoggedIn;
             m_NoProjectPanel.SetActive(!isLoggedIn || HasNoProjectsAvailable());
         }
 
-        void OnProjectStateDataChanged(UIProjectStateData data)
+        void OnActiveProjectChanged(Project newData)
         {
-            if (data.activeProject != m_CurrentActiveProject)
-            {
-                m_CurrentActiveProject = data.activeProject;
-                m_ActiveProjectListItem = m_ProjectListItems.FirstOrDefault(item => item.room.project == m_CurrentActiveProject);
-            }
+            m_ActiveProjectListItem = m_ProjectListItems.FirstOrDefault(item => item.room.project.projectId == newData.projectId);
+        }
 
-            if (m_ActiveProjectListItem != null && data.activeProjectThumbnail != m_ActiveProjectListItem.projectThumbnail)
-            {
-                m_ActiveProjectListItem.projectThumbnail = data.activeProjectThumbnail;
-            }
+        void OnActiveProjectThumbnailChanged(Sprite newData)
+        {
+            if (m_ActiveProjectListItem == null || m_ActiveProjectListItem.projectThumbnail == newData)
+                return;
 
-            if (data.projectSortData != m_CurrentProjectSortData)
+            if (m_ActiveProjectListItem.room.project is EmbeddedProject && m_ActiveProjectListItem.projectThumbnail != null)
+                return; // Do not override the thumbnail of embedded projects
+
+            m_ActiveProjectListItem.projectThumbnail = newData;
+        }
+
+        void OnProjectSortDataChanged(ProjectListSortData newData)
+        {
+            SortProjects(newData);
+        }
+
+        void OnProjectRoomUpdate(IProjectRoom[] data)
+        {
+            if (data == null)
+                return;
+
+            UpdateProjectItems(data);
+            if (HasNoProjectsAvailable())
             {
-                m_CurrentProjectSortData = data.projectSortData;
-                SortProjects();
+                m_NoProjectPanel.SetActive(true);
+                m_FetchingProjectsPanel.SetActive(false);
             }
         }
 
-        void OnSessionStateDataChanged(UISessionStateData data)
+        void OnLoggedStateDataChanged(LoginState newData)
         {
-            if (m_LoginState != data.sessionState.loggedState)
+            if (m_LoginState != newData)
             {
-                switch (data.sessionState.loggedState)
+                switch (newData)
                 {
+                    case LoginState.ProcessingToken:
+                        ClearProjectListItem();
+                        m_NoProjectPanel.SetActive(false);
+                        m_FetchingProjectsPanel.SetActive(false);
+                        break;
+                    case LoginState.LoggingIn:
+                        m_NoProjectPanel.SetActive(false);
+                        m_FetchingProjectsPanel.SetActive(false);
+                        break;
                     case LoginState.LoggedIn:
                         m_NoProjectPanel.SetActive(false);
                         m_FetchingProjectsPanel.SetActive(true);
@@ -317,16 +284,15 @@ namespace Unity.Reflect.Viewer.UI
                         m_NoProjectPanel.SetActive(false);
                         m_FetchingProjectsPanel.SetActive(false);
                         break;
-                    case LoginState.LoggingIn:
                     case LoginState.LoggingOut:
                         // todo put spinner
                         break;
                 }
 
-                m_LoginState = data.sessionState.loggedState;
+                m_LoginState = newData;
             }
 
-            if(m_LoginState == LoginState.LoggedIn)
+            if (m_LoginState == LoginState.LoggedIn)
             {
                 // Display Cloud environment debug info when it's not "Production"
                 var environmentInfo = LocaleUtils.GetEnvironmentInfo();
@@ -340,7 +306,7 @@ namespace Unity.Reflect.Viewer.UI
                             m_CloudSettingDebugInfo.text = $"Environment: {environmentInfo.customUrl}";
                         else
                             m_CloudSettingDebugInfo.text =
-                                $"Environment: {ProjectServerClient.ProjectServerAddress(environmentInfo.provider)}";
+                                $"Environment: {ProjectServerClient.ProjectServerAddress(environmentInfo.provider, Protocol.Http)}";
                     }
                     else
                     {
@@ -351,30 +317,19 @@ namespace Unity.Reflect.Viewer.UI
                 {
                     m_CloudSettingDebugInfo.gameObject.SetActive(false);
                 }
-
-                UpdateProjectItems(data.sessionState.rooms);
-
-                if (m_Rooms != data.sessionState.rooms || !EnumerableExtension.SafeSequenceEquals(m_Rooms, data.sessionState.rooms))
-                {
-                    m_Rooms = data.sessionState.rooms;
-                }
-                else if (HasNoProjectsAvailable())
-                {
-                    m_NoProjectPanel.SetActive(true);
-                    m_FetchingProjectsPanel.SetActive(false);
-                }
             }
-
         }
 
-        bool IsLoadingProjects()
+        static bool IsLoadingProjects()
         {
-            return UIStateManager.current.stateData.progressData.progressState != ProgressData.ProgressState.NoPendingRequest && UIStateManager.current.sessionStateData.sessionState.rooms.Length == 0;
+            return s_ProgressStateGetter != null && s_RoomsGetter != null
+                && s_ProgressStateGetter?.GetValue() != SetProgressStateAction.ProgressState.NoPendingRequest && s_RoomsGetter.GetValue().Length == 0;
         }
 
-        bool HasNoProjectsAvailable()
+        static bool HasNoProjectsAvailable()
         {
-            return UIStateManager.current.stateData.progressData.progressState == ProgressData.ProgressState.NoPendingRequest && UIStateManager.current.sessionStateData.sessionState.rooms.Length == 0;
+            return (s_ProgressStateGetter == null || s_ProgressStateGetter == null)
+                || (s_ProgressStateGetter.GetValue() == SetProgressStateAction.ProgressState.NoPendingRequest && s_RoomsGetter.GetValue().Length == 0);
         }
 
         void ClearProjectListItem()
@@ -386,12 +341,12 @@ namespace Unity.Reflect.Viewer.UI
             m_ProjectListItems.Clear();
         }
 
-        void UpdateProjectItems(ProjectRoom[] rooms)
+        void UpdateProjectItems(IProjectRoom[] rooms)
         {
             if(m_FetchingProjectsPanel.activeSelf)
                 m_FetchingProjectsPanel.SetActive(IsLoadingProjects());
 
-            Array.Sort(rooms, (room1, room2) => room2.project.lastPublished.CompareTo(room1.project.lastPublished));
+            Array.Sort(rooms, (room1, room2) => ((ProjectRoom)room2).project.lastPublished.CompareTo(((ProjectRoom)room1).project.lastPublished));
             for (var index = 0; index < rooms.Length || index < m_ProjectListItems.Count; index++)
             {
                 var listItem = GetProjectListItemAt(index);
@@ -399,7 +354,7 @@ namespace Unity.Reflect.Viewer.UI
                 {
                     var room = rooms[index];
                     listItem.gameObject.SetActive(true);
-                    listItem.OnProjectRoomChanged(room);
+                    listItem.OnProjectRoomChanged((ProjectRoom)room);
                 }
                 else
                 {
@@ -409,7 +364,7 @@ namespace Unity.Reflect.Viewer.UI
 
             m_ProjectListItemPrefab.gameObject.SetActive(false);
 
-            FilterProjectList(m_CurrentFilterData);
+            FilterProjectList();
         }
 
         ProjectListItem GetProjectListItemAt(int index)
@@ -420,6 +375,7 @@ namespace Unity.Reflect.Viewer.UI
                 item = Instantiate(m_ProjectListItemPrefab, m_ScrollViewContent.transform);
                 item.projectItemClicked += OnProjectOpenButtonClick;
                 item.optionButtonClicked += OnProjectOptionButtonClick;
+                item.downloadButtonClicked += OnProjectDownloadButtonClick;
                 item.GetComponentInChildren<ProjectListColumnController>().tableContainer = tableContainer;
                 m_ProjectListItems.Add(item);
             }
@@ -431,60 +387,89 @@ namespace Unity.Reflect.Viewer.UI
             return item;
         }
 
+        static void OnProjectDownloadButtonClick(Project project)
+        {
+            Dispatcher.Dispatch(DownloadProjectAction.From(project));
+        }
+
         void OnProjectOpenButtonClick(Project project)
         {
-            var projectData = UIStateManager.current.projectStateData;
+            if (!ReflectProjectsManager.IsReadyForOpening(project))
+                return;
 
-            if (projectData.activeProject == project)
+            var activeProject = m_ActiveProjectGetter.GetValue();
+
+            if (activeProject?.serverProjectId == project.serverProjectId)
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(OpenDialogAction.From(OpenDialogAction.DialogType.None));
                 //if the project already opened, just close landing screen
                 return;
             }
+            Dispatcher.Dispatch(SetWalkEnableAction.From(false));
 
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            if (navigationState.navigationMode == NavigationMode.Walk)
+            activeProject = project;
+
+            if (activeProject != Project.Empty)
             {
-                UIStateManager.current.walkStateData.instruction.Cancel();
-            }
+                if (m_NavigationModeGetter.GetValue() != SetNavigationModeAction.NavigationMode.VR)
+                {
+                    // switch to orbit mode
+                    var data = new SetForceNavigationModeAction.ForceNavigationModeTrigger((int)SetNavigationModeAction.NavigationMode.Orbit);
+                    Dispatcher.Dispatch(SetForceNavigationModeAction.From(data));
+                }
 
-            projectData.activeProject = project;
-            projectData.activeProjectThumbnail = ThumbnailController.LoadThumbnailForProject(project);
-
-            if (UIStateManager.current.projectStateData.activeProject != Project.Empty)
-            {
                 // first close current Project if open
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, "Closing {UIStateManager.current.projectStateData.activeProject.name}..."));
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseProject, UIStateManager.current.projectStateData.activeProject));
+                Dispatcher.Dispatch(SetStatusMessage.From("Closing {UIStateManager.current.projectStateData.activeProject.name}..."));
             }
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, $"Opening {projectData.activeProject.name}..."));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenProject, projectData));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetMeasureToolOptions,  MeasureToolStateData.defaultData));
+            Dispatcher.Dispatch(SetStatusMessage.From($"Opening {activeProject.name}..."));
+            Dispatcher.Dispatch(CloseAllDialogsAction.From(null));
+
+            Dispatcher.Dispatch(SetIsOpenWithLinkSharingAction.From(false));
+            Dispatcher.Dispatch(SetCachedLinkTokenAction.From(string.Empty));
+
+            Dispatcher.Dispatch(OpenProjectActions<Project>.From(activeProject));
+            Dispatcher.Dispatch(ToggleMeasureToolAction.From(ToggleMeasureToolAction.ToggleMeasureToolData.defaultData));
         }
 
-        void OnProjectOptionButtonClick(Project project)
+        void OnProjectOptionButtonClick(ProjectListItem item, Project project)
         {
-            var model = UIStateManager.current.stateData;
-            if (model.activeOptionDialog == OptionDialogType.ProjectOptions && model.selectedProjectOption == project)
-            {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetOptionProject, Project.Empty));
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenOptionDialog, OptionDialogType.None));
-            }
-            else
-            {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetOptionProject, project));
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenOptionDialog, OptionDialogType.ProjectOptions));
-            }
+            ShowProjectOptionDialog(item, project);
         }
 
         void OnTapDetectorDown(BaseEventData data)
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetOptionProject, Project.Empty));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenOptionDialog, OptionDialogType.None));
+            HideProjectOptionDialog();
         }
 
-        void SortProjects()
+        void ShowProjectOptionDialog(ProjectListItem item, Project project)
+        {
+            if (!m_ProjectOption.IsVisible())
+            {
+                var contentRectTransform = m_ScrollViewContent.GetComponent<RectTransform>();
+                var itemRectTransform = item.GetComponent<RectTransform>();
+
+                var desiredHeight = itemRectTransform.anchoredPosition.y + contentRectTransform.anchoredPosition.y + itemRectTransform.rect.height;
+
+                m_ProjectOption.Show(project, desiredHeight, m_ScrollRectTransform.rect.height);
+
+                ProjectListItem.ShowOptionButtonHighlight(item);
+
+                m_TapDetector.SetActive(true);
+            }
+        }
+
+        void HideProjectOptionDialog()
+        {
+            if (m_ProjectOption.IsVisible())
+            {
+                m_ProjectOption.Hide();
+                ProjectListItem.HideOptionButtonHighlight();
+
+                m_TapDetector.SetActive(false);
+            }
+        }
+
+        void SortProjects(ProjectListSortData sortData)
         {
             m_ScrollRect.verticalNormalizedPosition = 1;
             List<ProjectListItem> childrenProjectItems = m_ScrollViewContent.GetComponentsInChildren<ProjectListItem>(true).ToList();
@@ -501,8 +486,8 @@ namespace Unity.Reflect.Viewer.UI
                 return;
             }
 
-            var method = (m_CurrentProjectSortData.method == ProjectSortMethod.Ascending) ? 1 : -1;
-            switch (m_CurrentProjectSortData.sortField)
+            var method = (sortData.method == ProjectSortMethod.Ascending) ? 1 : -1;
+            switch (sortData.sortField)
             {
                 case ProjectSortField.SortByDate:
                     childrenProjectItems.Sort((project1, project2) => method * project2.room.project.lastPublished.CompareTo(project1.room.project.lastPublished));
@@ -511,8 +496,12 @@ namespace Unity.Reflect.Viewer.UI
                     childrenProjectItems.Sort((project1, project2) => method * project1.room.project.name.CompareTo(project2.room.project.name));
                     break;
                 case ProjectSortField.SortByOrganization:
-                    //TODO update when organization is added to Project.cs in the Reflect package
-                    childrenProjectItems.Sort((project1, project2) => method * project1.room.project.name.CompareTo(project2.room.project.name));
+                    childrenProjectItems.Sort((project1, project2) =>
+                    {
+                        var org1 = project1.room.project?.UnityProject?.Organization?.Name ?? string.Empty;
+                        var org2 = project2.room.project?.UnityProject?.Organization?.Name ?? string.Empty;
+                        return method * org1.CompareTo(org2);
+                    });
                     break;
                 case ProjectSortField.SortByServer:
                     childrenProjectItems.Sort((project1, project2) => method * project1.room.project.host.ServerName.CompareTo(project2.room.project.host.ServerName));

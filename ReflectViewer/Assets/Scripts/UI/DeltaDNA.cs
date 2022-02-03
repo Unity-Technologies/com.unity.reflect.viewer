@@ -1,227 +1,130 @@
 using System;
-using System.Net;
-using System.Net.Http;
-using System.Reflection;
-using System.Text;
-using SharpFlux;
-using SharpFlux.Dispatching;
-using SharpFlux.Middleware;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
     //EventData strange structure is cause by JsonUtility.ToJson that don't handle inheritance
-    [Serializable]
-    public class EventData
+    public class DeltaDNA : MonoBehaviour
     {
-        public string eventName;
-        public string userID;
-        public string sessionID;
-        public string deviceUniqueIdentifier;
-        public string cloudProvider;
-        public string platform;
-        public string viewerVersion;
-        public string reflectVersion;
-    }
-
-    [Serializable]
-    public class EventDataWithEmptyParams : EventData
-    {
-        public EventParam eventParams;
-    }
-
-    [Serializable]
-    public class EventDataWithProjectID : EventData
-    {
-        public EventParamProjectID eventParams;
-    }
-
-    [Serializable]
-    public class EventDataWithEnabled : EventData
-    {
-        public EventParamEnabled eventParams;
-    }
-
-    [Serializable]
-    public class EventParam
-    {
-    }
-
-    [Serializable]
-    public class EventParamProjectID
-    {
-        public string projectID;
-    }
-
-    [Serializable]
-    public class EventParamEnabled
-    {
-        public bool isEnabled;
-    }
-
-    public class DeltaDNA : MonoBehaviour, IMiddleware<Payload<ActionTypes>>
-    {
-        private static readonly HttpClient httpClient = new HttpClient();
-        private static string ddnaUrl;
 #pragma warning disable CS0649
-        [SerializeField] private string url;
+        [SerializeField]
+        protected string url; //http://localhost:1880/deltaDNA
 #pragma warning restore CS0649
-        private string userId;
+        IUISelector<UnityUser> m_UserSelector;
+        IUISelector<SetDialogModeAction.DialogMode> m_DialogModeSelector;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+        string m_FilterCache = "";
+        DeltaDNARequest m_DeltaDnaRequest = new DeltaDNARequest();
 
-        private void Start()
+        void OnDestroy()
         {
-            var assemblyVersion = Assembly.GetEntryAssembly()?.GetName().Version.ToString();
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
-            ddnaUrl = url;
+        void Awake()
+        {
+            m_DisposeOnDestroy.Add(m_DialogModeSelector = UISelectorFactory.createSelector<SetDialogModeAction.DialogMode>(UIStateContext.current, nameof(IDialogDataProvider.dialogMode), OnDialogModeChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<Project>(ProjectManagementContext<Project>.current, nameof(IProjectDataProvider<Project>.activeProject), OnActiveProjectChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<LoginState>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.loggedState), OnLoggedStateDataChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.isOpenWithLinkSharing), OnOpenWithLinkSharingChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(UIStateContext.current, nameof(ISyncModeDataProvider.syncEnabled), OnSyncEnable));
+            m_DisposeOnDestroy.Add(m_UserSelector = UISelectorFactory.createSelector<UnityUser>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.user)));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<DNALicenseInfo>(DeltaDNAContext.current, nameof(IDeltaDNADataProvider.dnaLicenseInfo), OnLicenseInfoChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<string>(DeltaDNAContext.current, nameof(IDeltaDNADataProvider.buttonName), OnButtonEvent));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog), OnActiveDialogChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeSubDialog), OnActiveDialogChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<string>(ProjectContext.current, nameof(IProjectSortDataProvider.filterGroup), OnFilterGroupChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetHelpModeIDAction.HelpModeEntryID>(UIStateContext.current, nameof(IHelpModeDataProvider.helpModeEntryId), OnHelpModeEntryChanged));
+        }
 
-            if (url != string.Empty && Uri.IsWellFormedUriString(ddnaUrl, UriKind.Absolute))
+        void OnHelpModeEntryChanged(SetHelpModeIDAction.HelpModeEntryID id)
+        {
+            if(id != SetHelpModeIDAction.HelpModeEntryID.None)
+                m_DeltaDnaRequest.TrackButtonEvent(m_DeltaDnaRequest.userId, $"HelpMode_{id.ToString()}");
+        }
+
+        void OnDialogModeChanged(SetDialogModeAction.DialogMode obj)
+        {
+            if (obj == SetDialogModeAction.DialogMode.Help)
+                m_DeltaDnaRequest.TrackButtonEvent(m_DeltaDnaRequest.userId, "HelpModeEnter");
+        }
+
+        void OnFilterGroupChanged(string obj)
+        {
+            if (!string.IsNullOrEmpty(obj) && !string.IsNullOrEmpty(m_FilterCache))
             {
-                UIStateManager.sessionStateChanged += OnSessionStateDataChanged;
-                Dispatcher.RegisterMiddleware(this);
+                OnButtonEvent($"BimFilter_{obj}");
+            }
+
+            m_FilterCache = obj;
+        }
+
+        void OnActiveDialogChanged(OpenDialogAction.DialogType obj)
+        {
+            if (obj != OpenDialogAction.DialogType.None)
+            {
+                m_DeltaDnaRequest.TrackButtonEvent(m_DeltaDnaRequest.userId,
+                    m_DialogModeSelector.GetValue() == SetDialogModeAction.DialogMode.Help ? $"HelpMode_{obj}" : $"ButtonType_{obj}");
             }
         }
 
-        public bool Apply(ref Payload<ActionTypes> payload)
+        void OnButtonEvent(string name)
         {
-            var proceedToInvocation = true;
-
-            switch (payload.ActionType)
+            if (m_DialogModeSelector.GetValue() != SetDialogModeAction.DialogMode.Help)
             {
-                case ActionTypes.OpenProject:
-                {
-                    var projectData = (UIProjectStateData) payload.Data;
-                    TrackViewerOpenProject(UIStateManager.current.sessionStateData.sessionState.user?.UserId,
-                        projectData.activeProject.projectId);
-                    break;
-                }
-                case ActionTypes.SetSync:
-                {
-                    var projectData = (bool) payload.Data;
-                    TrackViewerSyncEnabled(UIStateManager.current.sessionStateData.sessionState.user?.UserId,
-                        projectData);
-                    break;
-                }
-                case ActionTypes.Login:
-                case ActionTypes.Logout:
-                case ActionTypes.SetToolState:
-                case ActionTypes.OpenDialog:
-                case ActionTypes.CloseAllDialogs:
-                case ActionTypes.SetStatusMessage:
-                case ActionTypes.ClearStatus:
-                case ActionTypes.Failure:
-                    break;
-            }
-
-            return proceedToInvocation;
-        }
-
-        private void OnSessionStateDataChanged(UISessionStateData obj)
-        {
-            var uid = obj.sessionState.user?.UserId;
-            if (obj.sessionState.loggedState == LoginState.LoggedIn && uid != userId)
-            {
-                TrackViewerLoaded(uid);
-                userId = uid;
+                m_DeltaDnaRequest.TrackButtonEvent(m_DeltaDnaRequest.userId, name);
             }
         }
 
-        private static void SendEvent(EventData body)
+        void OnLicenseInfoChanged(DNALicenseInfo dnaLicenseInfo)
         {
-            var json = JsonUtility.ToJson(body);
-
-            SendEvent(json);
-        }
-
-        private static void SendEvent(EventDataWithEmptyParams body)
-        {
-            var json = JsonUtility.ToJson(body);
-
-            SendEvent(json);
-        }
-
-        private static void SendEvent(EventDataWithProjectID body)
-        {
-            var json = JsonUtility.ToJson(body);
-
-            SendEvent(json);
-        }
-
-        private static void SendEvent(EventDataWithEnabled body)
-        {
-            var json = JsonUtility.ToJson(body);
-
-            SendEvent(json);
-        }
-
-        private static async void SendEvent(string json)
-        {
-            Debug.Log(json);
-            using (var content = new StringContent(json, Encoding.UTF8, "application/json"))
+            if (!string.IsNullOrEmpty(m_DeltaDnaRequest.userId))
             {
-                var res = await httpClient.PostAsync(ddnaUrl, content).ConfigureAwait(false);
-                if (res.StatusCode != HttpStatusCode.NoContent)
-                    Debug.Log($"Failed to send event to DeltaDNA. Reason: {res.ReasonPhrase}");
+                m_DeltaDnaRequest.TrackUserLicence(m_DeltaDnaRequest.userId, dnaLicenseInfo.floatingSeat != TimeSpan.Zero,
+                    string.Join(",", dnaLicenseInfo.entitlements));
             }
         }
 
-        public static void TrackViewerLoaded(string userId, string sessionId = "")
+        void OnOpenWithLinkSharingChanged(bool isShareLinkOpen)
         {
-            var payload = new EventDataWithEmptyParams
-            {
-                eventName = "reflectViewerLoaded",
-                userID = userId,
-                sessionID = sessionId,
-                deviceUniqueIdentifier = SystemInfo.deviceUniqueIdentifier,
-                cloudProvider = LocaleUtils.GetProvider().ToString(),
-                platform = Application.platform.ToString(),
-                viewerVersion = Application.version,
-                reflectVersion = Assembly.GetAssembly(typeof(UnityProject)).GetName().Version.ToString(),
-            };
-
-            SendEvent(payload);
+            if (isShareLinkOpen)
+                m_DeltaDnaRequest.TrackEvent(m_DeltaDnaRequest.userId, DeltaDNARequest.shareLinkOpen);
         }
 
-        public static void TrackViewerOpenProject(string userId, string projectId, string sessionId = "")
+        void OnLoggedStateDataChanged(LoginState loggedState)
         {
-            var payload = new EventDataWithProjectID
+            if (loggedState == LoginState.LoggedIn && m_UserSelector.GetValue()?.UserId != m_DeltaDnaRequest.userId)
             {
-                eventName = "reflectViewerOpenProject",
-                userID = userId,
-                sessionID = sessionId,
-                deviceUniqueIdentifier = SystemInfo.deviceUniqueIdentifier,
-                cloudProvider = LocaleUtils.GetProvider().ToString(),
-                platform = Application.platform.ToString(),
-                viewerVersion = Application.version,
-                reflectVersion = Assembly.GetAssembly(typeof(UnityProject)).GetName().Version.ToString(),
-                eventParams = new EventParamProjectID
-                {
-                    projectID = projectId
-                }
-            };
-
-            SendEvent(payload);
+                m_DeltaDnaRequest.TrackViewerLoaded(m_UserSelector.GetValue().UserId);
+                m_DeltaDnaRequest.userId = m_UserSelector.GetValue().UserId;
+            }
         }
 
-        public static void TrackViewerSyncEnabled(string userId, bool isEnabled, string sessionId = "")
+        void OnSyncEnable(bool syncEnabled)
         {
-            var payload = new EventDataWithEnabled
-            {
-                eventName = "reflectViewerSyncEnabled",
-                userID = userId,
-                sessionID = sessionId,
-                deviceUniqueIdentifier = SystemInfo.deviceUniqueIdentifier,
-                cloudProvider = LocaleUtils.GetProvider().ToString(),
-                platform = Application.platform.ToString(),
-                viewerVersion = Application.version,
-                reflectVersion = Assembly.GetAssembly(typeof(UnityProject)).GetName().Version.ToString(),
-                eventParams = new EventParamEnabled
-                {
-                    isEnabled = isEnabled
-                }
-            };
+            m_DeltaDnaRequest.TrackViewerSyncEnabled(m_DeltaDnaRequest.userId, syncEnabled);
+        }
 
-            SendEvent(payload);
+        void OnActiveProjectChanged(Project project)
+        {
+            if(project != null)
+                m_DeltaDnaRequest.TrackViewerOpenProject(m_DeltaDnaRequest?.userId, project.projectId);
+        }
+
+        void Start()
+        {
+            m_DeltaDnaRequest.SetURL(url);
+        }
+
+        public bool ListEquals<T>(List<T> list1, List<T> List2)
+        {
+            if (list1 == null || List2 == null) return false;
+            return list1.SequenceEqual(List2);
         }
     }
 }

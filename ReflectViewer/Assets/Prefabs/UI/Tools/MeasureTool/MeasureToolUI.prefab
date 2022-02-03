@@ -628,6 +628,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_ResetButton: {fileID: 0}
+  m_ModeSwitchButton: {fileID: 0}
+  m_RegularModeSprite: {fileID: 21300000, guid: 760cdc359f6b247f787866cb4beb693c,
+    type: 3}
   m_Line: {fileID: 5120104366926839316}
   m_CursorA: {fileID: 1598067333780478998}
   m_CursorB: {fileID: 8816683483450829628}

@@ -50,6 +50,9 @@ namespace Unity.Reflect.Viewer.UI
         UnsafeAreaFiller m_Filler;
         bool m_WasFillerEnabled;
 
+        public event Action OnAttached;
+        public event Action OnRestored;
+
         void Start()
         {
             m_RectTransform = GetComponent<RectTransform>();
@@ -78,6 +81,9 @@ namespace Unity.Reflect.Viewer.UI
                 return;
             }
 
+            if(m_RectTransform == null)
+                m_RectTransform = GetComponent<RectTransform>();
+
             m_InitialParent = m_RectTransform.parent;
             m_SiblingIndex = m_RectTransform.GetSiblingIndex();
 
@@ -99,6 +105,8 @@ namespace Unity.Reflect.Viewer.UI
             m_RectTransform.localPosition = m_PositionOffset;
             m_RectTransform.localEulerAngles = Vector3.zero;
             m_RectTransform.localScale = Vector3.one;
+
+            OnAttached?.Invoke();
         }
 
         public void Restore()
@@ -122,6 +130,8 @@ namespace Unity.Reflect.Viewer.UI
             m_RectTransform.localPosition = m_Position;
             m_RectTransform.localEulerAngles = m_Rotation;
             m_RectTransform.localScale = m_Scale;
+
+            OnRestored?.Invoke();
         }
     }
 }

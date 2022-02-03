@@ -1,13 +1,14 @@
-using SharpFlux;
 using System;
-using SharpFlux.Dispatching;
+using System.Collections.Generic;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    public class TimeRadialUIController : MonoBehaviour
+    public class TimeRadialUIController: MonoBehaviour
     {
 #pragma warning disable CS0649
         [SerializeField]
@@ -24,17 +25,35 @@ namespace Unity.Reflect.Viewer.UI
 
         int m_DefaultHour;
         int m_DefaultMonth;
-        public static ToolbarType m_previousToolbar;
+        public static SetActiveToolBarAction.ToolbarType m_previousToolbar;
         readonly MonthLabelConverter m_MonthLabels = new MonthLabelConverter();
         readonly HourLabelConverter m_HourLabels = new HourLabelConverter();
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
 
-        SunStudyData m_CachedSunStudyData;
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
             m_MonthDialControl.labelConverter = m_MonthLabels;
             m_HourDialControl.labelConverter = m_HourLabels;
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.timeOfDay),
+                (day) => m_HourDialControl.selectedValue = GetFloatFromMin(day)));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.timeOfYear),
+                (year) => m_MonthDialControl.selectedValue = GetFloatFromDay(year)));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetActiveToolBarAction.ToolbarType>(UIStateContext.current, nameof(IToolBarDataProvider.activeToolbar),
+                (toolbar) =>
+            {
+                if (toolbar != SetActiveToolBarAction.ToolbarType.TimeOfDayYearDial &&
+                    toolbar != SetActiveToolBarAction.ToolbarType.AltitudeAzimuthDial)
+                {
+                    m_previousToolbar = toolbar;
+                }
+            }));
+
         }
 
         void Start()
@@ -45,71 +64,32 @@ namespace Unity.Reflect.Viewer.UI
 
             m_MainButton.onClick.AddListener(OnMainButtonClicked);
             m_SecondaryButton.onClick.AddListener(OnSecondaryButtonClicked);
-
-            int min, day;
-            (m_DefaultHour, min) = SunStudyUIController.GetHourMinute(UIStateManager.current.stateData.sunStudyData.timeOfDay);
-            (m_DefaultMonth, day) = SunStudyUIController.GetMonthDay(DateTime.Now.Year, UIStateManager.current.stateData.sunStudyData.timeOfYear);
-            m_HourDialControl.selectedValue = m_DefaultHour;
-            m_MonthDialControl.selectedValue = m_DefaultMonth;
         }
 
-        void OnStateDataChanged(UIStateData data)
-        {
-            if (data.activeToolbar != ToolbarType.TimeOfDayYearDial &&
-                data.activeToolbar != ToolbarType.AltitudeAzimuthDial)
-            {
-                m_previousToolbar = data.activeToolbar;
-            }
-
-            if (m_CachedSunStudyData != data.sunStudyData)
-            {
-                m_HourDialControl.selectedValue = GetFloatFromMin(data.sunStudyData.timeOfDay);
-                m_MonthDialControl.selectedValue = GetFloatFromDay(data.sunStudyData.timeOfYear);
-                m_CachedSunStudyData = data.sunStudyData;
-            }
-        }
-
+        // See old commit for previous implementation
         void OnMonthDialValueChanged(float value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            data.timeOfYear = GetDayFromFloat(value);
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+
         }
 
         void OnHourDialValueChanged(float value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            data.timeOfDay = GetMinFromFloat(value);
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+
         }
 
         void OnResetButtonClicked()
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            data.timeOfDay = m_DefaultHour;
-            data.timeOfYear = m_DefaultMonth;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+
         }
 
         void OnMainButtonClicked()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, m_previousToolbar));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, false));
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.activeTool = ToolType.None;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
+
         }
 
         void OnSecondaryButtonClicked()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, true));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.AltitudeAzimuthDial));
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.activeTool = ToolType.SunstudyTool;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-            var sunStudyData = UIStateManager.current.stateData.sunStudyData;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, AltitudeAzimuthRadialUIController.GetAltAzStatusMessage(sunStudyData)));
+
         }
 
         public static string GetTimeStatusMessage(SunStudyData sunStudyData)
@@ -119,7 +99,7 @@ namespace Unity.Reflect.Viewer.UI
             return $"{day},  " + time;
         }
 
-        class MonthLabelConverter : ILabelConverter
+        class MonthLabelConverter: ILabelConverter
         {
             public string ConvertTickLabels(float value)
             {
@@ -130,7 +110,7 @@ namespace Unity.Reflect.Viewer.UI
                 return SunStudyUIController.NameOfMonth((int)value); // Just display month name of current month
             }
         }
-        class HourLabelConverter : ILabelConverter
+        class HourLabelConverter: ILabelConverter
         {
             public string ConvertTickLabels(float value)
             {

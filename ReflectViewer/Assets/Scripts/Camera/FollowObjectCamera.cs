@@ -1,64 +1,80 @@
 using System;
 using System.Collections;
-using SharpFlux;
 using SharpFlux.Dispatching;
-using Unity.Reflect.Viewer.UI;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
-
     /// <summary>
     ///     A generic follow object camera
     /// </summary>
     [RequireComponent(typeof(FreeFlyCamera))]
     public class FollowObjectCamera : MonoBehaviour
     {
-        GameObject m_ObjectToFollow = null;
         FreeFlyCamera m_Camera;
+        IUISelector<bool> m_IsFollowingGetter;
+        IUISelector<GameObject> m_UserObjectGetter;
 
-        bool m_IsFollowing;
+        float m_PosElasticity;
+        float m_RotElasticity;
 
         void Awake()
         {
             m_Camera = GetComponent<FreeFlyCamera>();
-            UIStateManager.stateChanged += OnUIStateChanged;
+            m_IsFollowingGetter = UISelectorFactory.createSelector<bool>(FollowUserContext.current, nameof(IFollowUserDataProvider.isFollowing), OnUserObjectChanged);
+            m_UserObjectGetter = UISelectorFactory.createSelector<GameObject>(FollowUserContext.current, nameof(IFollowUserDataProvider.userObject));
+
+            m_PosElasticity = m_Camera.settings.positionElasticity;
+            m_RotElasticity = m_Camera.settings.rotationElasticity;
         }
 
-        void OnUIStateChanged(UIStateData stateData)
+        void OnDestroy()
         {
-            m_ObjectToFollow = stateData.toolState.followUserTool.userObject;
-            if(m_IsFollowing)
+            m_IsFollowingGetter?.Dispose();
+            m_UserObjectGetter?.Dispose();
+            m_Camera.settings.positionElasticity = m_PosElasticity;
+            m_Camera.settings.rotationElasticity = m_RotElasticity;
+        }
+
+        void OnUserObjectChanged(bool newData)
+        {
+            if (newData && m_UserObjectGetter.GetValue() != null)
             {
-                m_IsFollowing = m_ObjectToFollow != null;
-            }
-            else if (m_ObjectToFollow != null)
-            {
-                m_IsFollowing = true;
+                m_Camera.settings.positionElasticity = 0.2f;
+                m_Camera.settings.rotationElasticity = 0.2f;
                 StartCoroutine(FollowObjectUpdate());
+            }
+            else
+            {
+                m_Camera.settings.positionElasticity = m_PosElasticity;
+                m_Camera.settings.rotationElasticity = m_RotElasticity;
             }
         }
 
         IEnumerator FollowObjectUpdate()
         {
-            while (m_IsFollowing)
+            while (m_IsFollowingGetter.GetValue())
             {
-                if (IsObjectValid(m_ObjectToFollow))
+                if (IsObjectValid(m_UserObjectGetter.GetValue()))
                 {
-                    m_Camera.TransformTo(m_ObjectToFollow.transform);
+                    m_Camera.TransformTo(m_UserObjectGetter.GetValue().transform);
                     yield return null;
                 }
                 else
                 {
-                    m_IsFollowing = false;
-                    Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.FollowUser, null));
+                    var followUserData = new FollowUserAction.FollowUserData();
+                    followUserData.matchmakerId = "";
+                    followUserData.visualRepresentationGameObject = null;
+                    Dispatcher.Dispatch(FollowUserAction.From(followUserData));
                 }
             }
         }
 
         bool IsObjectValid(GameObject obj)
         {
-            return m_ObjectToFollow != null;
+            return obj != null;
         }
     }
 }

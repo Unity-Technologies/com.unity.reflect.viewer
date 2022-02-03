@@ -1,14 +1,23 @@
 
 using System;
+using System.Runtime.InteropServices;
+using Unity.Properties;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 
 namespace Unity.Reflect.Viewer
 {
-    [Serializable]
-    public struct UserInfoDialogData : IEquatable<UserInfoDialogData>
+    [Serializable, GeneratePropertyBag]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct UserInfoDialogData : IEquatable<UserInfoDialogData>, IUserInfoDialogDataProvider
     {
-        public string matchmakerId;
-        public Vector3 dialogPosition;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public string matchmakerId { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public Vector3 dialogPosition { get; set; }
 
         public UserInfoDialogData(string userIdentity, Vector2 dialogPosition)
         {

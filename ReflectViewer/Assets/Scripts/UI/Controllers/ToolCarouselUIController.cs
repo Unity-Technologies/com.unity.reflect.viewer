@@ -1,10 +1,8 @@
-using SharpFlux;
 using System.Collections.Generic;
 using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -23,34 +21,20 @@ namespace Unity.Reflect.Viewer.UI
 
         DialogWindow m_DialogWindow;
         ButtonControl m_ActiveButtonControl;
-        NavigationMode? m_CachedNavigationMode;
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-
             m_DialogWindow = GetComponent<DialogWindow>();
             m_CarouselPropertyControl.onValueChanged.AddListener(OnCarouselValueChanged);
-        }
-
-        void OnStateDataChanged(UIStateData stateData)
-        {
-            if (m_CachedNavigationMode == null || m_CachedNavigationMode != stateData.navigationState.navigationMode)
-            {
-                m_CachedNavigationMode = stateData.navigationState.navigationMode;
-            }
         }
 
         private void OnCarouselValueChanged(int carouselIndex)
         {
             // NOTE: this assumes carouselIndex is in the exact order as NavigationMode enum!
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            navigationState.navigationMode = (NavigationMode)carouselIndex;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+            Dispatcher.Dispatch(SetNavigationModeAction.From((SetNavigationModeAction.NavigationMode)carouselIndex));
 
             // NOTE: this assumes carouselIndex is in the exact order as ToolbarType enum!
-            var toolbarType = (ToolbarType)carouselIndex;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, toolbarType));
+            Dispatcher.Dispatch(SetActiveToolBarAction.From((SetActiveToolBarAction.ToolbarType)carouselIndex));
 
         }
     }

@@ -1,46 +1,56 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Unity.Properties;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    public enum InstructionUIState
-    {
-        Init = 0,
-        Started,
-        Completed
-    };
-
-    public enum PlacementRule
-    {
-        None = 0,
-        FloorPlacementRule = 1,
-        TableTopPlacementRule = 2,
-        WallPlacementRule = 3,
-    }
-
-    public interface IUIButtonValidator
-    {
-        bool ButtonValidate();
-    }
-
-    [Serializable]
+    [Serializable, GeneratePropertyBag]
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct ARToolStateData : IEquatable<ARToolStateData>
+    public struct ARToolStateData : IEquatable<ARToolStateData>, IARToolStatePropertiesDataProvider
     {
-        public bool selectionEnabled;
-        public bool navigationEnabled;
-        public bool previousStepEnabled;
-        public bool okEnabled;
-        public bool cancelEnabled;
-        public bool scaleEnabled;
-        public bool wallIndicatorsEnabled;
-        public bool anchorPointsEnabled;
-        public bool arWallIndicatorsEnabled;
-        public bool arAnchorPointsEnabled;
-        public bool rotateEnabled;
-        public bool measureToolEnabled;
-        public IUIButtonValidator okButtonValidator;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool selectionEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool navigationEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool previousStepEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool okEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool cancelEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool scaleEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool wallIndicatorsEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool anchorPointsEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool arWallIndicatorsEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool arAnchorPointsEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool rotateEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool measureToolEnabled { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetARToolStateAction.IUIButtonValidator okButtonValidator { get; set; }
 
         public static readonly ARToolStateData defaultData = new ARToolStateData()
         {
@@ -52,7 +62,7 @@ namespace Unity.Reflect.Viewer.UI
             scaleEnabled = false,
             wallIndicatorsEnabled = false,
             anchorPointsEnabled = false,
-            okButtonValidator = null,
+            okButtonValidator = new SetARToolStateAction.EmptyUIButtonValidator(),
             arWallIndicatorsEnabled = false,
             arAnchorPointsEnabled = false,
             rotateEnabled = false,
@@ -60,7 +70,7 @@ namespace Unity.Reflect.Viewer.UI
         };
 
         public ARToolStateData(bool selectionEnabled, bool navigationEnabled, bool previousStepEnabled, bool okEnabled,
-            bool cancelEnabled, bool scaleEnabled, bool wallIndicatorsEnabled, bool anchorPointsEnabled, IUIButtonValidator okButtonValidator,
+            bool cancelEnabled, bool scaleEnabled, bool wallIndicatorsEnabled, bool anchorPointsEnabled, SetARToolStateAction.IUIButtonValidator okButtonValidator,
             bool arWallIndicatorsEnabled, bool arAnchorPointsEnabled, bool rotateEnabled, bool measureToolEnabled)
         {
             this.selectionEnabled = selectionEnabled;
@@ -144,22 +154,75 @@ namespace Unity.Reflect.Viewer.UI
         }
     }
 
-    [Serializable]
+    [Serializable, GeneratePropertyBag]
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct ARPlacementStateData : IEquatable<ARPlacementStateData>
+    public struct ARPlacementStateData : IEquatable<ARPlacementStateData>, IARPlacementDataProvider
     {
-        public GameObject modelFloor;
-        public GameObject firstSelectedPlane;
-        public GameObject secondSelectedPlane;
-        public Vector3 modelPlacementLocation;
-        public GameObject arFloor;
-        public GameObject firstARSelectedPlane;
-        public GameObject secondARSelectedPlane;
-        public Vector3 arPlacementLocation;
-        public Vector3 arPlacementAlignment;
-        public PlacementRule placementRule;
-        public bool validTarget;
-        public float beamHeight;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool showModel { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool showBoundingBoxModelAction { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public GameObject modelFloor { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public GameObject firstSelectedPlane { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public GameObject secondSelectedPlane { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public Vector3 modelPlacementLocation { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public GameObject arFloor { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public GameObject firstARSelectedPlane { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public GameObject secondARSelectedPlane { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public Vector3 arPlacementLocation { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public Vector3 arPlacementAlignment { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetModelFloorAction.PlacementRule placementRule { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool validTarget  { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public float beamHeight { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetModelScaleAction.ArchitectureScale modelScale { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public Transform placementRoot { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public GameObject placementRulesGameObject { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public List<GameObject> placementRulesPrefabs { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public Transform boundingBoxRootNode { get; set; }
 
         public static readonly ARPlacementStateData defaultData = new ARPlacementStateData()
         {
@@ -172,13 +235,16 @@ namespace Unity.Reflect.Viewer.UI
             secondARSelectedPlane = null,
             arPlacementLocation = Vector3.zero,
             arPlacementAlignment = Vector3.forward,
-            placementRule = PlacementRule.None,
+            placementRule = SetModelFloorAction.PlacementRule.None,
             validTarget = false,
-            beamHeight = 0
+            beamHeight = 0,
+            modelScale = SetModelScaleAction.ArchitectureScale.OneToOne
         };
 
         public ARPlacementStateData(GameObject modelFloor, GameObject firstSelectedPlane, GameObject secondSelectedPlane, Vector3 modelPlacementLocation,
-            GameObject arFloor, GameObject firstARSelectedPlane, GameObject secondARSelectedPlane, Vector3 arPlacementLocation,Vector3 arPlacementAlignment, PlacementRule placementRule, bool validTarget, float beamHeight)
+            GameObject arFloor, GameObject firstARSelectedPlane, GameObject secondARSelectedPlane, Vector3 arPlacementLocation,Vector3 arPlacementAlignment,
+            SetModelFloorAction.PlacementRule placementRule, bool validTarget, float beamHeight, SetModelScaleAction.ArchitectureScale modelScale, Transform placementRoot,
+            GameObject placementRulesGameObject, List<GameObject> placementRulesPrefabs, Transform boundingBoxRootNode)
         {
             this.modelFloor = modelFloor;
             this.firstSelectedPlane = firstSelectedPlane;
@@ -192,6 +258,13 @@ namespace Unity.Reflect.Viewer.UI
             this.placementRule = placementRule;
             this.validTarget = validTarget;
             this.beamHeight = beamHeight;
+            this.modelScale = modelScale;
+            this.placementRoot = placementRoot;
+            this.placementRulesGameObject = placementRulesGameObject;
+            this.placementRulesPrefabs = placementRulesPrefabs;
+            this.boundingBoxRootNode = boundingBoxRootNode;
+            showModel = true;
+            showBoundingBoxModelAction = false;
         }
 
         public static ARPlacementStateData Validate(ARPlacementStateData stateData)
@@ -228,7 +301,14 @@ namespace Unity.Reflect.Viewer.UI
                 arPlacementLocation == other.arPlacementLocation &&
                 arPlacementAlignment == other.arPlacementAlignment &&
                 validTarget == other.validTarget &&
-                Mathf.Approximately(beamHeight,other.beamHeight);
+                Mathf.Approximately(beamHeight,other.beamHeight) &&
+                modelScale == other.modelScale &&
+                placementRoot == other.placementRoot &&
+                placementRulesGameObject == other.placementRulesGameObject &&
+                placementRulesPrefabs == other.placementRulesPrefabs &&
+                showModel == other.showModel &&
+                showBoundingBoxModelAction == other.showBoundingBoxModelAction &&
+                boundingBoxRootNode == other.boundingBoxRootNode;
         }
 
         public override bool Equals(object obj)
@@ -252,6 +332,13 @@ namespace Unity.Reflect.Viewer.UI
                 hashCode = (hashCode * 397) ^ arPlacementAlignment.GetHashCode();
                 hashCode = (hashCode * 397) ^ validTarget.GetHashCode();
                 hashCode = (hashCode *397) ^ beamHeight.GetHashCode();
+                hashCode = (hashCode *397) ^ modelScale.GetHashCode();
+                hashCode = (hashCode *397) ^ placementRoot.GetHashCode();
+                hashCode = (hashCode *397) ^ placementRulesGameObject.GetHashCode();
+                hashCode = (hashCode *397) ^ placementRulesPrefabs.GetHashCode();
+                hashCode = (hashCode *397) ^ boundingBoxRootNode.GetHashCode();
+                hashCode = (hashCode *397) ^ showModel.GetHashCode();
+                hashCode = (hashCode *397) ^ showBoundingBoxModelAction.GetHashCode();
                 return hashCode;
             }
         }
@@ -267,37 +354,51 @@ namespace Unity.Reflect.Viewer.UI
         }
     }
 
-    [Serializable]
+    [Serializable, GeneratePropertyBag]
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct UIARStateData : IEquatable<UIARStateData>
+    public struct UIARStateData : IEquatable<UIARStateData>, IARModeDataProvider, IARPlacement<ARPlacementStateData>
     {
-        public bool arEnabled;
-        public InstructionUIState instructionUIState;
-        public IInstructionUI currentInstructionUI;
-        public int instructionUIStep;
-        public int numProxyInstances;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool arEnabled  { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetInstructionUIStateAction.InstructionUIState instructionUIState  { get; set; }
+        [CreateProperty]
+        [field: DontCreateProperty]
+        public IARInstructionUI currentARInstructionUI  { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int numProxyInstances  { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int instructionUIStep  { get; set; }
         public ARToolStateData arToolStateData;
-        public ARPlacementStateData placementStateData;
-        public ARMode? arMode;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public ARPlacementStateData placementStateData{ get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetARModeAction.ARMode arMode  { get; set; }
 
         public static readonly UIARStateData defaultData = new UIARStateData()
         {
             arEnabled = false,
-            instructionUIState = InstructionUIState.Init,
-            currentInstructionUI = null,
+            instructionUIState = SetInstructionUIStateAction.InstructionUIState.None,
+            currentARInstructionUI = null,
             numProxyInstances = 0,
             instructionUIStep = 0,
             arToolStateData = ARToolStateData.defaultData,
             placementStateData = ARPlacementStateData.defaultData,
-            arMode = null
+            arMode = SetARModeAction.ARMode.None
         };
 
-        public UIARStateData(bool arEnabled, InstructionUIState instructionUIState, IInstructionUI currentInstructionUI, int numProxyInstances,
-            int instructionUIStep, bool placementGesturesEnabled, ARToolStateData arToolStateData, ARPlacementStateData placementStateData, ARMode arMode)
+        public UIARStateData(bool arEnabled, SetInstructionUIStateAction.InstructionUIState instructionUIState, IARInstructionUI currentARInstructionUI, int numProxyInstances,
+            int instructionUIStep, ARToolStateData arToolStateData, ARPlacementStateData placementStateData, SetARModeAction.ARMode arMode)
         {
             this.arEnabled = arEnabled;
             this.instructionUIState = instructionUIState;
-            this.currentInstructionUI = currentInstructionUI;
+            this.currentARInstructionUI = currentARInstructionUI;
             this.numProxyInstances = numProxyInstances;
             this.instructionUIStep = instructionUIStep;
             this.arToolStateData = arToolStateData;
@@ -312,8 +413,8 @@ namespace Unity.Reflect.Viewer.UI
 
         public override string ToString()
         {
-            return ToString("AREnabled{0}, instructionUIState{1}, numOfProxyInstances{2}, " +
-                            "instructionUIStep{3}, placementGesturesEnabled{4}, ARToolStateData{5}, ARPlacementStateData{6}");
+            return ToString("AREnabled{0}, instructionUIState{1}, currentARInstructionUI{2}, umOfProxyInstances{3}, " +
+                            "instructionUIStep{4}, ARToolStateData{5}, ARPlacementStateData{6}, ARMode{7}");
         }
 
         public string ToString(string format)
@@ -321,21 +422,24 @@ namespace Unity.Reflect.Viewer.UI
             return string.Format(format,
                 arEnabled,
                 (object) instructionUIState,
+                currentARInstructionUI,
                 numProxyInstances,
                 instructionUIStep,
                 arToolStateData.ToString(),
-                placementStateData.ToString());
+                placementStateData.ToString(),
+                arMode.ToString());
         }
 
         public bool Equals(UIARStateData other)
         {
             return arEnabled == other.arEnabled &&
                    instructionUIState == other.instructionUIState &&
-                   currentInstructionUI == other.currentInstructionUI &&
+                   currentARInstructionUI == other.currentARInstructionUI &&
                    numProxyInstances == other.numProxyInstances &&
                    instructionUIStep == other.instructionUIStep &&
                    arToolStateData == other.arToolStateData &&
-                   placementStateData == other.placementStateData;
+                   placementStateData == other.placementStateData &&
+                   arMode == other.arMode;
         }
 
         public override bool Equals(object obj)
@@ -349,11 +453,12 @@ namespace Unity.Reflect.Viewer.UI
             {
                 var hashCode = arEnabled.GetHashCode();
                 hashCode = (hashCode * 397) ^ instructionUIState.GetHashCode();
-                hashCode = (hashCode * 397) ^ currentInstructionUI.GetHashCode();
-                hashCode = (hashCode * 397) ^ numProxyInstances;
-                hashCode = (hashCode * 397) ^ instructionUIStep;
+                hashCode = (hashCode * 397) ^ currentARInstructionUI.GetHashCode();
+                hashCode = (hashCode * 397) ^ numProxyInstances.GetHashCode();
+                hashCode = (hashCode * 397) ^ instructionUIStep.GetHashCode();
                 hashCode = (hashCode * 397) ^ arToolStateData.GetHashCode();
                 hashCode = (hashCode * 397) ^ placementStateData.GetHashCode();
+                hashCode = (hashCode * 397) ^ arMode.GetHashCode();
                 return hashCode;
             }
         }

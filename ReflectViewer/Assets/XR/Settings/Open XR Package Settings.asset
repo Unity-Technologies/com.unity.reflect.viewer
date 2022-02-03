@@ -77,7 +77,9 @@ MonoBehaviour:
   - {fileID: 3815046040661260868}
   - {fileID: 9054189386101967454}
   - {fileID: -804273840831697117}
+  - {fileID: 0}
   - {fileID: 2731894357179034176}
+  - {fileID: -4691596633277388761}
   m_renderMode: 1
   m_depthSubmissionMode: 0
 --- !u!114 &-5957563285191378376
@@ -94,6 +96,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   features:
   - {fileID: 5491567061161696254}
+  - {fileID: 8466533601687602602}
   - {fileID: 5345141887982086243}
   - {fileID: 7576851593976020145}
   - {fileID: 6223191972014443031}
@@ -101,7 +104,6 @@ MonoBehaviour:
   - {fileID: -7062256132739144991}
   - {fileID: 8991570103636028478}
   - {fileID: 5742933082840377427}
-  - {fileID: 8466533601687602602}
   - {fileID: -1579448782675043964}
   - {fileID: -4651134813643470327}
   m_renderMode: 1
@@ -126,6 +128,28 @@ MonoBehaviour:
   company: Unity
   priority: 0
   required: 0
+--- !u!114 &-4691596633277388761
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 056125dd64c0ed540b40a4af74f7b495, type: 3}
+  m_Name: RuntimeDebuggerOpenXRFeature Android
+  m_EditorClassIdentifier: 
+  m_enabled: 0
+  nameUi: Runtime Debugger
+  version: 1
+  featureIdInternal: com.unity.openxr.features.runtimedebugger
+  openxrExtensionStrings: 
+  company: Unity
+  priority: 0
+  required: 0
+  cacheSize: 1048576
+  perThreadCacheSize: 51200
 --- !u!114 &-4651134813643470327
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -148,6 +172,26 @@ MonoBehaviour:
   required: 0
   cacheSize: 1048576
   perThreadCacheSize: 51200
+--- !u!114 &-4021047348176998966
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ef793c31862a37448e907829482ef80, type: 3}
+  m_Name: OculusQuestFeature Android
+  m_EditorClassIdentifier: 
+  m_enabled: 0
+  nameUi: Oculus Quest Support
+  version: 1.0.0
+  featureIdInternal: com.unity.openxr.feature.oculusquest
+  openxrExtensionStrings: XR_OCULUS_android_initialize_loader
+  company: Unity
+  priority: 0
+  required: 0
 --- !u!114 &-3741800660370735353
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -203,6 +247,7 @@ MonoBehaviour:
   - {fileID: 505328339664304612}
   - {fileID: -2577612807956663838}
   - {fileID: -5740409046310629286}
+  - {fileID: 1482355002109460175}
   - {fileID: 1206939814322242464}
   m_renderMode: 1
   m_depthSubmissionMode: 0
@@ -356,6 +401,28 @@ MonoBehaviour:
   company: Unity
   priority: 0
   required: 0
+--- !u!114 &1482355002109460175
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 056125dd64c0ed540b40a4af74f7b495, type: 3}
+  m_Name: RuntimeDebuggerOpenXRFeature WSA
+  m_EditorClassIdentifier: 
+  m_enabled: 0
+  nameUi: Runtime Debugger
+  version: 1
+  featureIdInternal: com.unity.openxr.features.runtimedebugger
+  openxrExtensionStrings: 
+  company: Unity
+  priority: 0
+  required: 0
+  cacheSize: 1048576
+  perThreadCacheSize: 51200
 --- !u!114 &2731894357179034176
 MonoBehaviour:
   m_ObjectHideFlags: 0

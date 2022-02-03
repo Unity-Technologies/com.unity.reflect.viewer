@@ -45,3 +45,6 @@ Native~/**/x64/
 
 #Fastlane
 ReflectViewer/builds/**
+ReflectViewer/Packages/com.unity.reflect/
+ReflectViewer/Packages/com.unity.reflect.runtime/
+ReflectViewer/.idea/*

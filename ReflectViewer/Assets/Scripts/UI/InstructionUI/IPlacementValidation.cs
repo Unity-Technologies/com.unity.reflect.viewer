@@ -1,14 +1,9 @@
-using System.Linq;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    public interface IPlacementValidation
-    {
-        bool IsValid(ARPlacementStateData placementState, out ModalPopup.ModalPopupData errorMessage);
-    }
-
     public struct ParallelWallValidation : IPlacementValidation
     {
         public readonly float minPlaneNormalDot;
@@ -18,11 +13,10 @@ namespace Unity.Reflect.Viewer.UI
             this.minPlaneNormalDot = minPlaneNormalDot;
         }
 
-        public bool IsValid(ARPlacementStateData placementState, out ModalPopup.ModalPopupData errorMessage)
+        public bool IsValid(GameObject firstSelectedPlane, GameObject secondSelectedPlane, out ModalPopup.ModalPopupData errorMessage, GameObject currentSelectedObject = null)
         {
             errorMessage = default;
-            var selected = UIStateManager.current.projectStateData.objectSelectionInfo.CurrentSelectedObject();
-            if (selected == null)
+            if (currentSelectedObject == null)
             {
                 errorMessage = UIStateManager.current.popUpManager.GetModalPopUpData();
                 errorMessage.title = "Selection Error";
@@ -30,7 +24,7 @@ namespace Unity.Reflect.Viewer.UI
                 return false;
             }
 
-            var selectedContext = selected.GetComponent<PlaneSelectionContext>();
+            var selectedContext = currentSelectedObject.GetComponent<PlaneSelectionContext>();
             if (selectedContext == null)
             {
                 errorMessage = UIStateManager.current.popUpManager.GetModalPopUpData();
@@ -39,15 +33,14 @@ namespace Unity.Reflect.Viewer.UI
                 return false;
             }
 
-            var firstPlane = placementState.firstSelectedPlane;
-            if (firstPlane == null)
+            if (firstSelectedPlane == null)
             {
                 errorMessage = UIStateManager.current.popUpManager.GetModalPopUpData();
                 errorMessage.title = "Placement Error";
                 errorMessage.text = "Placement State does not have a first plane selected.";
                 return false;
             }
-            var firstPlaneContext = firstPlane.GetComponent<PlaneSelectionContext>();
+            var firstPlaneContext = firstSelectedPlane.GetComponent<PlaneSelectionContext>();
             if (firstPlaneContext == null)
             {
                 errorMessage = UIStateManager.current.popUpManager.GetModalPopUpData();
@@ -80,12 +73,12 @@ namespace Unity.Reflect.Viewer.UI
             this.minBoundsMagnitude = minBoundsMagnitude;
         }
 
-        public bool IsValid(ARPlacementStateData placementState, out ModalPopup.ModalPopupData errorMessage)
+        public bool IsValid(GameObject firstSelectedPlane, GameObject secondSelectedPlane, out ModalPopup.ModalPopupData errorMessage, GameObject currentSelectedObject = null)
         {
             errorMessage = default;
-            if (placementState.firstSelectedPlane != null)
+            if (firstSelectedPlane != null)
             {
-                var renderer = placementState.firstSelectedPlane.GetComponent<MeshRenderer>();
+                var renderer = firstSelectedPlane.GetComponent<MeshRenderer>();
                 if (renderer == null)
                 {
                     errorMessage = UIStateManager.current.popUpManager.GetModalPopUpData();
@@ -101,9 +94,9 @@ namespace Unity.Reflect.Viewer.UI
                     return false;
                 }
             }
-            if (placementState.secondSelectedPlane != null)
+            if (secondSelectedPlane != null)
             {
-                var renderer = placementState.secondSelectedPlane.GetComponent<MeshRenderer>();
+                var renderer = secondSelectedPlane.GetComponent<MeshRenderer>();
                 if (renderer == null)
                 {
                     errorMessage = UIStateManager.current.popUpManager.GetModalPopUpData();

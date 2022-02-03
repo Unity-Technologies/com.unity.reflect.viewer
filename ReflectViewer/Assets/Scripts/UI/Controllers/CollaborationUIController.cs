@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
-using SharpFlux;
 using SharpFlux.Dispatching;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -25,13 +26,27 @@ namespace Unity.Reflect.Viewer.UI
 #pragma warning restore CS0649
 
         List<UserUIController> m_Users = new List<UserUIController>();
+        IUISelector<OpenDialogAction.DialogType> m_ActiveDialogSelector;
+        IUISelector<IUserInfoDialogDataProvider> m_SelectUserDataSelector;
+
+        void Awake()
+        {
+            m_ActiveDialogSelector = UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog));
+            m_SelectUserDataSelector = UISelectorFactory.createSelector<IUserInfoDialogDataProvider>(UIStateContext.current, nameof(IUIStateDataProvider.SelectedUserData));
+        }
+
+        void OnDestroy()
+        {
+            m_ActiveDialogSelector?.Dispose();
+            m_SelectUserDataSelector?.Dispose();
+        }
 
         void CreateAvatarPool()
         {
             for (int i = m_Users.Count; i < maxHorizontalAvatars; ++i)
             {
                 var prefab = Instantiate(m_AvatarPrefab, m_AvatarList);
-                if(prefab.TryGetComponent(out UserUIController avatarController))
+                if (prefab.TryGetComponent(out UserUIController avatarController))
                 {
                     m_Users.Add(avatarController);
                     avatarController.gameObject.SetActive(false);
@@ -66,16 +81,28 @@ namespace Unity.Reflect.Viewer.UI
                 }
             }
 
-            if (UIStateManager.current.stateData.activeDialog == DialogType.CollaborationUserInfo &&
-                Array.FindIndex(matchmakerIds, (user) => user == UIStateManager.current.stateData.SelectedUserData.matchmakerId) == -1)
+            if (m_ActiveDialogSelector != null)
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
-            }
+                if (m_ActiveDialogSelector.GetValue() == OpenDialogAction.DialogType.CollaborationUserInfo &&
+                    Array.FindIndex(matchmakerIds, (user) => user == m_SelectUserDataSelector.GetValue().matchmakerId) == -1)
+                {
+                    Dispatcher.Dispatch(OpenDialogAction.From(OpenDialogAction.DialogType.None));
+                }
 
-            UpdateUserGroupBubble(matchmakerIds);
+                UpdateUserGroupBubble(matchmakerIds, m_ActiveDialogSelector.GetValue());
+            }
         }
 
-        void UpdateUserGroupBubble(string[] connectedIds)
+        public void UpdateUsers(string[] matchmakerIds)
+        {
+            float max = Mathf.Min(matchmakerIds.Length, m_Users.Count);
+            for (int i = 0; i < max; i++)
+            {
+                m_Users[i].UpdateUser(matchmakerIds[i]);
+            }
+        }
+
+        void UpdateUserGroupBubble(string[] connectedIds, OpenDialogAction.DialogType activeDialog)
         {
             int nbUngroupedAvatars = maxHorizontalAvatars - 1;
             if (connectedIds.Length > maxHorizontalAvatars)
@@ -86,9 +113,9 @@ namespace Unity.Reflect.Viewer.UI
             else
             {
                 m_GroupBubble.SetActive(false);
-                if (UIStateManager.current.stateData.activeDialog == DialogType.CollaborationUserList)
+                if (activeDialog == OpenDialogAction.DialogType.CollaborationUserList)
                 {
-                    Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                    Dispatcher.Dispatch(OpenDialogAction.From(OpenDialogAction.DialogType.None));
                 }
             }
         }

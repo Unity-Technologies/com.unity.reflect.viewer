@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
-using SharpFlux;
+using System;
+using System.Collections.Generic;
 using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -25,23 +27,33 @@ namespace Unity.Reflect.Viewer.UI
 
         DialogWindow m_DialogWindow;
         Image m_DialogButtonImage;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-
             m_DialogButtonImage = m_DialogButton.GetComponent<Image>();
             m_DialogWindow = GetComponent<DialogWindow>();
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog),
+                type =>
+                {
+                    m_DialogButtonImage.enabled = type == OpenDialogAction.DialogType.Sequence;
+                }));
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(UIStateContext.current, nameof(IToolBarDataProvider.toolbarsEnabled),
+                enabled =>
+                {
+                    m_DialogButton.interactable = enabled;
+                }));
 
             m_JoysticksToggle.onValueChanged.AddListener(OnJoysticksToggleChanged);
             m_ControlsToggle.onValueChanged.AddListener(OnControlsToggleChanged);
             m_HudToggle.onValueChanged.AddListener(OnHUDToggleChanged);
-        }
-
-        void OnStateDataChanged(UIStateData data)
-        {
-            m_DialogButtonImage.enabled = data.activeDialog == DialogType.Sequence;
-            m_DialogButton.interactable = data.toolbarsEnabled;
         }
 
         void OnHUDToggleChanged(bool arg0)
@@ -66,8 +78,8 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnDialogButtonClick()
         {
-            var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.Sequence;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+            var dialogType = m_DialogWindow.open ? OpenDialogAction.DialogType.None : OpenDialogAction.DialogType.Sequence;
+            Dispatcher.Dispatch(OpenDialogAction.From(dialogType));
         }
     }
 }

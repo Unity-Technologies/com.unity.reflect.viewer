@@ -151,8 +151,7 @@ namespace Unity.TouchFramework
             {
                 m_SelectedValue = Mathf.Clamp(value, m_MinimumValue, m_MaximumValue);
                 m_SelectedEntryLabel.text = m_DisplayNumberType == NumberType.Int ? m_LabelConverter.ConvertSelectedValLabel(m_SelectedValue, true) : m_LabelConverter.ConvertSelectedValLabel(m_SelectedValue, false);
-                var angle = m_Scaler.ValueToAngle(m_MinimumValue, m_MaximumValue, m_AngularRange, m_SelectedValue);
-                m_Rect.localEulerAngles = (m_Orientation == Orientation.Left ? Vector3.back : Vector3.forward) * angle;
+                UpdateRectRotation();
             }
         }
 
@@ -222,6 +221,15 @@ namespace Unity.TouchFramework
             m_EntriesNeedUpdate = true;
         }
 
+        void UpdateRectRotation()
+        {
+            if (m_Rect != null)
+            {
+                var angle = m_Scaler.ValueToAngle(m_MinimumValue, m_MaximumValue, m_AngularRange, m_SelectedValue);
+                m_Rect.localEulerAngles = (m_Orientation == Orientation.Left ? Vector3.back : Vector3.forward) * angle;
+            }
+        }
+
         void Awake()
         {
             m_Rect = m_DialGraphic.rectTransform;
@@ -248,6 +256,8 @@ namespace Unity.TouchFramework
             // List of marked entries is not expected to change, sort it once and for all.
             m_MarkedEntries.Sort();
             m_EntriesNeedUpdate = true;
+
+            UpdateRectRotation();
         }
 
         void UpdateGraduations(List<float> entries)

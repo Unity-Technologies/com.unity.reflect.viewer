@@ -2,6 +2,7 @@
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -17,12 +18,12 @@ namespace Unity.Reflect.Viewer.UI
         GameObject m_Line;
 
         [SerializeField]
-        ProjectServerType m_Type;
+        SetLandingScreenFilterProjectServerAction.ProjectServerType m_Type;
 #pragma warning restore CS0649
 
-        public event Action<ProjectServerType> projectTabButtonClicked;
+        public event Action<SetLandingScreenFilterProjectServerAction.ProjectServerType> projectTabButtonClicked;
 
-        public ProjectServerType type => m_Type;
+        public SetLandingScreenFilterProjectServerAction.ProjectServerType type => m_Type;
 
         void Start()
         {

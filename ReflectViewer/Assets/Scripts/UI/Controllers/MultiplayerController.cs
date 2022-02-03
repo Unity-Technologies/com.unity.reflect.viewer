@@ -1,50 +1,126 @@
 using MLAPI;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Reflect.Multiplayer;
 using Unity.SpatialFramework.Avatar;
 using UnityEngine;
-using UnityEngine.Reflect.Utils;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.SceneManagement;
+using UnityEngine.XR.Interaction.Toolkit;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    public class MultiplayerController : MonoBehaviour
+    public class MultiplayerController: MonoBehaviour
     {
         public bool connectToLocalServer = false;
         public AvatarControls networkedPlayerPrefab;
         [SerializeField]
-        private NetworkingManager m_NetworkingManager;
-        NetworkUser m_User;
-        Transform rootNode;
+        NetworkingManager m_NetworkingManager;
+        XRRig m_XRRig;
+        Vector3 m_VRCameraOffset;
+        IUISelector<Transform> m_RootSelector;
+        Transform m_MainCamera;
+        Transform m_WalkCamera;
+        IUISelector<bool> m_VREnableSelector;
+        IUISelector<bool> m_WalkModeEnableSelector;
+        IUISelector<NetworkUserData> m_LocalUserSelector;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
 
-        public void Awake()
+        void Awake()
         {
-            UIStateManager.roomConnectionStateChanged += OnConnectionStateChanged;
+            m_DisposeOnDestroy.Add(m_LocalUserSelector = UISelectorFactory.createSelector<NetworkUserData>(RoomConnectionContext.current, nameof(IRoomConnectionDataProvider<NetworkUserData>.localUser)));
+            m_DisposeOnDestroy.Add(m_VREnableSelector = UISelectorFactory.createSelector<bool>(VRContext.current, nameof(IVREnableDataProvider.VREnable), OnVREnableChanged));
+            m_DisposeOnDestroy.Add(m_WalkModeEnableSelector = UISelectorFactory.createSelector<bool>(WalkModeContext.current, nameof(IWalkModeDataProvider.walkEnabled)));
+
+            m_DisposeOnDestroy.Add(m_RootSelector = UISelectorFactory.createSelector<Transform>(PipelineContext.current, nameof(IPipelineDataProvider.rootNode)));
+
+            if (Camera.main != null)
+                m_MainCamera = Camera.main.transform;
+
+            SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
-        private void OnConnectionStateChanged(RoomConnectionStateData obj)
+        void OnDestroy()
         {
-            if(obj.localUser.networkUser != m_User)
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
+
+        void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            IEnumerator WaitAFrame()
             {
-                m_User = obj.localUser.networkUser;
-                rootNode = UIStateManager.current.m_RootNode.transform;
+                yield return null;
+                m_XRRig = Camera.main.GetComponentInParent<XRRig>();
+                if (m_XRRig != null)
+                {
+                    m_VRCameraOffset.y = m_XRRig.cameraYOffset;
+                }
+                else if (m_VREnableSelector.GetValue())
+                {
+                    Debug.LogError("XRRig not found.");
+                }
+            }
+            StartCoroutine(WaitAFrame());
+        }
+
+        void OnVREnableChanged(bool newData)
+        {
+            if (!newData)
+            {
+                m_VRCameraOffset = Vector3.zero;
             }
         }
 
-        private void Update()
+        void Update()
         {
-            if(m_User != null)
+            if (m_LocalUserSelector.GetValue() != null && m_LocalUserSelector.GetValue().networkUser != null)
             {
-                var pos = rootNode.InverseTransformPoint(Camera.main.transform.localPosition);
-                var rot = Quaternion.Inverse(rootNode.transform.rotation) * Camera.main.transform.localRotation;
-                m_User.SetValue(NetworkUser.k_PositionDataKey, pos, true);
-                m_User.SetValue(NetworkUser.k_RotationDataKey, rot, true);
+                if (m_MainCamera == null || !m_MainCamera.gameObject.activeInHierarchy)
+                {
+                    SetCamera();
+                }
+                var (pos, rot) = GetCameraPositionAndRotation();
+                pos = m_RootSelector.GetValue().InverseTransformPoint(pos);
+                m_LocalUserSelector.GetValue().networkUser.SetValue(NetworkUser.k_PositionDataKey, pos, true);
+                m_LocalUserSelector.GetValue().networkUser.SetValue(NetworkUser.k_RotationDataKey, rot, true);
             }
+        }
+
+        void SetCamera()
+        {
+            if (m_WalkModeEnableSelector.GetValue())
+            {
+                m_WalkCamera = Camera.main.transform;
+                m_MainCamera = m_WalkCamera.parent;
+            }
+            else
+            {
+                m_WalkCamera = null;
+                m_MainCamera = Camera.main.transform;
+            }
+        }
+
+        (Vector3, Quaternion) GetCameraPositionAndRotation()
+        {
+            var rotation = Quaternion.Inverse(m_RootSelector.GetValue().rotation) * m_MainCamera.localRotation;
+            if (m_XRRig != null && m_VREnableSelector.GetValue())
+            {
+                rotation = Quaternion.Inverse(m_RootSelector.GetValue().rotation) * (m_XRRig.transform.localRotation * m_MainCamera.localRotation);
+                return (m_XRRig.transform.localPosition + m_MainCamera.localPosition + m_VRCameraOffset, rotation);
+            }
+            if (m_WalkCamera != null && m_WalkModeEnableSelector.GetValue())
+            {
+                rotation *= m_WalkCamera.localRotation;
+                return (m_MainCamera.localPosition + m_WalkCamera.localPosition, rotation);
+            }
+            return (m_MainCamera.localPosition, rotation);
         }
 
         public AvatarControls CreateVisualRepresentation(Transform parent) => Instantiate(networkedPlayerPrefab, parent);
 
-        private void OnApplicationQuit()
+        void OnApplicationQuit()
         {
             PlayerClientBridge.MatchmakerManager.Disconnect();
         }

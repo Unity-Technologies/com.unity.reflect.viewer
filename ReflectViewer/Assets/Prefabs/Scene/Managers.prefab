@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 6962043218881623860}
   - component: {fileID: 6962043218881623856}
   - component: {fileID: 6962043218881623857}
+  - component: {fileID: 4140358078027663181}
   m_Layer: 0
   m_Name: Managers
   m_TagString: Untagged
@@ -46,6 +47,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d387e92a555240d197bf0e7db3ee07a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_StartUpLink: 
   authenticationFailed:
     m_PersistentCalls:
       m_Calls: []
@@ -86,6 +88,12 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   openInViewerDetected:
+    m_PersistentCalls:
+      m_Calls: []
+  linkSharingDetectedWithArgs:
+    m_PersistentCalls:
+      m_Calls: []
+  openInViewerDetectedWithArgs:
     m_PersistentCalls:
       m_Calls: []
 --- !u!114 &6962043218881623860
@@ -140,6 +148,9 @@ MonoBehaviour:
   sharingLinkCreated:
     m_PersistentCalls:
       m_Calls: []
+  setLinkPermissionDone:
+    m_PersistentCalls:
+      m_Calls: []
   linkSharingProjectInfoEvent:
     m_PersistentCalls:
       m_Calls: []
@@ -147,5 +158,47 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   projectInfoExceptionEvent:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &4140358078027663181
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6962043218881623859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c869b4ab54a4672904cace572a5aae4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  createAccessTokenEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  createAccessTokenExceptionEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  createAccessTokenWithLinkTokenEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  createAccessTokenWithLinkTokenExceptionEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  refreshAccessTokenEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  refreshAccessTokenExceptionEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  keepAliveFloatingSeatEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  keepAliveFloatingSeatExceptionEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  releaseFloatingSeatEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  releaseFloatingSeatExceptionEvent:
     m_PersistentCalls:
       m_Calls: []

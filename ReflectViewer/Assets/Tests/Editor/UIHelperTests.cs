@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-using Unity.Reflect.Viewer.UI;
 using UnityEngine;
 using UnityEngine.Reflect.Utils;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace ReflectViewerEditorTests
 {
@@ -71,7 +72,7 @@ namespace ReflectViewerEditorTests
             Assert.AreEqual($"10 {UIUtils.TimeIntervalHours}", UIUtils.GetTimeIntervalSinceNow(dateTime));
 
             dateTime = DateTime.Now.AddDays(-1);
-            Assert.AreEqual(UIUtils.TimeIntervalYesteday, UIUtils.GetTimeIntervalSinceNow(dateTime));
+            Assert.AreEqual(UIUtils.TimeIntervalYesterday, UIUtils.GetTimeIntervalSinceNow(dateTime));
             dateTime = DateTime.Now.AddDays(-3);
             Assert.AreEqual($"3 {UIUtils.TimeIntervalDays}", UIUtils.GetTimeIntervalSinceNow(dateTime));
 
@@ -97,19 +98,19 @@ namespace ReflectViewerEditorTests
             Assert.AreEqual($"10 {UIUtils.TimeIntervalYears}", UIUtils.GetTimeIntervalSinceNow(dateTime));
         }
 
-        [TestCase(1920, 1080, ScreenSizeQualifier.XLarge)]
-        [TestCase(1200, 1920, ScreenSizeQualifier.XLarge)]
-        [TestCase(1600, 1200, ScreenSizeQualifier.Large)]
-        [TestCase(1440, 900, ScreenSizeQualifier.Large)]
-        [TestCase(900, 1440, ScreenSizeQualifier.Large)]
-        [TestCase(1024, 600, ScreenSizeQualifier.Medium)]
-        [TestCase(600, 1024, ScreenSizeQualifier.Medium)]
-        [TestCase(800, 600, ScreenSizeQualifier.Small)]
-        [TestCase(600, 800, ScreenSizeQualifier.Small)]
-        [TestCase(640, 480, ScreenSizeQualifier.Small)]
-        [TestCase(480, 640, ScreenSizeQualifier.Small)]
-        [TestCase(480, 320, ScreenSizeQualifier.XSmall)]
-        public void UIHelper_TestScreenSizeQualifiers(int width, int height, ScreenSizeQualifier expectedQualifier)
+        [TestCase(1920, 1080, SetDisplayAction.ScreenSizeQualifier.XLarge)]
+        [TestCase(1200, 1920, SetDisplayAction.ScreenSizeQualifier.XLarge)]
+        [TestCase(1600, 1200, SetDisplayAction.ScreenSizeQualifier.Large)]
+        [TestCase(1440, 900, SetDisplayAction.ScreenSizeQualifier.Large)]
+        [TestCase(900, 1440, SetDisplayAction.ScreenSizeQualifier.Large)]
+        [TestCase(1024, 600, SetDisplayAction.ScreenSizeQualifier.Medium)]
+        [TestCase(600, 1024, SetDisplayAction.ScreenSizeQualifier.Medium)]
+        [TestCase(800, 600, SetDisplayAction.ScreenSizeQualifier.Small)]
+        [TestCase(600, 800, SetDisplayAction.ScreenSizeQualifier.Small)]
+        [TestCase(640, 480, SetDisplayAction.ScreenSizeQualifier.Small)]
+        [TestCase(480, 640, SetDisplayAction.ScreenSizeQualifier.Small)]
+        [TestCase(480, 320, SetDisplayAction.ScreenSizeQualifier.XSmall)]
+        public void UIHelper_TestScreenSizeQualifiers(int width, int height, SetDisplayAction.ScreenSizeQualifier expectedQualifier)
         {
             //when
             var processedQualifier = UIUtils.QualifyScreenSize(new Vector2(width, height));
@@ -118,13 +119,13 @@ namespace ReflectViewerEditorTests
             Assert.AreEqual(expectedQualifier.ToString(),processedQualifier.ToString());
         }
 
-        [TestCase(2388, 1668, 264, DisplayType.Tablet, 2.31f)]
-        [TestCase(2732, 2048, 264, DisplayType.Tablet,2.75f)]
-        [TestCase(1600, 1200, 96, DisplayType.Desktop,1)]
-        [TestCase(800, 600, 96, DisplayType.Desktop,1)]
-        [TestCase(800, 600, 96, DisplayType.Tablet,0.83f)]
-        [TestCase(480, 320, 96, DisplayType.Desktop,0.64f)] //Scale on desktop
-        public void UIHelper_TestScaleFactor(int width, int height, float dpi, Unity.Reflect.Viewer.UI.DisplayType displayType, float expectedScaleFactor)
+        [TestCase(2388, 1668, 264, SetDisplayAction.DisplayType.Tablet, 2.31f)]
+        [TestCase(2732, 2048, 264, SetDisplayAction.DisplayType.Tablet,2.75f)]
+        [TestCase(1600, 1200, 96, SetDisplayAction.DisplayType.Desktop,1)]
+        [TestCase(800, 600, 96, SetDisplayAction.DisplayType.Desktop,1)]
+        [TestCase(800, 600, 96, SetDisplayAction.DisplayType.Tablet,0.83f)]
+        [TestCase(480, 320, 96, SetDisplayAction.DisplayType.Desktop,0.64f)] //Scale on desktop
+        public void UIHelper_TestScaleFactor(int width, int height, float dpi, SetDisplayAction.DisplayType displayType, float expectedScaleFactor)
         {
             //when
             var scaleFactor = UIUtils.GetScaleFactor(width, height, dpi, displayType);

@@ -1,9 +1,11 @@
-using System;
 using System.Collections;
+using System.Collections.Generic;
 using SharpFlux.Stores;
 using Unity.MARS.Providers;
 using UnityEngine;
-using UnityEngine.Reflect.MeasureTool;
+using UnityEngine.Reflect.Viewer;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -13,14 +15,21 @@ namespace Unity.Reflect.Viewer.UI
     /// Partial Class with class definitions
     /// </summary>
     public partial class UIStateManager : MonoBehaviour,
-        IStore<UIStateData>, IStore<UISessionStateData>, IStore<UIProjectStateData>, IStore<UIARStateData>, IStore<UIDebugStateData>, IStore<ApplicationStateData>,
-        IStore<RoomConnectionStateData>,
-        IUsesSessionControl, IUsesPointCloud, IUsesPlaneFinding
+        IStore<UIStateData>, IStore<UISessionStateData>, IStore<UIProjectStateData>, IStore<ProjectSettingStateData>, IStore<UIARStateData>, IStore<UIDebugStateData>, IStore<ApplicationSettingsStateData>,
+        IStore<RoomConnectionStateData>, IStore<ExternalToolStateData>, IStore<UIWalkStateData>, IStore<DragStateData>, IStore<PipelineStateData>, IStore<ForceNavigationModeData>,
+        IStore<AppBarStateData>, IUsesSessionControl, IUsesPointCloud, IUsesPlaneFinding, IStore<SceneOptionData>, IStore<VRStateData>
     {
-
         static UIStateManager s_Current;
 
         public static UIStateManager current => s_Current;
+
+#if UNITY_EDITOR
+        public string StartUpLink;
+#endif
+
+        bool m_Initialized;
+
+        Dictionary<SetNavigationModeAction.NavigationMode, string> m_SceneDictionary = new Dictionary<SetNavigationModeAction.NavigationMode, string>();
 
         void Awake()
         {
@@ -34,19 +43,19 @@ namespace Unity.Reflect.Viewer.UI
             AwakeActions();
             AwakePipeline();
             AwakeMultiplayer();
+
+            foreach (var info in m_UIStateData.navigationStateData.navigationModeInfos)
+            {
+                m_SceneDictionary[info.navigationMode] = info.modeScenePath;
+            }
         }
 
         void OnDestroy()
         {
-            stateChanged = delegate {};
-            sessionStateChanged = delegate {};
-            projectStateChanged = delegate {};
-            arStateChanged = delegate {};
-            debugStateChanged = delegate {};
-            applicationStateChanged = delegate {};
-            roomConnectionStateChanged = delegate {};
-            externalToolChanged = delegate {};
             s_Current = null;
+            m_TeleportSelector?.Dispose();
+            ReflectProjectsManager.Dispose();
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
         }
 
         IEnumerator Start()
@@ -55,108 +64,78 @@ namespace Unity.Reflect.Viewer.UI
 
             if (s_Current == this)
             {
-                OnAppStateChanged();
-                OnSessionStateChanged();
-                OnProjectStateChanged();
-                OnARStateChanged();
-                OnExternalToolStateChanged();
-
+                m_UISessionStateData.networkReachability = Application.internetReachability;
+#if UNITY_EDITOR
+                if (!string.IsNullOrEmpty(StartUpLink))
+                {
+                    m_LoginManager.onDeeplink(StartUpLink);
+                }
+#else
                 m_LoginManager.onDeeplink(m_ArgumentParser.TrailingArg);
+#endif
+                StartCoroutine(InternetCheck());
+
+
+                foreach (var info in m_UIStateData.navigationStateData.navigationModeInfos)
+                {
+                    m_SceneDictionary[info.navigationMode] = info.modeScenePath;
+                }
+            }
+            m_Initialized = true;
+        }
+
+        IEnumerator InternetCheck()
+        {
+            while (s_Current == this)
+            {
+                yield return new WaitForSeconds(5);
+                StartCoroutine(UnityEngine.Reflect.ProjectServer.CheckProjectServerConnection(ConnectionCheck));
+                NetworkReachabilityCheck();
+            }
+        }
+
+        void ConnectionCheck(bool connection)
+        {
+            if (m_UISessionStateData.projectServerConnection != connection)
+            {
+                Debug.Log($"projectServerConnectionChanged = {connection}");
+                m_UISessionStateData.projectServerConnection = connection;
+                ForceSendSessionStateChangedEvent();
+            }
+        }
+
+        void NetworkReachabilityCheck()
+        {
+            if (m_UISessionStateData.networkReachability != Application.internetReachability)
+            {
+                Debug.Log($"networkReachabilityChanged = {Application.internetReachability}");
+                m_UISessionStateData.networkReachability = Application.internetReachability;
+                ForceSendSessionStateChangedEvent();
             }
         }
 
         void DetectCapabilities()
         {
-            m_UIStateData.deviceCapability = DeviceCapability.None;
+            m_PipelineStateData.deviceCapability = SetVREnableAction.DeviceCapability.None;
 #if UNITY_EDITOR
-            m_UIStateData.deviceCapability |= DeviceCapability.VRCapability | DeviceCapability.ARCapability;
+            m_PipelineStateData.deviceCapability |= SetVREnableAction.DeviceCapability.VRCapability | SetVREnableAction.DeviceCapability.ARCapability;
 #elif UNITY_IOS || UNITY_ANDROID
-            m_UIStateData.deviceCapability |= DeviceCapability.ARCapability;
+            m_PipelineStateData.deviceCapability |= SetVREnableAction.DeviceCapability.ARCapability;
 #elif UNITY_STANDALONE_WIN
-            m_UIStateData.deviceCapability |= DeviceCapability.VRCapability;
+            m_PipelineStateData.deviceCapability |= SetVREnableAction.DeviceCapability.VRCapability;
 #endif
             if (SystemInfo.supportsAsyncGPUReadback)
-                m_UIStateData.deviceCapability |= DeviceCapability.SupportsAsyncGPUReadback;
+                m_PipelineStateData.deviceCapability |= SetVREnableAction.DeviceCapability.SupportsAsyncGPUReadback;
         }
 
-        void OnAppStateChanged()
-        {
-            ForceSendStateChangedEvent();
-        }
-
-        void OnSessionStateChanged()
-        {
-
-        }
-
-        void OnProjectStateChanged()
-        {
-            ForceSendProjectStateChangedEvent();
-        }
-
-        void OnARStateChanged()
-        {
-            ForceSendARStateChangedEvent();
-        }
-
-        void OnExternalToolStateChanged()
-        {
-            ForceExternalToolChangedEvent();
-        }
-
-        /// <summary>
-        /// Invoke model changed event.
-        /// </summary>
-        public void ForceSendStateChangedEvent()
-        {
-            stateChanged.Invoke(m_UIStateData);
-        }
-        /// <summary>
-        /// Invoke model changed event.
-        /// </summary>
         public void ForceSendSessionStateChangedEvent()
         {
-            sessionStateChanged.Invoke(m_UISessionStateData);
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData, UpdateNotification.ForceNotify);
         }
 
-        /// <summary>
-        /// Invoke Project changed event.
-        /// </summary>
-        public void ForceSendProjectStateChangedEvent()
+        public Dictionary<SetNavigationModeAction.NavigationMode, string> GetSceneDictionary()
         {
-            projectStateChanged.Invoke(m_UIProjectStateData);
-        }
-
-        /// <summary>
-        /// Invoke AR Simulation changed event.
-        /// </summary>
-        public void ForceSendARStateChangedEvent()
-        {
-            arStateChanged.Invoke(m_ARStateData);
-        }
-
-        /// <summary>
-        /// Invoke application state changed event.
-        /// </summary>
-        public void ForceSendApplicationChangedEvent()
-        {
-            applicationStateChanged.Invoke(m_ApplicationStateData);
-        }
-
-        /// <summary>
-        /// Invoke Connection state changed event.
-        /// </summary>
-        public void ForceSendConnectionChangedEvent()
-        {
-            roomConnectionStateChanged.Invoke(m_RoomConnectionStateData);
-		}
-
-        /// <summary>
-        /// Invoke Tool changed event.
-        /// </summary>
-        public void ForceExternalToolChangedEvent()
-        {
-            externalToolChanged.Invoke(m_ExternalToolStateData);
+            return m_SceneDictionary;
         }
     }
 }

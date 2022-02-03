@@ -1,9 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using SharpFlux;
+using System;
 using SharpFlux.Dispatching;
+using Unity.Reflect.Collections;
 using Unity.Reflect.Viewer.UI;
-using UnityEngine.Reflect.Viewer.Pipeline;
+using UnityEngine.Reflect.Viewer.Core;
+using Unity.Reflect.Actors;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace UnityEngine.Reflect.Viewer
 {
@@ -20,12 +21,14 @@ namespace UnityEngine.Reflect.Viewer
         [Tooltip("Fixed time for the teleport animation")]
         public float m_LerpTime = 1f;
 
-        #pragma warning disable 0649
-        [SerializeField] Camera m_Camera;
-        [SerializeField] GameObject m_IndicatorPrefab;
-        [SerializeField] AnimationCurve m_DistanceOverTime;
-        [SerializeField] AnimationCurve m_IndicatorSizeOverTime;
-        #pragma warning restore 0649
+        [SerializeField]
+        Camera m_Camera;
+        [SerializeField]
+        GameObject m_IndicatorPrefab;
+        [SerializeField]
+        AnimationCurve m_DistanceOverTime;
+        [SerializeField]
+        AnimationCurve m_IndicatorSizeOverTime;
 
         Transform m_CameraTransform;
         bool m_IsTeleporting;
@@ -35,18 +38,33 @@ namespace UnityEngine.Reflect.Viewer
         GameObject m_IndicatorInstance;
         Vector3 m_IndicatorScale = new Vector3(1f, 0f, 1f);
 
-        ISpatialPicker<Tuple<GameObject, RaycastHit>> m_TeleportPicker;
-        readonly List<Tuple<GameObject, RaycastHit>> m_Results = new List<Tuple<GameObject, RaycastHit>>();
-
         Vector3? m_PreviousTarget;
         FreeFlyCamera m_FreeFlyCamera;
+        IUISelector<IPicker> m_TeleportPickerSelector;
+        IUISelector<bool> m_WalkModeEnableSelector;
+        IUISelector<IWalkInstructionUI> m_WalkInstructionSelector;
+        IUISelector<bool> m_HOLDFilterSelector;
+        IUISelector<Vector3> m_TeleportTargetSelector;
 
         void Start()
         {
             m_CameraTransform = m_Camera.transform;
             m_FreeFlyCamera = m_Camera.GetComponent<FreeFlyCamera>();
 
-            UIStateManager.projectStateChanged += OnProjectStateDataChanged;
+            m_TeleportTargetSelector = UISelectorFactory.createSelector<Vector3>(ProjectContext.current, nameof(ITeleportDataProvider.teleportTarget), OnTeleportTargetChanged);
+            m_TeleportPickerSelector = UISelectorFactory.createSelector<IPicker>(ProjectContext.current, nameof(ITeleportDataProvider.teleportPicker));
+            m_WalkModeEnableSelector = UISelectorFactory.createSelector<bool>(WalkModeContext.current, nameof(IWalkModeDataProvider.walkEnabled));
+            m_WalkInstructionSelector = UISelectorFactory.createSelector<IWalkInstructionUI>(WalkModeContext.current, nameof(IWalkModeDataProvider.instruction));
+            m_HOLDFilterSelector = UISelectorFactory.createSelector<bool>(SceneOptionContext.current, nameof(ISceneOptionData<SkyboxData>.filterHlods));
+        }
+
+        void OnDestroy()
+        {
+            m_TeleportTargetSelector?.Dispose();
+            m_TeleportPickerSelector?.Dispose();
+            m_WalkModeEnableSelector?.Dispose();
+            m_WalkInstructionSelector?.Dispose();
+            m_HOLDFilterSelector?.Dispose();
         }
 
         void Update()
@@ -73,10 +91,11 @@ namespace UnityEngine.Reflect.Viewer
             m_IsTeleporting = false;
             Destroy(m_IndicatorInstance);
 
-            if (UIStateManager.current.walkStateData.walkEnabled)
+            if (m_WalkModeEnableSelector.GetValue())
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.FinishTeleport, true));
-                UIStateManager.current.walkStateData.instruction.Next();
+                Dispatcher.Dispatch(SetFinishTeleportAction.From(true));
+                Dispatcher.Dispatch(SetFinishTeleportAction.From(false));
+                m_WalkInstructionSelector.GetValue().Next();
             }
 
             // reset and enable free fly camera
@@ -87,17 +106,15 @@ namespace UnityEngine.Reflect.Viewer
             m_FreeFlyCamera.enabled = true;
         }
 
-        void OnProjectStateDataChanged(UIProjectStateData data)
+        void OnTeleportTargetChanged(Vector3 newData)
         {
-            m_TeleportPicker = data.teleportPicker;
-
-            if (m_PreviousTarget == data.teleportTarget)
+            if (m_PreviousTarget == newData)
                 return;
 
-            if (data.teleportTarget.HasValue)
+            if (!newData.Equals(Vector3.zero)) //Cannot use nullable Vector3 with properties
             {
                 m_Source = m_CameraTransform.position;
-                m_Destination = data.teleportTarget.Value;
+                m_Destination = newData;
                 m_IsTeleporting = true;
 
                 m_IndicatorInstance = Instantiate(m_IndicatorPrefab);
@@ -115,7 +132,7 @@ namespace UnityEngine.Reflect.Viewer
                     m_FreeFlyCamera.enabled = false;
             }
 
-            m_PreviousTarget = data.teleportTarget;
+            m_PreviousTarget = newData;
         }
 
         // called in UI event
@@ -124,35 +141,45 @@ namespace UnityEngine.Reflect.Viewer
             if (m_IsTeleporting)
                 return;
 
-            m_TeleportPicker.Pick(m_Camera.ScreenPointToRay(position), m_Results);
-            if (m_Results.Count == 0)
-                return;
+            var flags = m_HOLDFilterSelector.GetValue() ? new [] { SpatialActor.k_IsHlodFlag, SpatialActor.k_IsDisabledFlag } : new [] { SpatialActor.k_IsDisabledFlag };
+            var picker = (ISpatialPickerAsync<Tuple<GameObject, RaycastHit>>) m_TeleportPickerSelector.GetValue();
 
-            var hitInfo = m_Results[0].Item2;
+            picker.Pick(m_Camera.ScreenPointToRay(position), results =>
+            {
+                if (results.Count == 0)
+                    return;
 
-            var point = hitInfo.point;
-            var normal = hitInfo.normal;
-            var target = point +
-                m_ArrivalOffsetFixed +
-                m_ArrivalOffsetNormal * normal +
-                m_ArrivalOffsetRelative * (m_Source - point).normalized;
+                var hitInfo = results[0].Item2;
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Teleport, target));
+                var point = hitInfo.point;
+                var normal = hitInfo.normal;
+                var target = point +
+                    m_ArrivalOffsetFixed +
+                    m_ArrivalOffsetNormal * normal +
+                    m_ArrivalOffsetRelative * (m_Source - point).normalized;
+
+                Dispatcher.Dispatch(TeleportAction.From(target));
+            }, flags);
         }
 
-        public Vector3 GetTeleportTarget(Vector2 position)
+        public void AsyncGetTeleportTarget(Vector2 position, Action<Vector3> callback)
         {
-            m_TeleportPicker?.Pick(m_Camera.ScreenPointToRay(position), m_Results);
-            if (m_Results.Count == 0)
-                return Vector3.zero;
+            var flags = m_HOLDFilterSelector.GetValue() ? new [] { SpatialActor.k_IsHlodFlag, SpatialActor.k_IsDisabledFlag } : new [] { SpatialActor.k_IsDisabledFlag };
+            ((ISpatialPickerAsync<Tuple<GameObject, RaycastHit>>)m_TeleportPickerSelector.GetValue()).Pick(m_Camera.ScreenPointToRay(position), results =>
+            {
+                if (results.Count == 0)
+                {
+                    callback(Vector3.zero);
+                    return;
+                }
 
-            var hitInfo = m_Results[0].Item2;
+                var hitInfo = results[0].Item2;
 
-            var point = hitInfo.point;
-            var target = point;
-            target.y += 0.001f;
+                var point = hitInfo.point;
+                var target = point;
 
-            return target;
+                callback(target);
+            }, flags);
         }
     }
 }

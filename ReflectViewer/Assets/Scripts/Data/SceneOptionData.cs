@@ -1,21 +1,12 @@
-﻿using System;
+using System;
+using System.Runtime.InteropServices;
+using Unity.Properties;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    public enum SkyboxType
-    {
-        Light = 0,
-        Dark = 1,
-        Custom = 2
-    }
-
-    public enum WeatherType
-    {
-        HeavyRain = 0,
-        Sunny = 1,
-    }
-
     [Serializable]
     public struct SkyboxData : IEquatable<SkyboxData>
     {
@@ -39,8 +30,6 @@ namespace Unity.Reflect.Viewer.UI
                 return ((int) skyboxType * 397) ^ customColor.GetHashCode();
             }
         }
-        
-        
         public static bool operator ==(SkyboxData a, SkyboxData b)
         {
             return a.Equals(b);
@@ -50,27 +39,55 @@ namespace Unity.Reflect.Viewer.UI
         {
             return !(a == b);
         }
-        
     }
 
-    [Serializable]
-    public struct SceneOptionData : IEquatable<SceneOptionData>
+    [Serializable, GeneratePropertyBag]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct SceneOptionData : IEquatable<SceneOptionData>, ISceneOptionData<SkyboxData>
     {
         // View Options
-        public bool enableTexture;
-        public bool enableLightData;
-        public SkyboxData skyboxData;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool enableTexture { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool enableLightData { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SkyboxData skyboxData { get; set; }
 
         // Climate Data
-        public bool enableClimateSimulation;
-        public WeatherType weatherType;
-        public float temperature;
-        
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool enableClimateSimulation { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public WeatherType weatherType { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public float temperature { get; set; }
+
+        // Stats info and Debug
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool enableStatsInfo { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool filterHlods { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool enableDebugOption { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetOrbitTypeAction.OrbitType touchOrbitType { get; set; }
+
         public bool Equals(SceneOptionData other)
         {
             return enableTexture == other.enableTexture && enableLightData == other.enableLightData && skyboxData.Equals(other.skyboxData) &&
                 enableClimateSimulation == other.enableClimateSimulation && weatherType == other.weatherType &&
-                temperature.Equals(other.temperature);
+                temperature.Equals(other.temperature) && enableStatsInfo == other.enableStatsInfo && enableDebugOption == other.enableDebugOption &&
+                filterHlods == other.filterHlods && touchOrbitType == other.touchOrbitType;
         }
 
         public override bool Equals(object obj)
@@ -88,10 +105,14 @@ namespace Unity.Reflect.Viewer.UI
                 hashCode = (hashCode * 397) ^ enableClimateSimulation.GetHashCode();
                 hashCode = (hashCode * 397) ^ (int) weatherType;
                 hashCode = (hashCode * 397) ^ temperature.GetHashCode();
+                hashCode = (hashCode * 397) ^ enableStatsInfo.GetHashCode();
+                hashCode = (hashCode * 397) ^ enableDebugOption.GetHashCode();
+                hashCode = (hashCode * 397) ^ filterHlods.GetHashCode();
+                hashCode = (hashCode * 397) ^ touchOrbitType.GetHashCode();
                 return hashCode;
             }
         }
-        
+
         public static bool operator ==(SceneOptionData a, SceneOptionData b)
         {
             return a.Equals(b);

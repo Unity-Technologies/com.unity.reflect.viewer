@@ -1,0 +1,13 @@
+{
+  "name": "com.unity.properties",
+  "displayName": "Properties",
+  "version": "1.7.0-preview",
+  "unity": "2020.1",
+  "unityRelease": "0f1",
+  "description": "Interfaces and utilities to describe and visit data containers.",
+  "keywords": ["properties", "unity"],
+  "dependencies": {
+    "com.unity.nuget.mono-cecil": "0.1.6-preview.2",
+    "com.unity.test-framework.performance": "2.3.1-preview"
+  }
+}

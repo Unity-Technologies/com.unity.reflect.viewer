@@ -3,11 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Unity.Reflect.Viewer.UI;
+using SharpFlux.Dispatching;
 using UnityEngine.EventSystems;
 using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.InputSystem;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.XR.Management;
 
 namespace UnityEngine.Reflect.Viewer
@@ -30,7 +32,6 @@ namespace UnityEngine.Reflect.Viewer
         public VRControllerType Type;
         public Transform LeftPrefab;
         public Transform RightPrefab;
-        public Vector3 Rotation;
     }
 
     public class VRMode : MonoBehaviour
@@ -40,8 +41,6 @@ namespace UnityEngine.Reflect.Viewer
         InputActionAsset m_InputActionAsset;
         [SerializeField]
         VRAnchorController m_VrAnchorController;
-        [SerializeField]
-        TransformVariable m_RightController;
         [SerializeField]
         bool m_SkipVrInit;
         [SerializeField]
@@ -66,8 +65,8 @@ namespace UnityEngine.Reflect.Viewer
         {
             m_Manager = XRGeneralSettings.Instance.Manager;
             m_ScreenModeCamera = Camera.main;
-            UIStateManager.projectStateChanged += OnProjectStateDataChanged;
-            m_RightController.Value = m_RightHandController.transform;
+
+            ProjectContext.current.stateChanged += OnProjectStateDataChanged;
 
             var standaloneInputModule = FindObjectOfType<StandaloneInputModule>();
             if (standaloneInputModule != null)
@@ -76,6 +75,7 @@ namespace UnityEngine.Reflect.Viewer
             m_ActionMap = m_InputActionAsset.FindActionMap("VR", true);
             m_ActionMap.Enable();
 
+            Dispatcher.Dispatch(SetXRControllerAction.From(m_RightHandController.transform));
             StartCoroutine(Load());
         }
 
@@ -92,17 +92,6 @@ namespace UnityEngine.Reflect.Viewer
 
             if (!m_SkipVrInit)
             {
-                m_Manager.DeinitializeLoader();
-
-                // initialize VR
-                yield return m_Manager.InitializeLoader();
-
-                if (m_Manager.activeLoader == null)
-                {
-                    Debug.LogError("VR initialization failed!");
-                    yield break;
-                }
-
                 // start VR subsystems
                 m_Manager.StartSubsystems();
 
@@ -156,10 +145,10 @@ namespace UnityEngine.Reflect.Viewer
                 m_ActionMap.Disable();
             }
 
-            UIStateManager.projectStateChanged -= OnProjectStateDataChanged;
+            ProjectContext.current.stateChanged -= OnProjectStateDataChanged;
         }
 
-        void OnProjectStateDataChanged(UIProjectStateData data)
+        void OnProjectStateDataChanged()
         {
             if (m_ActionMap == null)
             {
@@ -226,14 +215,8 @@ namespace UnityEngine.Reflect.Viewer
             var vrController = m_VRControllers.FirstOrDefault(c => c.Type == type);
             if (vrController != null)
             {
-                var left = Instantiate(vrController.LeftPrefab, m_LeftHandController.transform);
-                var right = Instantiate(vrController.RightPrefab, m_RightHandController.transform);
-
-                var leftWidget = left.GetComponent<VRControllerWidget>();
-                var rightWidget = right.GetComponent<VRControllerWidget>();
-
-                leftWidget.Rotation = vrController.Rotation;
-                rightWidget.Rotation = vrController.Rotation;
+                Instantiate(vrController.LeftPrefab, m_LeftHandController.transform);
+                Instantiate(vrController.RightPrefab, m_RightHandController.transform);
             }
         }
     }

@@ -1,0 +1,10 @@
+.unity-properties__type-descriptor__value
+{
+    color: #6F6F6F;
+}
+
+.unity-properties__type-descriptor__link
+{
+    color: #3C76C0;
+    border-bottom-color: #3C76C0;
+}

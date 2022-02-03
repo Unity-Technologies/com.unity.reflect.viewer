@@ -77,10 +77,12 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.inputsystem": {
-      "version": "1.1.0-preview.3",
+      "version": "1.2.0",
       "depth": 0,
       "source": "registry",
-      "dependencies": {},
+      "dependencies": {
+        "com.unity.modules.uielements": "1.0.0"
+      },
       "url": "https://packages.unity.com"
     },
     "com.unity.mars": {
@@ -133,6 +135,24 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
+    "com.unity.nuget.mono-cecil": {
+      "version": "0.1.6-preview.2",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {
+        "nuget.mono-cecil": "0.1.6-preview"
+      },
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.properties": {
+      "version": "file:../../Packages/com.unity.properties/Properties/Packages/com.unity.properties",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "com.unity.nuget.mono-cecil": "0.1.6-preview.2",
+        "com.unity.test-framework.performance": "2.3.1-preview"
+      }
+    },
     "com.unity.purchasing": {
       "version": "2.2.2",
       "depth": 0,
@@ -143,13 +163,24 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.reflect": {
-      "version": "file:../../Packages/com.unity.reflect-2.1.0-preview.106.tgz",
+      "version": "3.1.0-preview.9",
       "depth": 0,
-      "source": "local-tarball",
+      "source": "registry",
       "dependencies": {
-        "com.unity.reflect.runtime": "1.3.0-preview.18",
         "com.unity.editorcoroutines": "0.0.2-preview.1",
+        "com.unity.reflect.runtime": "1.5.0-preview.3",
+        "com.unity.sharp-zip-lib": "1.2.2-preview.2",
         "com.unity.ugui": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.reflect.markers": {
+      "version": "file:../../Packages/com.unity.reflect.markers",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "com.unity.xr.arfoundation": "4.0.9",
+        "com.yasirkula.nativeshare": "1.4.2"
       }
     },
     "com.unity.reflect.measure-tool": {
@@ -159,15 +190,15 @@
       "dependencies": {}
     },
     "com.unity.reflect.multiplayer": {
-      "version": "file:../../Packages/com.unity.reflect.multiplayer-0.0.1-preview.57.tgz",
+      "version": "file:../../Packages/com.unity.reflect.multiplayer-0.1.1-preview.13.tgz",
       "depth": 0,
       "source": "local-tarball",
       "dependencies": {
-        "com.unity.reflect.runtime": "1.3.0-preview.18"
+        "com.unity.reflect.runtime": "1.4.0-preview.14"
       }
     },
     "com.unity.reflect.runtime": {
-      "version": "1.3.0-preview.18",
+      "version": "1.5.0-preview.3",
       "depth": 1,
       "source": "registry",
       "dependencies": {},
@@ -184,7 +215,7 @@
       "depth": 0,
       "source": "local",
       "dependencies": {
-        "com.unity.reflect.touch-framework": "0.1.0-preview",
+        "com.unity.properties": "0.1.6-preview.2",
         "nuget.moq": "1.0.0",
         "com.unity.ext.nunit": "1.0.6"
       }
@@ -226,6 +257,13 @@
       },
       "url": "https://packages.unity.com"
     },
+    "com.unity.sharp-zip-lib": {
+      "version": "1.2.2-preview.2",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
     "com.unity.spatial-framework": {
       "version": "file:../../Packages/com.unity.spatial-framework",
       "depth": 0,
@@ -257,12 +295,22 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.test-framework": {
-      "version": "1.1.24",
+      "version": "1.1.29",
       "depth": 0,
       "source": "registry",
       "dependencies": {
         "com.unity.ext.nunit": "1.0.6",
         "com.unity.modules.imgui": "1.0.0",
+        "com.unity.modules.jsonserialize": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.test-framework.performance": {
+      "version": "2.8.0-preview",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.test-framework": "1.1.0",
         "com.unity.modules.jsonserialize": "1.0.0"
       },
       "url": "https://packages.unity.com"
@@ -316,12 +364,13 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.arfoundation": {
-      "version": "4.2.0-pre.2",
+      "version": "4.2.1",
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.unity.xr.arsubsystems": "4.2.0-pre.2",
-        "com.unity.xr.management": "4.0.1"
+        "com.unity.xr.arsubsystems": "4.2.1",
+        "com.unity.xr.management": "4.0.1",
+        "com.unity.modules.particlesystem": "1.0.0"
       },
       "url": "https://packages.unity.com"
     },
@@ -336,20 +385,21 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.arsubsystems": {
-      "version": "4.2.0-pre.2",
+      "version": "4.2.1",
       "depth": 1,
       "source": "registry",
       "dependencies": {
-        "com.unity.subsystemregistration": "1.1.0"
+        "com.unity.subsystemregistration": "1.1.0",
+        "com.unity.xr.management": "4.0.1"
       },
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.interaction.toolkit": {
-      "version": "1.0.0-pre.2",
-      "depth": 1,
+      "version": "1.0.0-pre.4",
+      "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.unity.inputsystem": "1.0.1",
+        "com.unity.inputsystem": "1.0.2",
         "com.unity.ugui": "1.0.0",
         "com.unity.xr.legacyinputhelpers": "2.1.7"
       },
@@ -379,7 +429,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.openxr": {
-      "version": "1.0.3",
+      "version": "1.0.2",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -405,8 +455,22 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
+    "com.yasirkula.nativeshare": {
+      "version": "https://github.com/yasirkula/UnityNativeShare.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "9b1575d6e126b98b79b58c487e8cfd09125d1e3b"
+    },
     "nuget.castle-core": {
       "version": "1.0.1",
+      "depth": 2,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
+    "nuget.mono-cecil": {
+      "version": "0.1.6-preview",
       "depth": 2,
       "source": "registry",
       "dependencies": {},
