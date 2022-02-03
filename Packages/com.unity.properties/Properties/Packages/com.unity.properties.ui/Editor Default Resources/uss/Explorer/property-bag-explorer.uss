@@ -1,0 +1,11 @@
+.unity-properties__property-bag-explorer__list CustomInspectorElement
+{
+    flex-grow: 1;
+    margin-top: 3px;
+    margin-left: 3px;
+    margin-right: 3px;
+}
+
+.unity-properties__property-bag-explorer__detail CustomInspectorElement
+{
+}

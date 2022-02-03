@@ -1,0 +1,25 @@
+{
+    "name": "ReflectViewerEditor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:74d2eea16291e475bbc857905e4d8f8e",
+        "GUID:6cf67fea318af2844a952982933563b0",
+        "GUID:951584c526119ab418b67bd907336c9d",
+        "GUID:c6c4e6c6d92818b4f8de2a6eacc86757",
+        "GUID:e40ba710768534012815d3193fa296cb",
+        "GUID:f9fe0089ec81f4079af78eb2287a6163",
+        "GUID:ae9bdd636697449f39e092884de2e892",
+        "Unity.Reflect.Viewer.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

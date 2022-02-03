@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: d787ae363ca72c14695f9f5e8ea10de4
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - m_RayInteractor: {instanceID: 0}
+  - m_LineSettings: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

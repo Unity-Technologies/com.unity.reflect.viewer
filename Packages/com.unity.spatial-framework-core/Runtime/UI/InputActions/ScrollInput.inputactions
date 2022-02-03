@@ -1,0 +1,45 @@
+{
+    "name": "ScrollInput",
+    "maps": [
+        {
+            "name": "Scroll Input",
+            "id": "3a994288-8b0e-4aa0-a077-2e9fe1d3c284",
+            "actions": [
+                {
+                    "name": "Scroll",
+                    "type": "Value",
+                    "id": "99ea1be2-9e7f-438b-85cc-878aa690f05a",
+                    "expectedControlType": "Stick",
+                    "processors": "",
+                    "interactions": ""
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "4cfb2886-5439-4e06-8401-1f8a4d2114eb",
+                    "path": "<XRController>/joystick",
+                    "interactions": "",
+                    "processors": "StickDeadzone",
+                    "groups": "XR Controller",
+                    "action": "Scroll",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": [
+        {
+            "name": "XR Controller",
+            "bindingGroup": "XR Controller",
+            "devices": [
+                {
+                    "devicePath": "<XRController>",
+                    "isOptional": false,
+                    "isOR": false
+                }
+            ]
+        }
+    ]
+}

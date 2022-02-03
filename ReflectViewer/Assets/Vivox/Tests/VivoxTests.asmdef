@@ -1,0 +1,9 @@
+{
+    "name": "VivoxTests",
+    "references": [
+        "VivoxUnity"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

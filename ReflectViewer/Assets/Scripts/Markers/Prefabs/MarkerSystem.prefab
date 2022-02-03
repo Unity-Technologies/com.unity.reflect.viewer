@@ -1,0 +1,198 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1066345833298871175
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1066345833298871177}
+  - component: {fileID: 7298178786033750945}
+  - component: {fileID: 1066345833298871176}
+  - component: {fileID: 1066345833298871179}
+  - component: {fileID: 1066345833298871178}
+  - component: {fileID: 1066345833298871173}
+  - component: {fileID: 1066345833298871172}
+  - component: {fileID: 1361094736}
+  - component: {fileID: 1361094735}
+  - component: {fileID: 4409767990626913460}
+  - component: {fileID: 1800410956082943998}
+  - component: {fileID: 1361094737}
+  m_Layer: 0
+  m_Name: MarkerSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1066345833298871177
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7298178786033750945
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94227288642316c40aab751c1bc781a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1066345833298871176
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09234e364d723f541a1486cdfe1b62c2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_MarkerController: {fileID: 7298178786033750945}
+--- !u!114 &1066345833298871179
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b8a160caad348e4fad2ecb70c1a3718, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Reflect: {fileID: 0}
+  m_SyncStoreManager: {fileID: 1066345833298871176}
+--- !u!114 &1066345833298871178
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cd42a2227763a44f80af623c8a9d490, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_GeneratorPrefab: {fileID: 3397746104928494369, guid: a9c03cbb3064a3f4ca57759ce6fb19c6,
+    type: 3}
+  m_MarkerController: {fileID: 7298178786033750945}
+--- !u!114 &1066345833298871173
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c52ade08ae26b6e47be1a1b7ba847dcf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_MarkerController: {fileID: 7298178786033750945}
+  m_GraphicManager: {fileID: 1066345833298871178}
+--- !u!114 &1066345833298871172
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be62c56c3c497f6469c8193ade07c702, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_ScanUI: {fileID: 0}
+  m_MarkerController: {fileID: 7298178786033750945}
+--- !u!114 &1361094736
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 82e54889a5d60a94ab6b6e5e0f1baf51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_MarkerController: {fileID: 7298178786033750945}
+  m_WebCameraSource: {fileID: 1361094735}
+--- !u!114 &1361094735
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f08362c5477ac33459cc10fb2b41666d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &4409767990626913460
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfda0a00926296f41af9eb0f3b72b8b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_MarkerRendererPrefab: {fileID: -8936302507388555536, guid: a7b044ee9001f9c41afe66701aa4b3cf,
+    type: 3}
+  m_MarkerController: {fileID: 7298178786033750945}
+  m_MarkerUIPresenter: {fileID: 0}
+  m_Debug: 0
+  m_DebugGameObject: {fileID: 5951841182477739992, guid: f7d18cbff1a76e34d96a1fd116ac91d3,
+    type: 3}
+--- !u!114 &1800410956082943998
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d093cd7c2c7f6b94eb2206d665db44c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_MarkerController: {fileID: 7298178786033750945}
+  m_CardSelectionUIController: {fileID: 0}
+  m_LoginManager: {fileID: 0}
+--- !u!114 &1361094737
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066345833298871175}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df36137da15e97c4a81793a83bedc4bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_MarkerController: {fileID: 7298178786033750945}

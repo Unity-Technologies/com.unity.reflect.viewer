@@ -1,0 +1,30 @@
+{
+    "name": "com.unity.reflect.markers.runtime",
+    "rootNamespace": "",
+    "references": [
+        "Unity.TextMeshPro",
+        "Unity.XR.ARFoundation",
+        "Unity.XR.ARSubsystems",
+        "Unity.Reflect.Viewer.Core",
+        "Unity.Properties",
+        "Unity.TouchFramework",
+        "Unity.Reflect",
+        "Unity.Reflect.Pipeline",
+        "NativeShare.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Reflect.dll",
+        "Reflect.Utils.dll",
+        "zxing.unity.dll",
+        "UglyToad.PdfPig.dll",
+        "UglyToad.PdfPig.Core.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

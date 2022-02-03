@@ -1,0 +1,410 @@
+// This file is generated. Do not modify by hand.
+// XML documentation file not found. To check if public methods have XML comments,
+// make sure the XML doc file is present and located next to the scraped dll
+namespace Unity.TouchFramework
+{
+    public class BasePopup : UnityEngine.MonoBehaviour
+    {
+        protected UnityEngine.Coroutine m_Animation;
+        protected UnityEngine.CanvasGroup m_CanvasGroup;
+        [UnityEngine.SerializeField] protected UnityEngine.GameObject m_Container;
+        [UnityEngine.SerializeField] protected float m_DefaultDisplayDuration;
+        [UnityEngine.SerializeField] protected float m_DefaultFadeDuration;
+        protected UnityEngine.RectTransform m_PopUpRect;
+        protected TMPro.TextMeshProUGUI m_TextField;
+        protected UnityEngine.Rect m_WorldSpaceScreenRect;
+        public BasePopup() {}
+        [System.Runtime.CompilerServices.IteratorStateMachine(typeof(Unity.TouchFramework.BasePopup.<AnimationIn>d__14))] protected System.Collections.IEnumerator AnimationIn(float duration);
+        [System.Runtime.CompilerServices.IteratorStateMachine(typeof(Unity.TouchFramework.BasePopup.<AnimationInOut>d__13))] protected System.Collections.IEnumerator AnimationInOut(float displayDuration, float fadeDuration);
+        [System.Runtime.CompilerServices.IteratorStateMachine(typeof(Unity.TouchFramework.BasePopup.<AnimationOut>d__15))] protected System.Collections.IEnumerator AnimationOut(float duration);
+        [System.Runtime.CompilerServices.IteratorStateMachine(typeof(Unity.TouchFramework.BasePopup.<FadeAnimation>d__17))] protected System.Collections.IEnumerator FadeAnimation(UnityEngine.CanvasGroup group, float from, float to, float duration);
+        protected void HideImmediate();
+        protected void Initialize();
+        protected virtual void OnAnimationInAfterLayout();
+        protected void StartAnimation(System.Collections.IEnumerator animation);
+        protected void StopAnimation();
+    }
+
+    public class BigNotification : Unity.TouchFramework.BasePopup
+    {
+        public BigNotification() {}
+        public Unity.TouchFramework.BigNotification.BigNotificationData DefaultData();
+        public void Display(Unity.TouchFramework.BigNotification.BigNotificationData data);
+        public struct BigNotificationData
+        {
+            public float displayDuration;
+            public float fadeDuration;
+            public string text;
+            public string title;
+        }
+    }
+
+    public class ButtonControl : UnityEngine.MonoBehaviour
+    {
+        public bool addSelectableComponent { get; set; }
+        public UnityEngine.UI.Graphic descriptorGraphic { get; set; }
+        public UnityEngine.UI.Image iconImage { get; set; }
+        public bool interactable { get; set; }
+        public bool isToggle { get; set; }
+        public bool on { get; set; }
+        public UnityEngine.Events.UnityEvent<UnityEngine.EventSystems.BaseEventData> onControlDown { get; }
+        public UnityEngine.Events.UnityEvent<UnityEngine.EventSystems.BaseEventData> onControlTap { get; }
+        public UnityEngine.Events.UnityEvent<UnityEngine.EventSystems.BaseEventData> onControlUp { get; }
+        public UnityEngine.UI.Image targetImage { get; set; }
+        public string text { get; set; }
+        public UnityEngine.Sprite toggleOffSprite { get; set; }
+        public UnityEngine.Sprite toggleOnSprite { get; set; }
+        public ButtonControl() {}
+        public class ButtonTapEvent : UnityEngine.Events.UnityEvent<UnityEngine.EventSystems.BaseEventData>
+        {
+            public ButtonTapEvent() {}
+        }
+        public enum TransitionType
+        {
+            public const Unity.TouchFramework.ButtonControl.TransitionType ChangeColor = 0;
+            public const Unity.TouchFramework.ButtonControl.TransitionType SwapSprite = 1;
+            public int value__;
+        }
+    }
+
+    [UnityEngine.RequireComponent(typeof(UnityEngine.RectTransform))] public class CircleRaycastFilter : UnityEngine.MonoBehaviour, UnityEngine.ICanvasRaycastFilter
+    {
+        public UnityEngine.Vector2 worldCenter { set; }
+        public float worldRadius { set; }
+        public CircleRaycastFilter() {}
+        public virtual bool IsRaycastLocationValid(UnityEngine.Vector2 sp, UnityEngine.Camera eventCamera);
+    }
+
+    public class CircularGraduation : System.IDisposable
+    {
+        public CircularGraduation() {}
+        public virtual void Dispose();
+        public UnityEngine.Material Update(Unity.TouchFramework.CircularGraduation.Parameters parms, Unity.TouchFramework.IScaler scaler, UnityEngine.Vector2 range, System.Collections.Generic.List<float> entries = default(System.Collections.Generic.List<float>));
+        public struct Parameters
+        {
+            public float angularRange;
+            public float antialiasing;
+            public UnityEngine.Color color;
+            public int entryLineWidth;
+            public int lineWidth;
+            public Unity.TouchFramework.Orientation orientation;
+            public UnityEngine.Vector2 radiusMinMax;
+            public float scaleDensityHint;
+        }
+    }
+
+    public class CircularSliderControl : UnityEngine.MonoBehaviour
+    {
+        public float maximumValue { get; set; }
+        public float minimumValue { get; set; }
+        public Unity.TouchFramework.CircularSliderControl.SelectedValueChangedEvent onSelectedValueChanged { get; }
+        public float selectedValue { get; set; }
+        public CircularSliderControl() {}
+        public class SelectedValueChangedEvent : UnityEngine.Events.UnityEvent<float>
+        {
+            public SelectedValueChangedEvent() {}
+        }
+    }
+
+    public class ControlTransition
+    {
+        public ControlTransition() {}
+        public enum State
+        {
+            public const Unity.TouchFramework.ControlTransition.State Disabled = 4;
+            public const Unity.TouchFramework.ControlTransition.State Highlighted = 1;
+            public const Unity.TouchFramework.ControlTransition.State Normal = 0;
+            public const Unity.TouchFramework.ControlTransition.State Pressed = 2;
+            public const Unity.TouchFramework.ControlTransition.State Selected = 3;
+            public int value__;
+        }
+        public enum Type
+        {
+            public const Unity.TouchFramework.ControlTransition.Type SetColor = 0;
+            public const Unity.TouchFramework.ControlTransition.Type SpriteSwap = 1;
+            public int value__;
+        }
+    }
+
+    public class DialControl : UnityEngine.MonoBehaviour
+    {
+        public float angularRange { get; }
+        public float maximumValue { get; set; }
+        public float minimumValue { get; set; }
+        public Unity.TouchFramework.DialControl.SelectedValueChangedEvent onSelectedValueChanged { get; }
+        public Unity.TouchFramework.IScaler scaler { set; }
+        public float selectedValue { get; set; }
+        public DialControl() {}
+        public enum NumberType
+        {
+            public const Unity.TouchFramework.DialControl.NumberType Float = 1;
+            public const Unity.TouchFramework.DialControl.NumberType Int = 0;
+            public int value__;
+        }
+        public class SelectedValueChangedEvent : UnityEngine.Events.UnityEvent<float>
+        {
+            public SelectedValueChangedEvent() {}
+        }
+    }
+
+    public class DialControlMarkedEntry : UnityEngine.MonoBehaviour
+    {
+        public float angle { get; set; }
+        public float fontSize { set; }
+        public bool interactable { set; }
+        public Unity.TouchFramework.DialControlMarkedEntry.EntryTappedEvent onEntryTapped { get; }
+        public float radius { set; }
+        public string text { get; set; }
+        public DialControlMarkedEntry() {}
+        public class EntryTappedEvent : UnityEngine.Events.UnityEvent<float>
+        {
+            public EntryTappedEvent() {}
+        }
+    }
+
+    [UnityEngine.ExecuteAlways] [UnityEngine.RequireComponent(typeof(UnityEngine.Canvas), typeof(UnityEngine.CanvasGroup), typeof(UnityEngine.UI.GraphicRaycaster))] public class DialogWindow : UnityEngine.MonoBehaviour, Unity.TouchFramework.IDialog
+    {
+        public virtual UnityEngine.Events.UnityEvent dialogClose { get; }
+        public virtual UnityEngine.Events.UnityEvent dialogOpen { get; }
+        public virtual bool open { get; }
+        public DialogWindow() {}
+        public virtual void Close(bool instant = False);
+        public virtual void Open(bool instant = False, bool setInteractable = True);
+        public void SetInteractable(bool interactable);
+    }
+
+    public enum EaseType
+    {
+        public const Unity.TouchFramework.EaseType EaseInCubic = 7;
+        public const Unity.TouchFramework.EaseType EaseInOutCubic = 9;
+        public const Unity.TouchFramework.EaseType EaseInOutQuad = 6;
+        public const Unity.TouchFramework.EaseType EaseInOutSine = 3;
+        public const Unity.TouchFramework.EaseType EaseInQuad = 4;
+        public const Unity.TouchFramework.EaseType EaseInSine = 1;
+        public const Unity.TouchFramework.EaseType EaseOutCubic = 8;
+        public const Unity.TouchFramework.EaseType EaseOutQuad = 5;
+        public const Unity.TouchFramework.EaseType EaseOutSine = 2;
+        public const Unity.TouchFramework.EaseType Linear = 0;
+        public int value__;
+    }
+
+    public static class EventTriggerUtility
+    {
+        public static void CreateEventTrigger(UnityEngine.GameObject go, UnityEngine.Events.UnityAction<UnityEngine.EventSystems.BaseEventData> onEvent, UnityEngine.EventSystems.EventTriggerType type);
+    }
+
+    public interface IDialog
+    {
+        public abstract UnityEngine.Events.UnityEvent dialogClose { get; }
+        public abstract UnityEngine.Events.UnityEvent dialogOpen { get; }
+        public abstract bool open { get; }
+        public abstract void Close(bool instant = False);
+        public abstract void Open(bool instant = False, bool setInteractable = True);
+    }
+
+    public interface IScaler
+    {
+        public abstract bool isDirty { get; }
+        public abstract float AngleToValue(float minVal, float maxVal, float angularRange, float angle);
+        public abstract void MarkClean();
+        public abstract float ValueToAngle(float minVal, float maxVal, float angularRange, float value);
+    }
+
+    public interface ITweenValue
+    {
+        public abstract float duration { get; }
+        public abstract bool ignoreTimeScale { get; }
+        public abstract void TweenValue(float floatPercentage);
+        public abstract bool ValidOnChangedTarget();
+    }
+
+    [UnityEngine.DisallowMultipleComponent] [UnityEngine.RequireComponent(typeof(UnityEngine.RectTransform))] public class JoystickControl : UnityEngine.MonoBehaviour, UnityEngine.EventSystems.IDragHandler, UnityEngine.EventSystems.IEventSystemHandler, UnityEngine.EventSystems.IPointerDownHandler, UnityEngine.EventSystems.IPointerUpHandler
+    {
+        public UnityEngine.Vector2 inputAxis { get; }
+        public float sensitivity { get; set; }
+        public JoystickControl() {}
+    }
+
+    [UnityEngine.DisallowMultipleComponent] public class MinMaxPropertyControl : Unity.TouchFramework.NumericInputFieldPropertyControl, UnityEngine.EventSystems.IEventSystemHandler, UnityEngine.EventSystems.IPointerDownHandler, UnityEngine.EventSystems.IPointerUpHandler
+    {
+        public MinMaxPropertyControl() {}
+        protected virtual void DoBeginDrag(UnityEngine.EventSystems.PointerEventData eventData);
+        protected virtual void DoDrag(UnityEngine.EventSystems.PointerEventData eventData);
+        protected virtual int ProcessNumber(int num);
+        protected virtual float ProcessNumber(float num);
+    }
+
+    public class ModalPopup : Unity.TouchFramework.BasePopup
+    {
+        public System.Action negativeAction { get; set; }
+        public System.Action positiveAction { get; set; }
+        public ModalPopup() {}
+        public Unity.TouchFramework.ModalPopup.ModalPopupData DefaultData();
+        public void Display(Unity.TouchFramework.ModalPopup.ModalPopupData data);
+        public struct ModalPopupData
+        {
+            public float fadeDuration;
+            public System.Action negativeCallback;
+            public string negativeText;
+            public System.Action positiveCallback;
+            public string positiveText;
+            public string text;
+            public string title;
+        }
+    }
+
+    public class Notification : Unity.TouchFramework.BasePopup
+    {
+        public Notification() {}
+        public Unity.TouchFramework.Notification.NotificationData DefaultData();
+        public void Display(Unity.TouchFramework.Notification.NotificationData data);
+        public struct NotificationData
+        {
+            public float displayDuration;
+            public float fadeDuration;
+            public UnityEngine.Sprite icon;
+            public string text;
+        }
+    }
+
+    public class NumericInputFieldPropertyControl : UnityEngine.MonoBehaviour, UnityEngine.EventSystems.IBeginDragHandler, UnityEngine.EventSystems.IDragHandler, UnityEngine.EventSystems.IEndDragHandler, UnityEngine.EventSystems.IEventSystemHandler
+    {
+        protected const string k_IntFieldFormatString = #######0;
+        protected UnityEngine.RectTransform m_ContainerRect;
+        [UnityEngine.SerializeField] protected string m_FloatFieldFormatString;
+        [UnityEngine.SerializeField] protected Unity.TouchFramework.NumericInputFieldPropertyControl.NumberType m_NumberType;
+        public Unity.TouchFramework.NumericInputFieldPropertyControl.FloatChangedEvent onFloatValueChanged { get; }
+        public Unity.TouchFramework.NumericInputFieldPropertyControl.IntChangedEvent onIntValueChanged { get; }
+        protected string text { get; set; }
+        public NumericInputFieldPropertyControl() {}
+        protected virtual void DoBeginDrag(UnityEngine.EventSystems.PointerEventData eventData);
+        protected virtual void DoDrag(UnityEngine.EventSystems.PointerEventData eventData);
+        protected virtual void DoEndDrag(UnityEngine.EventSystems.PointerEventData eventData);
+        protected virtual int ProcessNumber(int number);
+        protected virtual float ProcessNumber(float number);
+        public void SetValue(int value);
+        public void SetValue(float value);
+        public class FloatChangedEvent : UnityEngine.Events.UnityEvent<float>
+        {
+            public FloatChangedEvent() {}
+        }
+        public class IntChangedEvent : UnityEngine.Events.UnityEvent<int>
+        {
+            public IntChangedEvent() {}
+        }
+        public enum NumberType
+        {
+            public const Unity.TouchFramework.NumericInputFieldPropertyControl.NumberType Float = 0;
+            public const Unity.TouchFramework.NumericInputFieldPropertyControl.NumberType Int = 1;
+            public int value__;
+        }
+    }
+
+    public enum Orientation
+    {
+        public const Unity.TouchFramework.Orientation Left = 0;
+        public const Unity.TouchFramework.Orientation Right = 1;
+        public int value__;
+    }
+
+    public class PopUpManager : UnityEngine.MonoBehaviour
+    {
+        public PopUpManager() {}
+        public void DisplayBigNotification(Unity.TouchFramework.BigNotification.BigNotificationData data);
+        public void DisplayModalPopUp(Unity.TouchFramework.ModalPopup.ModalPopupData data);
+        public void DisplayNotification(Unity.TouchFramework.Notification.NotificationData data);
+        public void DisplayTooltip(Unity.TouchFramework.Tooltip.TooltipData data);
+        public Unity.TouchFramework.BigNotification.BigNotificationData GetBigNotificationData();
+        public Unity.TouchFramework.ModalPopup.ModalPopupData GetModalPopUpData();
+        public Unity.TouchFramework.Notification.NotificationData GetNotificationData();
+        public Unity.TouchFramework.Tooltip.TooltipData GetTooltipData();
+    }
+
+    [UnityEngine.RequireComponent(typeof(UnityEngine.UI.Image))] public class SegmentedPropertyControl : UnityEngine.MonoBehaviour
+    {
+        public int activePropertyIndex { get; set; }
+        public Unity.TouchFramework.SegmentedPropertyControl.SegmentSelectEvent onValueChanged { get; }
+        public SegmentedPropertyControl() {}
+        public class SegmentSelectEvent : UnityEngine.Events.UnityEvent<int>
+        {
+            public SegmentSelectEvent() {}
+        }
+    }
+
+    [UnityEngine.RequireComponent(typeof(UnityEngine.UI.Image))] public class SlideToggle : UnityEngine.MonoBehaviour
+    {
+        public bool on { get; set; }
+        public Unity.TouchFramework.SlideToggle.ToggleValueChanged onValueChanged { get; }
+        public SlideToggle() {}
+        public class ToggleValueChanged : UnityEngine.Events.UnityEvent<bool>
+        {
+            public ToggleValueChanged() {}
+        }
+    }
+
+    public class Tooltip : Unity.TouchFramework.BasePopup
+    {
+        public Tooltip() {}
+        public Unity.TouchFramework.Tooltip.TooltipData DefaultData();
+        public void Display(Unity.TouchFramework.Tooltip.TooltipData data);
+        protected virtual void OnAnimationInAfterLayout();
+        public struct TooltipData
+        {
+            public float displayDuration;
+            public float fadeDuration;
+            public UnityEngine.Sprite icon;
+            public string text;
+            public UnityEngine.Vector2 worldPosition;
+        }
+    }
+
+    public enum TweenLoopType
+    {
+        public const Unity.TouchFramework.TweenLoopType Clamp = 0;
+        public const Unity.TouchFramework.TweenLoopType Loop = 1;
+        public const Unity.TouchFramework.TweenLoopType PingPong = 2;
+        public int value__;
+    }
+
+    public static class UIConfig
+    {
+        public static float dialogFadeTime { get; }
+        public static UnityEngine.Color dropDownArrowBaseColor { get; }
+        public static UnityEngine.Color propertyBaseColor { get; }
+        public static UnityEngine.Color propertyBaseInactiveColor { get; }
+        public static float propertyColorTransitionTime { get; }
+        public static UnityEngine.Color propertyPressedColor { get; }
+        public static UnityEngine.Color propertySelectedColor { get; }
+        public static UnityEngine.Color propertyTextBaseColor { get; }
+        public static UnityEngine.Color propertyTextInactiveColor { get; }
+        public static UnityEngine.Color propertyTextSelectedColor { get; }
+        public static UnityEngine.Color xAxisColor { get; }
+        public static UnityEngine.Color yAxixColor { get; }
+        public static UnityEngine.Color zAxisColor { get; }
+    }
+
+    [UnityEngine.ExecuteAlways] [UnityEngine.RequireComponent(typeof(UnityEngine.RectTransform))] public class UITabManager : UnityEngine.MonoBehaviour
+    {
+        public int activeTabIndex { get; }
+        public UITabManager() {}
+        public void SetActiveTab(int tabIndex, bool instant = False);
+    }
+
+    [System.Runtime.CompilerServices.Extension] public static class Utilities
+    {
+        [System.Runtime.CompilerServices.Extension] public static UnityEngine.Vector2 LocalPosition(UnityEngine.EventSystems.PointerEventData pointerEventData, UnityEngine.RectTransform rectTransform);
+        public static float Smoothstep(float a, float b, float x);
+    }
+
+    public class VerticalModeSelector : UnityEngine.MonoBehaviour
+    {
+        public int activePropertyIndex { get; set; }
+        public bool interactable { get; set; }
+        public Unity.TouchFramework.VerticalModeSelector.SegmentSelectEvent onValueChanged { get; }
+        public VerticalModeSelector() {}
+        public class SegmentSelectEvent : UnityEngine.Events.UnityEvent<int>
+        {
+            public SegmentSelectEvent() {}
+        }
+    }
+}

@@ -1,0 +1,100 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6746278970217952472
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6746278970217952474}
+  - component: {fileID: 6746278970217952475}
+  - component: {fileID: 6746278970217952477}
+  - component: {fileID: 6746278970217952476}
+  - component: {fileID: 6746278969975390699}
+  m_Layer: 0
+  m_Name: Marker AR System
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6746278970217952474
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6746278970217952472}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -613.5, y: -306.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6746278970217952475
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6746278970217952472}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c57190fd8606ee44ca41719e99e1ba9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  flattenMarker: 1
+  m_TrackedImagePrefab: {fileID: 3962274077485354830, guid: 6bd99f148eae7c44b8cebc4628d0249a,
+    type: 3}
+  markerController: {fileID: 0}
+  m_TrackedImageManager: {fileID: 0}
+  m_SessionOrigin: {fileID: 0}
+  m_ReferenceImageLibrary: {fileID: 11400000, guid: 072fadc6dbd785444b3c1f745160bd4d,
+    type: 2}
+  m_DebugImageTracker: {fileID: 6746278970217952476}
+--- !u!114 &6746278970217952477
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6746278970217952472}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f94f40281af883141b230488a5f68435, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_ImageTrackerBase: {fileID: 6746278970217952475}
+--- !u!114 &6746278970217952476
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6746278970217952472}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbc64763bdbdaa84fb0700f861e916b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  flattenMarker: 1
+  m_TrackedImagePrefab: {fileID: 3962274077485354830, guid: 6bd99f148eae7c44b8cebc4628d0249a,
+    type: 3}
+  markerController: {fileID: 0}
+  m_DebugRealityMarkerLocation: {fileID: 0}
+  m_DebugDetectionDelaySeconds: 4
+--- !u!114 &6746278969975390699
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6746278970217952472}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2152f73b6878184ab725981b376033d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

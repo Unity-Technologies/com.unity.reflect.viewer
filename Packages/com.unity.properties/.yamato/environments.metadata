@@ -1,0 +1,23 @@
+# This file defines all editor versions and platforms to test on
+test_editors:
+  - version: 2020.1
+  - version: 2020.2
+test_platforms:
+  - name: win
+    type: Unity::VM
+    image: package-ci/win10:stable
+    flavor: b1.large
+  - name: mac
+    type: Unity::VM::osx
+    image: package-ci/mac:stable
+    flavor: m1.mac
+packages:
+  - name: com.unity.properties
+    path: Properties/Packages/com.unity.properties
+    assemblyname: Unity.Properties
+  - name: com.unity.properties.ui
+    path: Properties/Packages/com.unity.properties.ui
+    assemblyname: Unity.Properties.UI
+  - name: com.unity.serialization
+    path: Properties/Packages/com.unity.serialization
+    assemblyname: Unity.Serialization

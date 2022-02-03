@@ -1,0 +1,38 @@
+{% metadata_file .yamato/environments.metadata %}
+---
+# This YML file contains all job definitions that relates to packing the package
+# Note: Serialization has an npm ignore on the runtime tests. These runtime tests are not shipped with the package.
+
+{% for package in packages %}
+# This job will pack the package like it will be deployed
+pack_{{ package.name }}:
+  name: Pack {{ package.name }}
+  agent:
+    type: Unity::VM
+    image: package-ci/ubuntu:stable
+    flavor: b1.small
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - upm-ci package pack --package-path {{ package.path }}
+  artifacts:
+    packages:
+      paths:
+        - "upm-ci~/**/*"
+{% endfor %}
+
+# Pack the project. This is used for testing the embedded packages as they are in the repo. Candidates packages are not used.
+pack_project:
+  name : Pack Project
+  agent:
+    type: Unity::VM
+    image: package-ci/ubuntu:stable
+    flavor: b1.small
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    # Removing devmode from manifest to avoid issues
+    - sed '/com.unity.devmode/d' ./Properties/Packages/manifest.json
+    - upm-ci project pack --project-path ./Properties
+  artifacts:
+    logs:
+      paths:
+        - "upm-ci~/**/*"

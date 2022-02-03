@@ -1,0 +1,19 @@
+{
+    "name": "Unity.Reflect.Viewer.Core.Editor",
+    "rootNamespace": "",
+    "references": [
+        "Unity.Reflect.Viewer.Core",
+        "Unity.TouchFramework"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

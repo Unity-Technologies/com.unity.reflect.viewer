@@ -1,0 +1,38 @@
+﻿{
+  "name": "Unity.Properties.UI.PerformanceTests",
+  "references": [
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner",
+    "Unity.PerformanceTesting",
+    "Unity.Properties",
+    "Unity.Properties.UI",
+    "Unity.Properties.UI.Tests",
+    "Unity.Properties.UI.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.unity.quicksearch",
+      "expression": "2.1.0-preview.4",
+      "define": "QUICKSEARCH_2_1_0_OR_NEWER"
+    },
+    {
+      "name": "com.unity.quicksearch",
+      "expression": "3.0.0-preview.2",
+      "define": "QUICKSEARCH_3_0_0_OR_NEWER"
+    }
+  ],
+  "noEngineReferences": false
+}

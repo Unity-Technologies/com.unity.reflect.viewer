@@ -1,0 +1,19 @@
+{
+    "name": "Unity.Reflect.Markers.Examples",
+    "rootNamespace": "",
+    "references": [
+        "GUID:e1685eb4aa8ce204ebe8409c5f73be70",
+        "GUID:6cf67fea318af2844a952982933563b0",
+        "GUID:6055be8ebefd69e48b49212b09b47b2f",
+        "GUID:49fede9355492427f852ef03bae5250e"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

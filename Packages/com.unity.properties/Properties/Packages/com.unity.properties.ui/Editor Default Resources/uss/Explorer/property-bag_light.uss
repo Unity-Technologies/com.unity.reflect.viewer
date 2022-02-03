@@ -1,0 +1,11 @@
+.unity-properties__property-bag__header
+{
+    background-color: #CBCBCB;
+}
+
+.unity-properties__property-bag__section .unity-foldout__toggle
+{
+    border-bottom-color:#BABABA;
+    background-color: #CBCBCB;
+    border-top-color:#7F7F7F;
+}
