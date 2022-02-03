@@ -25,7 +25,6 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             var streamIndicator = pipelineAsset.CreateNode<StreamIndicatorNode>();
             var lightFilter = pipelineAsset.CreateNode<LightFilterNode>();
             var boundingBoxController = pipelineAsset.CreateNode<BoundingBoxControllerNode>();
-            var streamLimiter = pipelineAsset.CreateNode<StreamInstanceLimiterNode>();
 
             // Inputs / Outputs
 
@@ -37,7 +36,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             pipelineAsset.CreateConnection(spatialFilter.assetOutput, boundingBoxController.filteredInput);
             pipelineAsset.CreateConnection(spatialFilter.visibilityOutput, boundingBoxController.visibilityInput);
             pipelineAsset.CreateConnection(instanceProvider.output, metadataFilter.instanceInput);
-            pipelineAsset.CreateConnection(instanceProvider.output, streamLimiter.instanceInput);
+            pipelineAsset.CreateConnection(instanceProvider.output, dataProvider.instanceInput);
             pipelineAsset.CreateConnection(instanceProvider.output, streamIndicator.streamInstanceInput);
             pipelineAsset.CreateConnection(instanceProvider.output, boundingBoxController.instanceInput);
             pipelineAsset.CreateConnection(dataProvider.syncMeshOutput, meshConverter.input);
@@ -51,7 +50,6 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             pipelineAsset.CreateConnection(instanceConverter.output, lightFilter.gameObjectInput);
             pipelineAsset.CreateConnection(instanceConverter.output, spatialFilter.gameObjectInput);
             pipelineAsset.CreateConnection(instanceConverter.output, boundingBoxController.gameObjectInput);
-            pipelineAsset.CreateConnection(streamLimiter.instanceOutput, dataProvider.instanceInput);
 
             // Params
 

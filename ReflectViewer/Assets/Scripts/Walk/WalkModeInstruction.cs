@@ -1,14 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Xml;
 using SharpFlux;
 using SharpFlux.Dispatching;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
     public class WalkModeInstruction : IWalkInstructionUI
     {
+        const float k_WaitingDelay = 10.0f;
+
         enum WalkModeInstructionUI
         {
             Init = 0,
@@ -18,14 +21,15 @@ namespace Unity.Reflect.Viewer.UI
         };
 
         WalkModeSwitcher m_WalkModeSwitcher;
+        IUISelector<SetNavigationModeAction.NavigationMode> m_NavigationModeSelector;
 
-        const string k_InstructionFindAPlaneHandleText = "Tap on a point in scene to set starting point.";
-        const string k_InstructionFindAPlaneDesktopText = "Point and click in scene to set starting point.";
-        const string k_InstructionConfirmPlacementDesktopText = "Walk around using arrow keys.\n " +
-                                                                "Right click and drag to turn your head around.\n" +
-                                                                " Press space bar to jump.";
-        const string k_InstructionConfirmPlacementHandheldText = "Walk around using onscreen joystick.\n " +
-                                                                "Tap and drag with your second hand to turn your head around.";
+        // Hand held instruction
+        const string k_InstructionFindAPlaneHandleText = "Tap and drag to initiate your starting position and rotation";
+        const string k_InstructionConfirmPlacementHandheldText = "Drag your left finger to walk and drag your right finger to turn your head around";
+
+        // Desktop instruction
+        const string k_InstructionFindAPlaneDesktopText = "Click and drag to initiate your starting position and rotation.";
+        const string k_InstructionConfirmPlacementDesktopText = "Use keyboard arrow keys to walk and mouse click and drag to turn your head..";
 
         static readonly Dictionary<DeviceType, string> k_PlatformDependentPlacementText = new Dictionary<DeviceType, string>()
         {
@@ -41,20 +45,22 @@ namespace Unity.Reflect.Viewer.UI
 
         WalkModeInstructionUI m_WalkModeInstructionUI;
 
-        Dictionary<WalkModeInstructionUI, InstructionUIStep> m_States;
+        Dictionary<WalkModeInstructionUI, SetARInstructionUIAction.InstructionUIStep> m_States;
 
         public void Initialize(WalkModeSwitcher walkModeSwitcher)
         {
             m_WalkModeSwitcher = walkModeSwitcher;
             m_WalkModeInstructionUI = WalkModeInstructionUI.Init;
 
-            m_States = new Dictionary<WalkModeInstructionUI, InstructionUIStep>
+            m_States = new Dictionary<WalkModeInstructionUI, SetARInstructionUIAction.InstructionUIStep>
             {
-                { WalkModeInstructionUI.Init, new InstructionUIStep { stepIndex = (int)WalkModeInstructionUI.Init, onNext = StartInstruction } },
-                { WalkModeInstructionUI.Place, new InstructionUIStep { stepIndex = (int)WalkModeInstructionUI.Place, onNext = FindTeleportLocation, onBack = StartInstruction } },
-                { WalkModeInstructionUI.Rotate, new InstructionUIStep { stepIndex = (int)WalkModeInstructionUI.Rotate, onNext = ChooseRotation, onBack = FindTeleportLocation } },
-                { WalkModeInstructionUI.Complete, new InstructionUIStep { stepIndex = (int)WalkModeInstructionUI.Complete, onNext = OnComplete, onBack = ChooseRotation } },
+                { WalkModeInstructionUI.Init, new SetARInstructionUIAction.InstructionUIStep { stepIndex = (int)WalkModeInstructionUI.Init, onNext = StartInstruction } },
+                { WalkModeInstructionUI.Place, new SetARInstructionUIAction.InstructionUIStep { stepIndex = (int)WalkModeInstructionUI.Place, onNext = FindTeleportLocation, onBack = StartInstruction } },
+                { WalkModeInstructionUI.Rotate, new SetARInstructionUIAction.InstructionUIStep { stepIndex = (int)WalkModeInstructionUI.Rotate, onNext = ChooseRotation, onBack = FindTeleportLocation } },
+                { WalkModeInstructionUI.Complete, new SetARInstructionUIAction.InstructionUIStep { stepIndex = (int)WalkModeInstructionUI.Complete, onNext = OnComplete, onBack = ChooseRotation } },
             };
+
+            m_NavigationModeSelector = UISelectorFactory.createSelector<SetNavigationModeAction.NavigationMode>(NavigationContext.current, nameof(INavigationDataProvider.navigationMode));
         }
 
         void ChooseRotation()
@@ -71,22 +77,22 @@ namespace Unity.Reflect.Viewer.UI
         void OnComplete()
         {
             m_WalkModeSwitcher.OnWalkStart();
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.OrbitSidebar));
+            Dispatcher.Dispatch(SetActiveToolBarAction.From(SetActiveToolBarAction.ToolbarType.OrbitSidebar));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithType,
-                new StatusMessageData() {text = k_PlatformDependentPlacementText[SystemInfo.deviceType], type = StatusMessageType.Instruction}));
+            Dispatcher.Dispatch(SetStatusMessageWithType.From(
+                new StatusMessageData() { text = k_PlatformDependentPlacementText[SystemInfo.deviceType], type = StatusMessageType.Instruction }));
         }
 
         void StartInstruction()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusInstructionMode, true));
+            Dispatcher.Dispatch(SetInstructionMode.From(true));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithType,
-                new StatusMessageData() {text = k_PlatformDependentInstructionFindAPlaneText[SystemInfo.deviceType], type = StatusMessageType.Instruction}));
+            Dispatcher.Dispatch(SetStatusMessageWithType.From(
+                new StatusMessageData() { text = k_PlatformDependentInstructionFindAPlaneText[SystemInfo.deviceType], type = StatusMessageType.Instruction }));
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
+            Dispatcher.Dispatch(CloseAllDialogsAction.From(null));
 
-            SetNavigationState(NavigationMode.Walk);
+            SetNavigationState(SetNavigationModeAction.NavigationMode.Walk);
         }
 
         public void Restart()
@@ -99,9 +105,12 @@ namespace Unity.Reflect.Viewer.UI
         {
             m_WalkModeInstructionUI = WalkModeInstructionUI.Init;
             m_WalkModeSwitcher.OnQuitWalkMode();
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.EnableWalk, false));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusInstructionMode, false));
-            SetNavigationState(NavigationMode.Orbit);
+            Dispatcher.Dispatch(SetWalkEnableAction.From(false));
+            Dispatcher.Dispatch(SetInstructionMode.From(false));
+            if (m_NavigationModeSelector.GetValue() == SetNavigationModeAction.NavigationMode.Walk)
+            {
+                SetNavigationState(SetNavigationModeAction.NavigationMode.Orbit);
+            }
         }
 
         public void Reset(Vector3 offset)
@@ -126,13 +135,17 @@ namespace Unity.Reflect.Viewer.UI
                 transition();
         }
 
-        void SetNavigationState(NavigationMode mode)
+        void SetNavigationState(SetNavigationModeAction.NavigationMode mode)
         {
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            navigationState.navigationMode = mode;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+            Dispatcher.Dispatch(SetNavigationModeAction.From(mode));
         }
 
-        public InstructionUIStep CurrentInstructionStep { get; }
+        public IEnumerator WaitCloseStatusDialog()
+        {
+            yield return new WaitForSeconds(k_WaitingDelay);
+            Dispatcher.Dispatch(ClearStatusAction.From(true));
+            Dispatcher.Dispatch(ClearStatusAction.From(false));
+            Dispatcher.Dispatch(SetInstructionMode.From(false));
+        }
     }
 }

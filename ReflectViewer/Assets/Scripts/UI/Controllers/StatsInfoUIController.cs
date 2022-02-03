@@ -1,10 +1,12 @@
 using System;
-using SharpFlux;
-using SharpFlux.Dispatching;
+using System.Collections.Generic;
 using TMPro;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
+using UnityEngine.Reflect.Viewer.Pipeline;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -29,13 +31,6 @@ namespace Unity.Reflect.Viewer.UI
 #pragma warning disable CS0649
         [SerializeField]
         BuildState m_BuildState;
-        [SerializeField]
-        ToolButton m_StatsButton;
-
-        [SerializeField]
-        Sprite m_InfoImage;
-        [SerializeField]
-        Sprite m_DebugImage;
 
         [SerializeField]
         TextMeshProUGUI m_BuildNumberText;
@@ -74,118 +69,74 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         int m_TargetFrameRate = 60;
 #pragma warning restore CS0649
-        [SerializeField]
-        DialogWindow m_DebugDialogWindow;
         DialogWindow m_DialogWindow;
-        StatsInfoData m_CurrentStatsInfoData;
-        DialogType m_CachedActiveDialog;
-        ToolState m_CurrentToolState;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.debugStateChanged += OnDebugStateDataChanged;
             m_DialogWindow = GetComponent<DialogWindow>();
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(StatsInfoContext.current, nameof(IStatsInfoFPSDataProvider.fpsMax), (fpsMax) =>
+            {
+                m_FpsMaxText.text = k_StringDisplayCache[fpsMax];
+                m_FpsMaxText.color = m_ColorGradient.Evaluate((float) fpsMax / m_TargetFrameRate);
+            }));
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(StatsInfoContext.current, nameof(IStatsInfoFPSDataProvider.fpsAvg), (fpsAvg) =>
+            {
+                m_FpsAvgText.text = k_StringDisplayCache[fpsAvg];
+                m_FpsAvgText.color = m_ColorGradient.Evaluate((float) fpsAvg / m_TargetFrameRate);
+            }));
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(StatsInfoContext.current, nameof(IStatsInfoFPSDataProvider.fpsMin), (fpsMin) =>
+            {
+                m_FpsMinText.text = k_StringDisplayCache[fpsMin];
+                m_FpsMinText.color = m_ColorGradient.Evaluate((float) fpsMin / m_TargetFrameRate);
+            }));
+
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<StreamCountData>(StatsInfoContext.current, nameof(IStatsInfoStreamDataProvider<StreamCountData>.assetsCountData), (assetsCountData) =>
+            {
+                m_AssetsAddedText.text = assetsCountData.addedCount.ToString();
+                m_AssetsChangedText.text = assetsCountData.changedCount.ToString();
+                m_AssetsRemovedText.text = assetsCountData.removedCount.ToString();
+            }));
+
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<StreamCountData>(StatsInfoContext.current, nameof(IStatsInfoStreamDataProvider<StreamCountData>.instancesCountData), (instancesCountData) =>
+            {
+                m_InstancesAddedText.text = instancesCountData.addedCount.ToString();
+                m_InstancesChangedText.text = instancesCountData.changedCount.ToString();
+                m_InstancesRemovedText.text = instancesCountData.removedCount.ToString();
+            }));
+
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<StreamCountData>(StatsInfoContext.current, nameof(IStatsInfoStreamDataProvider<StreamCountData>.gameObjectsCountData), (gameObjectsCountData) =>
+            {
+                m_GameObjectsAddedText.text = gameObjectsCountData.addedCount.ToString();
+                m_GameObjectsChangedText.text = gameObjectsCountData.changedCount.ToString();
+                m_GameObjectsRemovedText.text = gameObjectsCountData.removedCount.ToString();
+            }));
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(SceneOptionContext.current, nameof(ISceneOptionData<SkyboxData>.enableStatsInfo), OnEnableStatsInfoChanged));
         }
 
         void Start()
         {
-            m_StatsButton.buttonClicked += OnStatsButtonClicked;
-            m_StatsButton.buttonLongPressed += OnStatsButtonLongPressed;
-
             m_BuildNumberText.text = m_BuildState.bundleVersion + "." + m_BuildState.buildNumber;
         }
 
-        void OnStatsButtonClicked()
+        void OnEnableStatsInfoChanged(bool on)
         {
-            if (m_CurrentToolState.infoType == InfoType.Info)
-            {
-                var dialogType = m_DialogWindow.open ? DialogType.None : DialogType.StatsInfo;
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
-            }
-            if (m_CurrentToolState.infoType == InfoType.Debug)
-            {
-                var dialogType = m_DebugDialogWindow.open ? DialogType.None : DialogType.DebugOptions;
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
-            }
-        }
-
-        void OnStatsButtonLongPressed()
-        {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.InfoSelect));
-        }
-
-        void OnStateDataChanged(UIStateData data)
-        {
-            if (m_CachedActiveDialog != data.activeDialog)
-            {
-                m_StatsButton.selected = (data.activeDialog == DialogType.StatsInfo || data.activeDialog == DialogType.DebugOptions);
-                m_CachedActiveDialog = data.activeDialog;
-            }
-
-            if (m_CurrentToolState != data.toolState)
-            {
-                if (data.toolState.infoType == InfoType.Info)
-                {
-                    m_StatsButton.SetIcon(m_InfoImage);
-                }
-                else if (data.toolState.infoType == InfoType.Debug)
-                {
-                    m_StatsButton.SetIcon(m_DebugImage);
-                }
-                m_CurrentToolState = data.toolState;
-            }
-            m_StatsButton.button.interactable = data.toolbarsEnabled;
-        }
-
-        void OnDebugStateDataChanged(UIDebugStateData data)
-        {
-            if (!m_DialogWindow.open)
-            {
-                return;
-            }
-
-            if (m_CurrentStatsInfoData != data.statsInfoData)
-            {
-                if (m_CurrentStatsInfoData.fpsMax != data.statsInfoData.fpsMax)
-                {
-                    m_FpsMaxText.text = k_StringDisplayCache[data.statsInfoData.fpsMax];
-                    m_FpsMaxText.color = m_ColorGradient.Evaluate((float)data.statsInfoData.fpsMax / m_TargetFrameRate);
-                }
-                if (m_CurrentStatsInfoData.fpsAvg != data.statsInfoData.fpsAvg)
-                {
-                    m_FpsAvgText.text = k_StringDisplayCache[data.statsInfoData.fpsAvg];
-                    m_FpsAvgText.color = m_ColorGradient.Evaluate((float)data.statsInfoData.fpsAvg / m_TargetFrameRate);
-                }
-                if (m_CurrentStatsInfoData.fpsMin != data.statsInfoData.fpsMin)
-                {
-                    m_FpsMinText.text = k_StringDisplayCache[data.statsInfoData.fpsMin];
-                    m_FpsMinText.color = m_ColorGradient.Evaluate((float)data.statsInfoData.fpsMin / m_TargetFrameRate);
-                }
-
-                if (m_CurrentStatsInfoData.assetsCountData != data.statsInfoData.assetsCountData)
-                {
-                    m_AssetsAddedText.text = data.statsInfoData.assetsCountData.addedCount.ToString();
-                    m_AssetsChangedText.text = data.statsInfoData.assetsCountData.changedCount.ToString();
-                    m_AssetsRemovedText.text = data.statsInfoData.assetsCountData.removedCount.ToString();
-                }
-
-                if (m_CurrentStatsInfoData.instancesCountData != data.statsInfoData.instancesCountData)
-                {
-                    m_InstancesAddedText.text = data.statsInfoData.instancesCountData.addedCount.ToString();
-                    m_InstancesChangedText.text = data.statsInfoData.instancesCountData.changedCount.ToString();
-                    m_InstancesRemovedText.text = data.statsInfoData.instancesCountData.removedCount.ToString();
-                }
-
-                if (m_CurrentStatsInfoData.gameObjectsCountData != data.statsInfoData.gameObjectsCountData)
-                {
-                    m_GameObjectsAddedText.text = data.statsInfoData.gameObjectsCountData.addedCount.ToString();
-                    m_GameObjectsChangedText.text = data.statsInfoData.gameObjectsCountData.changedCount.ToString();
-                    m_GameObjectsRemovedText.text = data.statsInfoData.gameObjectsCountData.removedCount.ToString();
-                }
-
-                m_CurrentStatsInfoData = data.statsInfoData;
-            }
+            if (on)
+                m_DialogWindow.Open();
+            else
+                m_DialogWindow.Close();
         }
     }
 }

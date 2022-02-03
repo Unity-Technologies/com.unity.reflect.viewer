@@ -1,22 +1,38 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using Unity.Properties;
+using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 
 namespace Unity.Reflect.Viewer.UI
 {
-
-    [Serializable]
+    [Serializable, GeneratePropertyBag]
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct SettingsToolStateData: IEquatable<SettingsToolStateData>
+    public struct SettingsToolStateData: IEquatable<SettingsToolStateData>, ISettingsToolDataProvider
     {
-        public bool bimFilterEnabled;
-        public bool sceneOptionEnabled;
-        public bool sunStudyEnabled;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool bimFilterEnabled { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool sceneSettingsEnabled { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool sunStudyEnabled { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool markerSettingsEnabled { get; set; }
+
 
         public static readonly SettingsToolStateData defaultData = new SettingsToolStateData()
         {
             bimFilterEnabled = true,
-            sceneOptionEnabled = true,
+            sceneSettingsEnabled = true,
             sunStudyEnabled = true,
+            markerSettingsEnabled = true
         };
 
 
@@ -32,8 +48,8 @@ namespace Unity.Reflect.Viewer.UI
 
         public bool Equals(SettingsToolStateData other)
         {
-            return bimFilterEnabled == other.bimFilterEnabled && sceneOptionEnabled == other.sceneOptionEnabled &&
-                sunStudyEnabled == other.sunStudyEnabled;
+            return bimFilterEnabled == other.bimFilterEnabled && sceneSettingsEnabled == other.sceneSettingsEnabled &&
+                sunStudyEnabled == other.sunStudyEnabled && markerSettingsEnabled == other.markerSettingsEnabled;
         }
 
         public override bool Equals(object obj)
@@ -46,8 +62,9 @@ namespace Unity.Reflect.Viewer.UI
             unchecked
             {
                 var hashCode = bimFilterEnabled.GetHashCode();
-                hashCode = (hashCode * 397) ^ sceneOptionEnabled.GetHashCode();
+                hashCode = (hashCode * 397) ^ sceneSettingsEnabled.GetHashCode();
                 hashCode = (hashCode * 397) ^ sunStudyEnabled.GetHashCode();
+                hashCode = (hashCode * 397) ^ markerSettingsEnabled.GetHashCode();
                 return hashCode;
             }
         }

@@ -1,213 +1,95 @@
 using System;
+using System.Collections.Generic;
 using SharpFlux;
 using SharpFlux.Dispatching;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    public class ARModelAlignSideBarController : MonoBehaviour
+    public class ARModelAlignSideBarController: MonoBehaviour
     {
 #pragma warning disable CS0649
-        [SerializeField]
-        ToolButton m_SelectButton;
-
-        [SerializeField]
-        ToolButton m_OrbitButton;
-
-        [SerializeField]
-        ToolButton m_LookAroundButton;
-
         [SerializeField]
         ToolButton m_OkButton;
 
         [SerializeField]
         ToolButton m_BackButton;
 
-        [SerializeField]
-        Sprite m_OrbitImage;
-        [SerializeField]
-        Sprite m_ZoomImage;
-        [SerializeField]
-        Sprite m_PanImage;
-
 #pragma warning restore CS0649
 
-        ToolType m_CurrentOrbitButtonType;
+        IUISelector<IARInstructionUI> m_CurrentARInstructionUISelector;
+        SetARToolStateAction.IUIButtonValidator m_Validator;
+        IUISelector<bool> m_ToolBarEnabledSelector;
+        IUISelector<IARInstructionUI> m_CurrentARInstructionUIGetter;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
 
-        bool m_ToolbarsEnabled;
-        ToolState m_CurrentToolState;
-        ARToolStateData? m_CachedARToolStateData;
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.arStateChanged += OnARStateDataChanged;
-            UIStateManager.projectStateChanged += OnProjectStateDataChanged;
+            m_DisposeOnDestroy.Add(m_ToolBarEnabledSelector = UISelectorFactory.createSelector<bool>(UIStateContext.current, nameof(IToolBarDataProvider.toolbarsEnabled)));
+            m_DisposeOnDestroy.Add(m_CurrentARInstructionUISelector = UISelectorFactory.createSelector<IARInstructionUI>(ARContext.current, nameof(IARModeDataProvider.currentARInstructionUI)));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(ARToolStateContext.current, nameof(IARToolStatePropertiesDataProvider.previousStepEnabled),
+                data =>
+                {
+                    m_BackButton.button.interactable = m_ToolBarEnabledSelector.GetValue() && data;
+                    CheckButtonValidations();
+                }));
 
-            m_SelectButton.buttonClicked += OnSelectButtonClicked;
-            m_OrbitButton.buttonClicked += OnOrbitButtonClicked;
-            m_OrbitButton.buttonLongPressed += OnOrbitButtonLongPressed;
-            m_LookAroundButton.buttonClicked += OnLookAroundButtonClicked;
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetARToolStateAction.IUIButtonValidator>(ARToolStateContext.current, nameof(IARToolStatePropertiesDataProvider.okButtonValidator),
+                data =>
+                {
+                    m_Validator = data;
+                    CheckButtonValidations();
+                }));
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetOrbitTypeAction.OrbitType>(ToolStateContext.current, nameof(IToolStateDataProvider.orbitType)));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog)));
+
+            ProjectContext.current.stateChanged += OnProjectStateDataChanged;
+
             m_OkButton.buttonClicked += OnOkButtonClicked;
             m_BackButton.buttonClicked += OnBackButtonClicked;
-
-            OnStateDataChanged(UIStateManager.current.stateData);
-            OnARStateDataChanged(UIStateManager.current.arStateData);
         }
 
-        void OnStateDataChanged(UIStateData data)
-        {
-            if (m_ToolbarsEnabled != data.toolbarsEnabled)
-            {
-                m_ToolbarsEnabled = data.toolbarsEnabled;
-            }
-
-            if (m_CurrentToolState != data.toolState)
-            {
-                m_SelectButton.selected = false;
-                m_OrbitButton.selected = false;
-                m_LookAroundButton.selected = false;
-
-                if (data.toolState.activeTool == ToolType.SelectTool)
-                {
-                    m_SelectButton.selected = true;
-                }
-                else if (data.toolState.activeTool == ToolType.OrbitTool)
-                {
-                    if (data.toolState.orbitType == OrbitType.OrbitAtPoint)
-                    {
-                        m_CurrentOrbitButtonType = data.toolState.activeTool;
-                        m_OrbitButton.selected = true;
-                        m_OrbitButton.SetIcon(m_OrbitImage);
-                    }
-                    else if (data.toolState.orbitType == OrbitType.WorldOrbit)
-                    {
-                        m_LookAroundButton.selected = true;
-                    }
-                }
-                else if (data.toolState.activeTool == ToolType.ZoomTool)
-                {
-                    m_CurrentOrbitButtonType = data.toolState.activeTool;
-                    m_OrbitButton.selected = true;
-                    m_OrbitButton.SetIcon(m_ZoomImage);
-                }
-                else if (data.toolState.activeTool == ToolType.PanTool)
-                {
-                    m_CurrentOrbitButtonType = data.toolState.activeTool;
-                    m_OrbitButton.selected = true;
-                    m_OrbitButton.SetIcon(m_PanImage);
-                }
-                m_CurrentToolState = data.toolState;
-            }
-
-            CheckButtonValidations();
-        }
-
-        void OnProjectStateDataChanged(UIProjectStateData data)
+        void OnProjectStateDataChanged()
         {
             CheckButtonValidations();
         }
 
         void CheckButtonValidations()
         {
-            if (UIStateManager.current.arStateData.arToolStateData.okButtonValidator != null)
-            {
-                m_OkButton.button.interactable = m_ToolbarsEnabled && UIStateManager.current.arStateData.arToolStateData.okButtonValidator.ButtonValidate();
-                m_OkButton.selected = m_OkButton.button.interactable;
-            }
-        }
+            if (m_Validator == null)
+                return;
 
-        void OnARStateDataChanged(UIARStateData arData)
-        {
-            if (m_CachedARToolStateData != arData.arToolStateData)
-            {
-                m_SelectButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.selectionEnabled;
-                m_OrbitButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.navigationEnabled;
-                m_LookAroundButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.navigationEnabled;
-                m_OkButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.okEnabled;
-                m_OkButton.selected = m_OkButton.button.interactable;
-                m_BackButton.button.interactable = m_ToolbarsEnabled && arData.arToolStateData.previousStepEnabled;
-                m_CachedARToolStateData = arData.arToolStateData;
-            }
-            CheckButtonValidations();
-        }
+            if (m_Validator is SetARToolStateAction.EmptyUIButtonValidator)
+                return;
 
-        void OnSelectButtonClicked()
-        {
-            // Helpmode
-            if (HelpDialogController.SetHelpID(HelpModeEntryID.ARSelect)) return;
-
-            if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
-
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.activeTool = m_SelectButton.selected ? ToolType.None : ToolType.SelectTool;
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
+            m_OkButton.button.interactable = m_ToolBarEnabledSelector.GetValue() && m_Validator.ButtonValidate();
+            m_OkButton.selected = m_OkButton.button.interactable;
         }
 
         void OnOkButtonClicked()
         {
             // Helpmode
-            if (HelpDialogController.SetHelpID(HelpModeEntryID.Ok)) return;
+            if (HelpDialogController.SetHelpID(SetHelpModeIDAction.HelpModeEntryID.Ok))
+                return;
 
-            if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
-
-            UIStateManager.current.arStateData.currentInstructionUI.Next();
-        }
-
-        void OnLookAroundButtonClicked()
-        {
-            // Helpmode
-            if (HelpDialogController.SetHelpID(HelpModeEntryID.LookAround)) return;
-
-            if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
-
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.activeTool =  m_LookAroundButton.selected ? ToolType.None : ToolType.OrbitTool;
-            toolState.orbitType = OrbitType.WorldOrbit;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-        }
-
-        void OnOrbitButtonClicked()
-        {
-            // Helpmode
-            if (HelpDialogController.SetHelpID(HelpModeEntryID.OrbitSelect)) return;
-
-            var toolState = UIStateManager.current.stateData.toolState;
-
-            if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
-
-            if (m_OrbitButton.selected)
-            {
-                toolState.activeTool = ToolType.None;
-            }
-            else
-            {
-                toolState.activeTool = m_CurrentOrbitButtonType;
-                toolState.orbitType = OrbitType.OrbitAtPoint;
-            }
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-        }
-
-        void OnOrbitButtonLongPressed()
-        {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.OrbitSelect));
+            m_CurrentARInstructionUISelector.GetValue().Next();
         }
 
         void OnBackButtonClicked()
         {
             // Helpmode
-            if (HelpDialogController.SetHelpID(HelpModeEntryID.Back)) return;
+            if (HelpDialogController.SetHelpID(SetHelpModeIDAction.HelpModeEntryID.Back))
+                return;
 
-            if (UIStateManager.current.stateData.activeDialog == DialogType.OrbitSelect)
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
-
-            UIStateManager.current.arStateData.currentInstructionUI.Back();
+            m_CurrentARInstructionUISelector.GetValue().Back();
         }
     }
 }

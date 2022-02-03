@@ -2,9 +2,10 @@ using System;
 using UnityEngine;
 using UnityEngine.Assertions;
 using Unity.Reflect.Viewer.Data;
-using TMPro;
-using SharpFlux;
 using SharpFlux.Dispatching;
+using UnityEngine.Reflect.Viewer.Core;
+using System.Collections.Generic;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -16,24 +17,43 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         GameObject m_HelpScreenBackground;
 #pragma warning restore CS0649
-        DialogMode m_currentDialogMode;
-        HelpModeEntryID m_currentHelpModeId;
         static HelpDialogController s_Instance;
+        IUISelector<SetDialogModeAction.DialogMode> m_DialogModeSelector;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
         void Awake()
         {
             Assert.IsNull(s_Instance);
             s_Instance = this;
-            UIStateManager.stateChanged += OnStateDataChanged;
+
+            m_DisposeOnDestroy.Add(m_DialogModeSelector = UISelectorFactory.createSelector<SetDialogModeAction.DialogMode>(UIStateContext.current, nameof(IDialogDataProvider.dialogMode),
+                mode =>
+                {
+                    m_HelpScreenBackground.SetActive(mode == SetDialogModeAction.DialogMode.Help);
+                }));
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetHelpModeIDAction.HelpModeEntryID>(UIStateContext.current, nameof(IHelpModeDataProvider.helpModeEntryId), OnHelpModeEntryChanged));
         }
+
+        void OnHelpModeEntryChanged(SetHelpModeIDAction.HelpModeEntryID data)
+        {
+            if (m_DialogModeSelector.GetValue() == SetDialogModeAction.DialogMode.Help)
+            {
+                Display(data);
+            }
+        }
+
         void OnDestroy()
         {
             Assert.IsTrue(s_Instance == this);
             s_Instance = null;
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
         }
-        public void Display(HelpModeEntryID helpModeId)
+
+        public void Display(SetHelpModeIDAction.HelpModeEntryID helpModeId)
         {
             Assert.IsNotNull(m_Data.entries);
-            if (helpModeId == HelpModeEntryID.None)
+            if (helpModeId == SetHelpModeIDAction.HelpModeEntryID.None)
             {
                 return;
             }
@@ -47,10 +67,10 @@ namespace Unity.Reflect.Viewer.UI
             }
             Debug.LogError($"Could not find help dialog data corresponding to id [{helpModeId}]");
         }
-        public void Display(DialogType dialogTypeId)
+        public void Display(OpenDialogAction.DialogType dialogTypeId)
         {
             Assert.IsNotNull(m_Data.entries);
-            if (dialogTypeId == DialogType.None)
+            if (dialogTypeId == OpenDialogAction.DialogType.None)
             {
                 return;
             }
@@ -64,23 +84,7 @@ namespace Unity.Reflect.Viewer.UI
             }
             Debug.LogError($"Could not find help dialog data corresponding to id [{dialogTypeId}]");
         }
-        void OnStateDataChanged(UIStateData data)
-        {
-            if (m_currentDialogMode != data.dialogMode)
-            {
-                m_currentDialogMode = data.dialogMode;
-                m_HelpScreenBackground.SetActive(data.dialogMode == DialogMode.Help);
-            }
 
-            if (m_currentDialogMode == DialogMode.Help)
-            {
-                if (m_currentHelpModeId != data.helpModeEntryId)
-                {
-                    m_currentHelpModeId = data.helpModeEntryId;
-                    Display(data.helpModeEntryId);
-                }
-            }
-        }
         void DisplayEntry(HelpDialogData.Entry entry, bool isDialogtype)
         {
             var data = UIStateManager.current.popUpManager.GetModalPopUpData();
@@ -94,22 +98,24 @@ namespace Unity.Reflect.Viewer.UI
         {
             if (isDialogType)
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenSubDialog, DialogType.None));
+                Dispatcher.Dispatch(OpenDialogAction.From(OpenDialogAction.DialogType.None));
+                Dispatcher.Dispatch(OpenSubDialogAction.From(OpenDialogAction.DialogType.None));
             }
             else
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetHelpModeID, HelpModeEntryID.None));
+                Dispatcher.Dispatch(SetHelpModeIDAction.From(SetHelpModeIDAction.HelpModeEntryID.None));
             }
         }
 
-        public static bool SetHelpID(HelpModeEntryID entryId)
+        public static bool SetHelpID(SetHelpModeIDAction.HelpModeEntryID entryId)
         {
-            if (UIStateManager.current.stateData.dialogMode == DialogMode.Help)
+            if (s_Instance.m_DialogModeSelector.GetValue() == SetDialogModeAction.DialogMode.Help)
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetHelpModeID, entryId));
+                Dispatcher.Dispatch(SetDeltaDNAButtonAction.From($"HelpMode_{entryId.ToString()}"));
+                Dispatcher.Dispatch(SetHelpModeIDAction.From(entryId));
                 return true;
             }
+
             return false;
         }
     }

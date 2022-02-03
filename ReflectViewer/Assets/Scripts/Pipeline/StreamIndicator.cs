@@ -2,14 +2,16 @@ using System;
 using Unity.Reflect;
 using UnityEngine.Events;
 using UnityEngine.Reflect.Pipeline;
+using UnityEngine.Reflect.Viewer.Core;
 
 namespace UnityEngine.Reflect.Viewer.Pipeline
 {
-    public struct StreamCountData : IEquatable<StreamCountData>
+    [Serializable]
+    public struct StreamCountData : IEquatable<StreamCountData>, IStreamCountDataProvider
     {
-        public int addedCount;
-        public int changedCount;
-        public int removedCount;
+        public int addedCount { get; set; }
+        public int changedCount { get; set; }
+        public int removedCount { get; set; }
 
         public static bool operator ==(StreamCountData a, StreamCountData b)
         {

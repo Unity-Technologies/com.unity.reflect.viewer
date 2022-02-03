@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using Unity.Reflect.Viewer.UI;
+using System;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 
 namespace Unity.Reflect.Viewer
 {
@@ -13,36 +11,30 @@ namespace Unity.Reflect.Viewer
         GameObject[] m_DebugGameObjects;
 #pragma warning restore CS0649
 
+        IUISelector<bool> m_axisTrackingEnabledSelector;
 
-        bool? m_CachedAxisTrackingEnabled;
-
-        void Start()
+        void Awake()
         {
-            UIStateManager.debugStateChanged += OnDebugStateChanged;
+            m_axisTrackingEnabledSelector = UISelectorFactory.createSelector<bool>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.ARAxisTrackingEnabled),
+                (active) =>
+                {
+                    foreach (var go in m_DebugGameObjects)
+                    {
+                        go.SetActive(active);
+                    }
+                });
 
+            var trackingEnabled = m_axisTrackingEnabledSelector.GetValue();
             foreach (var go in m_DebugGameObjects)
             {
-                go.SetActive(UIStateManager.current.debugStateData.debugOptionsData.ARAxisTrackingEnabled);
-            }
-        }
-
-        void OnDebugStateChanged(UIDebugStateData data)
-        {
-            if (m_CachedAxisTrackingEnabled == data.debugOptionsData.ARAxisTrackingEnabled)
-                return;
-
-
-            foreach (var go in m_DebugGameObjects)
-            {
-                go.SetActive(data.debugOptionsData.ARAxisTrackingEnabled);
+                go.SetActive(trackingEnabled);
             }
 
-            m_CachedAxisTrackingEnabled = data.debugOptionsData.ARAxisTrackingEnabled;
         }
 
         void OnDestroy()
         {
-            UIStateManager.debugStateChanged -= OnDebugStateChanged;
+            m_axisTrackingEnabledSelector?.Dispose();
         }
     }
 }

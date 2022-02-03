@@ -1,0 +1,11 @@
+{
+  "name": "com.unity.reflect.markers",
+  "version": "0.2.1-preview",
+  "displayName": "Unity Reflect Markers",
+  "description": "Reflect Markers provides the tools needed for AR applications to query and align virtual objects to tracked images in real space.",
+  "unity": "2019.3",
+  "dependencies": {
+    "com.unity.xr.arfoundation": "4.0.9",
+    "com.yasirkula.nativeshare": "1.4.2"
+  }
+}

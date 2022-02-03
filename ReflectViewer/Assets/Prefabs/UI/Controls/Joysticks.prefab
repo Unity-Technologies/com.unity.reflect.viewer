@@ -274,7 +274,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Sensitivity: 0.4
   m_DisableXMovement: 0
-  m_IsPersistentJoystick: 1
+  m_IsPersistentJoystick: 0
   distanceFromCenter: 0
 --- !u!114 &1565815630
 MonoBehaviour:

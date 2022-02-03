@@ -1,8 +1,11 @@
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
+
 namespace UnityEngine.Reflect.MeasureTool
 {
     public static class RawMeasure
     {
-        public static float GetDistanceBetweenAnchors(IAnchor anc1, IAnchor anc2)
+        public static float GetDistanceBetweenAnchors(SelectObjectMeasureToolAction.IAnchor anc1, SelectObjectMeasureToolAction.IAnchor anc2)
         {
             var origin1 = GetAnchorOrigin(anc1);
             var origin2 = GetAnchorOrigin(anc2);
@@ -11,11 +14,11 @@ namespace UnityEngine.Reflect.MeasureTool
         }
 
 
-        static Vector3 GetAnchorOrigin(IAnchor anchor)
+        static Vector3 GetAnchorOrigin(SelectObjectMeasureToolAction.IAnchor anchor)
         {
             switch (anchor.type)
             {
-                case AnchorType.Point:
+                case ToggleMeasureToolAction.AnchorType.Point:
                     return ((PointAnchor)anchor).position;
             }
 

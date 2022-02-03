@@ -1,49 +1,57 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using Unity.Properties;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    public enum CameraProjectionType
+    [Serializable, GeneratePropertyBag]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct CameraViewOption : ICameraViewOption
     {
-        Perspective = 0,
-        Orthographic = 1
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetCameraViewTypeAction.CameraViewType cameraViewType { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int numberOfClick { get; set; }
     }
 
-    public enum CameraViewType
+    [Serializable, GeneratePropertyBag]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct CameraOptionData : IEquatable<CameraOptionData>, ICameraOptionsDataProvider
     {
-        Default = 0,
-        Top = 1,
-        Left = 2,
-        Right = 3
-    }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetCameraProjectionTypeAction.CameraProjectionType cameraProjectionType { get; set; }
 
-    public enum JoystickPreference
-    {
-        RightHanded = 0,
-        LeftHanded = 1
-    }
-    
-    [Serializable]
-    public struct CameraOptionData : IEquatable<CameraOptionData>
-    {
-        public CameraProjectionType cameraProjectionType;
-        public CameraViewType cameraViewType;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool enableJoysticks { get; set; }
 
-        public bool enableJoysticks;
-        public JoystickPreference joystickPreference;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public JoystickPreference joystickPreference { get; set; }
 
-        public bool enableAutoNavigationSpeed;
-        public int navigationSpeed;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool enableAutoNavigationSpeed { get; set; }
 
-        public int numberOfCLick;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int navigationSpeed { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public ICameraViewOption cameraViewOption { get; set; }
 
         public bool Equals(CameraOptionData other)
         {
-            return cameraProjectionType == other.cameraProjectionType && cameraViewType == other.cameraViewType &&
+            return cameraProjectionType == other.cameraProjectionType && cameraViewOption == other.cameraViewOption &&
                 enableJoysticks == other.enableJoysticks && joystickPreference == other.joystickPreference &&
-                enableAutoNavigationSpeed == other.enableAutoNavigationSpeed && navigationSpeed == other.navigationSpeed
-                && numberOfCLick == other.numberOfCLick;
+                enableAutoNavigationSpeed == other.enableAutoNavigationSpeed && navigationSpeed == other.navigationSpeed;
         }
 
         public override bool Equals(object obj)
@@ -56,16 +64,15 @@ namespace Unity.Reflect.Viewer.UI
             unchecked
             {
                 var hashCode = (int) cameraProjectionType;
-                hashCode = (hashCode * 397) ^ (int) cameraViewType;
+                hashCode = (hashCode * 397) ^ cameraViewOption.GetHashCode();
                 hashCode = (hashCode * 397) ^ enableJoysticks.GetHashCode();
                 hashCode = (hashCode * 397) ^ (int) joystickPreference;
                 hashCode = (hashCode * 397) ^ enableAutoNavigationSpeed.GetHashCode();
                 hashCode = (hashCode * 397) ^ navigationSpeed;
-                hashCode = (hashCode * 397) ^ numberOfCLick;
                 return hashCode;
             }
         }
-        
+
         public static bool operator ==(CameraOptionData a, CameraOptionData b)
         {
             return a.Equals(b);

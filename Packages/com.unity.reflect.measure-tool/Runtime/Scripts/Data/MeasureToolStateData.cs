@@ -1,49 +1,41 @@
 using System;
-using System.Collections.Generic;
+using Unity.Properties;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace UnityEngine.Reflect.MeasureTool
 {
-    public enum MeasureMode : int
+    [Serializable, GeneratePropertyBag]
+    public struct MeasureToolStateData : IEquatable<MeasureToolStateData>, IMeasureToolDataProvider
     {
-        RawDistance = 0,
-        PerpendicularDistance = 1,
-    }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool toolState { get; set; }
 
-    public enum MeasureFormat : int
-    {
-        Meters = 0,
-        Feets = 1,
-    }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public ToggleMeasureToolAction.AnchorType selectionType { get; set; }
 
-    public enum MeasureToolInstructionUIState
-    {
-        Init = 0,
-        Started,
-        Completed
-    };
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public ToggleMeasureToolAction.MeasureMode measureMode { get; set; }
 
-    public interface IMeasureUIButtonValidator
-    {
-        bool ButtonValidate();
-    }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public ToggleMeasureToolAction.MeasureFormat measureFormat { get; set; }
 
-    [Serializable]
-    public struct MeasureToolStateData : IEquatable<MeasureToolStateData>
-    {
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SelectObjectMeasureToolAction.IAnchor selectedAnchor { get; set; }
+
         public static readonly MeasureToolStateData defaultData = new MeasureToolStateData()
         {
             toolState = false,
-            selectionType = AnchorType.Point,
-            measureMode = MeasureMode.RawDistance,
-            measureFormat = MeasureFormat.Meters,
-            selectedAnchorsContext = null
+            selectionType = ToggleMeasureToolAction.AnchorType.Point,
+            measureMode = ToggleMeasureToolAction.MeasureMode.RawDistance,
+            measureFormat = ToggleMeasureToolAction.MeasureFormat.Meters,
+            selectedAnchor = null
         };
-
-        public bool toolState;
-        public AnchorType selectionType;
-        public MeasureMode measureMode;
-        public MeasureFormat measureFormat;
-        public List<AnchorSelectionContext> selectedAnchorsContext;
 
         public bool Equals(MeasureToolStateData other)
         {
@@ -51,7 +43,7 @@ namespace UnityEngine.Reflect.MeasureTool
                 selectionType == other.selectionType &&
                 measureMode == other.measureMode &&
                 measureFormat == other.measureFormat &&
-                selectedAnchorsContext == other.selectedAnchorsContext;
+                selectedAnchor == other.selectedAnchor;
         }
 
         public override bool Equals(object obj)
@@ -77,7 +69,7 @@ namespace UnityEngine.Reflect.MeasureTool
                 hashCode = (hashCode * 397) ^ selectionType.GetHashCode();
                 hashCode = (hashCode * 397) ^ measureMode.GetHashCode();
                 hashCode = (hashCode * 397) ^ measureFormat.GetHashCode();
-                hashCode = (hashCode * 397) ^ selectedAnchorsContext.GetHashCode();
+                hashCode = (hashCode * 397) ^ selectedAnchor.GetHashCode();
 
                 return hashCode;
             }

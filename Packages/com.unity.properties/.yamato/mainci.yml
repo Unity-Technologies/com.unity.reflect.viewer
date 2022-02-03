@@ -1,0 +1,75 @@
+{% metadata_file .yamato/environments.metadata %}
+---
+# This file defines the major tests trigger for PRs
+{% for package in packages %}
+
+# This job contains all version and platforms per project to test
+# This job relies on the package test in isolation. Dependency packages are pulled from
+# the candidates repository. For embedded code testing use the ProjectTestsTrigger job.
+AllTestsTrigger_{{ package.name }}:
+  name: All Tests Trigger {{ package.name }}
+  dependencies:
+    {% for editor in test_editors %}
+    {% for platform in test_platforms %}
+    - .yamato/testandpublish.yml#test_{{ package.name }}_{{platform.name}}_{{editor.version}}
+    # IL2CPP tests do not apply to the properties.UI package.
+    {% if package.name != 'com.unity.properties.ui' %}
+    - .yamato/testandpublish.yml#test_il2cpp_{{ package.name }}_{{platform.name}}_{{editor.version}}
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+
+# This job defines the nightly run that should be executed shortly after midnight
+Nightly_{{ package.name }}:
+  name: Nightly {{ package.name }}
+  triggers:
+    recurring:
+      - branch: master
+        frequency: 6 * * ? *
+  dependencies:
+    - path: .yamato/mainci.yml#ProjectTestsTrigger
+      rerun: always
+{% if package.name == 'com.unity.serialization' %}
+    - path: .yamato/performance.yml#test_{{ package.name }}_performance_2020.1
+      rerun: always
+{% endif %}
+{% for editor in test_editors %}
+{% for platform in test_platforms %}
+{% if platform.name == 'win' %}
+    - path: .yamato/codecoverage.yml#codecoverage_{{ package.name }}_{{ platform.name }}_{{ editor.version }}
+      rerun: always
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+{% endfor %}
+
+# This job contains all version and platforms per project to test
+# this uses project tests meaning it relies on code from the embedded packages and not the candidates
+# used for PR checks because candidates packages do not have to be updated
+ProjectTestsTrigger:
+  name: Project Tests Trigger
+  dependencies:
+    {% for editor in test_editors %}
+    {% for platform in test_platforms %}
+    - .yamato/testandpublish.yml#projecttest_com.unity.properties_{{platform.name}}_{{editor.version}}
+    - .yamato/testandpublish.yml#projecttest_il2cpp_com.unity.properties_{{platform.name}}_{{editor.version}}
+    - .yamato/testandpublish.yml#test_com.unity.serialization_{{platform.name}}_{{editor.version}}
+    - .yamato/testandpublish.yml#test_il2cpp_com.unity.serialization_{{platform.name}}_{{editor.version}}
+    - .yamato/testandpublish.yml#projecttest_com.unity.properties.ui_{{platform.name}}_{{editor.version}}
+    {% endfor %}
+    {% endfor %}
+
+# This job contains only windows and omits IL2CPP tests
+# This job is based off of ProjectTestsTrigger
+QuickProjectTestsTrigger:
+  name: Quick Project Tests Trigger
+  triggers:
+    expression: |
+        pull_request.(target eq "master" OR target match "staging/.*" AND NOT draft)
+  dependencies:
+    {% for editor in test_editors %}
+    - .yamato/testandpublish.yml#projecttest_com.unity.properties_win_{{editor.version}}
+    - .yamato/testandpublish.yml#test_com.unity.serialization_win_{{editor.version}}
+    - .yamato/testandpublish.yml#projecttest_com.unity.properties.ui_win_{{editor.version}}
+    {% endfor %}

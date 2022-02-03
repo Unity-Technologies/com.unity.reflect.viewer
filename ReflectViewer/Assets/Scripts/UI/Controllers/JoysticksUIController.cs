@@ -1,5 +1,8 @@
-﻿using UnityEngine;
+using System;
+using UnityEngine;
 using Unity.TouchFramework;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -23,26 +26,33 @@ namespace Unity.Reflect.Viewer.UI
 
         DialogWindow m_DialogWindow;
         bool m_Active;
+        IUISelector<OpenDialogAction.DialogType> m_ActiveDialogSelector;
 
         void Awake()
         {
             m_DialogWindow = GetComponent<DialogWindow>();
-            UIStateManager.stateChanged += OnStateDataChanged;
+
+            m_ActiveDialogSelector = UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog), OnActiveDialogChanged);
         }
-        
+
+        void OnDestroy()
+        {
+            m_ActiveDialogSelector?.Dispose();
+        }
+
         void Start()
         {
             m_JoystickToggleButton.onClick.AddListener(OnJoystickToggleButtonClick);
             m_Active = true;
         }
-        
-        void OnStateDataChanged(UIStateData stateData)
+
+        void OnActiveDialogChanged(OpenDialogAction.DialogType data)
         {
-            if (stateData.activeDialog != DialogType.None)
+            if (data != OpenDialogAction.DialogType.None)
             {
                 if (m_DialogWindow.open)
                     m_Active = true;
-                
+
                 m_DialogWindow.Close();
             }
             else
@@ -54,10 +64,9 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnJoystickToggleButtonClick()
         {
-            var model = UIStateManager.current.stateData;
-            if (model.activeDialog != DialogType.None)
+            if (m_ActiveDialogSelector.GetValue() != OpenDialogAction.DialogType.None)
                 return;
-            
+
             if (m_DialogWindow.open)
             {
                 m_DialogWindow.Close();

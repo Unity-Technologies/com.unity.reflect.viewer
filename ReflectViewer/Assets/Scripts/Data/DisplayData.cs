@@ -1,37 +1,41 @@
 using System;
+using Unity.Properties;
 using UnityEngine;
-using UnityEngine.Serialization;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
-
     [Serializable]
-    public enum ScreenSizeQualifier
+    public struct DisplayData : IEquatable<DisplayData>, IDisplayDataProvider
     {
-        XSmall,
-        Small,
-        Medium,
-        Large,
-        XLarge
-    }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public Vector2 screenSize { get; set; }
 
-    public enum DisplayType
-    {
-        Desktop,
-        Tablet,
-        Phone
-    }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public Vector2 scaledScreenSize { get; set; }
 
-    [Serializable]
-    public struct DisplayData : IEquatable<DisplayData>
-    {
-        public Vector2 screenSize;
-        public Vector2 scaledScreenSize;
-        public ScreenSizeQualifier screenSizeQualifier;
-        public float targetDpi;
-        public float dpi;
-        public float scaleFactor;
-        public DisplayType displayType;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetDisplayAction.ScreenSizeQualifier screenSizeQualifier { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public float targetDpi { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public float dpi { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public float scaleFactor { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetDisplayAction.DisplayType displayType { get; set; }
 
         public override int GetHashCode()
         {

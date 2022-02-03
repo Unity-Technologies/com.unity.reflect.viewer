@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+using System;
+using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.UI;
 
 /*
@@ -31,11 +33,28 @@ namespace Unity.Reflect.Viewer.UI
         public float fDistance;
         [Range(0f, 360f)]
         public float MinAngle, MaxAngle, StartAngle;
+        float m_VRDefaultStartAngle = 250f;
+        IDisposable m_Disposable;
+        IUISelector<bool> m_VREnableSelector;
 
         protected override void OnEnable()
         {
             base.OnEnable();
-            CalculateRadial();
+            bool VREnable = false;
+
+            if (UIStateManager.current != null)
+            {
+                m_VREnableSelector = UISelectorFactory.createSelector<bool>(VRContext.current, nameof(IVREnableDataProvider.VREnable));
+                VREnable = m_VREnableSelector.GetValue();
+            }
+
+            CalculateRadial(VREnable);
+        }
+
+        protected override void OnDisable()
+        {
+            base.OnDisable();
+            m_VREnableSelector?.Dispose();
         }
 
         public override void SetLayoutHorizontal() { }
@@ -43,28 +62,31 @@ namespace Unity.Reflect.Viewer.UI
 
         public override void CalculateLayoutInputVertical()
         {
-            CalculateRadial();
+            bool VREnable = m_VREnableSelector != null ? m_VREnableSelector.GetValue() : false;
+            CalculateRadial(VREnable);
         }
 
         public override void CalculateLayoutInputHorizontal()
         {
-            CalculateRadial();
+            bool VREnable = m_VREnableSelector != null ? m_VREnableSelector.GetValue() : false;
+            CalculateRadial(VREnable);
         }
 
-        void CalculateRadial()
+        void CalculateRadial(bool VREnable)
         {
+            var childCount = ChildCountActive(transform);
             m_Tracker.Clear();
-            if (transform.childCount == 0)
+            if (childCount == 0)
                 return;
-            float fOffsetAngle = ((MaxAngle - MinAngle)) / (transform.childCount - 1);
+            float fOffsetAngle = ((MaxAngle - MinAngle)) / (childCount - 1);
 
-            float fAngle = StartAngle;
+            float fAngle = VREnable ? m_VRDefaultStartAngle : StartAngle;
             for (int i = 0; i < transform.childCount; i++)
             {
                 RectTransform child = (RectTransform)transform.GetChild(i);
                 if (child != null && child.gameObject.activeSelf)
                 {
-                    //Adding the elements to the tracker stops the user from modifiying their positions via the editor.
+                    //Adding the elements to the tracker stops the user from modifying their positions via the editor.
                     m_Tracker.Add(this, child,
                         DrivenTransformProperties.Anchors |
                         DrivenTransformProperties.AnchoredPosition |
@@ -77,6 +99,18 @@ namespace Unity.Reflect.Viewer.UI
                     fAngle += fOffsetAngle;
                 }
             }
+        }
+
+        int ChildCountActive(Transform t)
+        {
+            int k = 0;
+            foreach (Transform c in t)
+            {
+                if (c.gameObject.activeSelf)
+                    k++;
+            }
+
+            return k;
         }
     }
 }

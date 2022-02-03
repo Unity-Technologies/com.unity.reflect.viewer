@@ -891,7 +891,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1276806976515938647
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2323,6 +2323,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_RegionText: {fileID: 5491234270143875437}
   m_WelcomeText: {fileID: 330256255312782038}
+  m_HeaderText: {fileID: 6123540951686375421}
   m_LoginButton: {fileID: 7230017600517694330}
   m_RegionButton: {fileID: 2854468981300626297}
   m_RegionOptionArrow: {fileID: 8504836620088438429}

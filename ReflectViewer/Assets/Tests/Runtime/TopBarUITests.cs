@@ -1,14 +1,16 @@
 using NUnit.Framework;
 using System.Collections;
 using Unity.MARS.Providers;
+using Unity.Reflect;
 using Unity.Reflect.Viewer.UI;
 using UnityEngine;
 using UnityEngine.Reflect.Utils;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.TestTools;
 
 namespace ReflectViewerRuntimeTests
 {
-    public class TopBarUITests: BaseReflectSceneTests
+    public class TopBarUITests : BaseReflectSceneTests
     {
         [UnityTest]
         public IEnumerator TopBarUITests_CheckProfileBtnIsInLandingPage()
@@ -20,7 +22,7 @@ namespace ReflectViewerRuntimeTests
             Assert.IsTrue(IsGameObjectActive("ProfileBtn"));
         }
 
-        [Ignore("Cannot run this test on yamato without a valid reflect user logged in")]
+        [Category("YamatoIncompatible")]
         [UnityTest]
         public IEnumerator TopBarUITests_ClickProfileBtn_DisplaysAccountDialog()
         {
@@ -28,6 +30,7 @@ namespace ReflectViewerRuntimeTests
 
             //Given the scene is loaded
             yield return WaitAFrame();
+
             //When clicking the collaboration settings button
             WhenClickOnButton("ProfileBtn");
             yield return WaitAFrame();
@@ -48,19 +51,23 @@ namespace ReflectViewerRuntimeTests
         {
             //Given the scene is loaded and session is ready
             yield return WaitAFrame();
+
             //Given the user name
-            var userName = UIStateManager.current.sessionStateData.sessionState.user.DisplayName;
+            //TODO Correct TEST
+            using (var UnityUserSelector = UISelectorFactory.createSelector<UnityUser>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.user)))
+            {
+                var userName = UnityUserSelector.GetValue().DisplayName;
 
-            //When The session starts
-            var button = GivenGameObjectNamed("ProfileBtn");
-            var initials = GivenChildNamed<TMPro.TMP_Text>(button, "InitialsText");
-            yield return WaitAFrame();
+                //When The session starts
+                var button = GivenGameObjectNamed("ProfileBtn");
+                var initials = GivenChildNamed<TMPro.TMP_Text>(button, "InitialsText");
+                yield return WaitAFrame();
 
-            //Then the user initials should be displayed
-            Assert.IsTrue(initials.gameObject.activeInHierarchy);
-            Assert.AreEqual(initials.text,UIUtils.CreateInitialsFor(userName));
+                //Then the user initials should be displayed
+                Assert.IsTrue(initials.gameObject.activeInHierarchy);
+                Assert.AreEqual(initials.text, UIUtils.CreateInitialsFor(userName));
+            }
         }
-
 
         [Ignore("needs package bump in multiplayer package")]
         [UnityTest]

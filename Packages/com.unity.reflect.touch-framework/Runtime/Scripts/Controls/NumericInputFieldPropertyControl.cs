@@ -32,17 +32,24 @@ namespace Unity.TouchFramework
         protected string m_FloatFieldFormatString = "F1";
         [SerializeField]
         TextMeshProUGUI m_Text;
+        [SerializeField]
+        string m_TextFormat = "{0}";
 #pragma warning restore 649
 
         protected RectTransform m_ContainerRect;
         Vector2 m_LastPointerPosition;
         IntChangedEvent m_OnIntValueChanged = new IntChangedEvent();
         FloatChangedEvent m_OnFloatValueChanged = new FloatChangedEvent();
+        string m_ValueString;
 
         protected string text
         {
-            get => m_Text.text;
-            set => m_Text.text = value;
+            get => m_ValueString;
+            set
+            {
+                m_ValueString = value;
+                m_Text.text = string.Format(m_TextFormat, m_ValueString);
+            }
         }
 
         public IntChangedEvent onIntValueChanged => m_OnIntValueChanged;

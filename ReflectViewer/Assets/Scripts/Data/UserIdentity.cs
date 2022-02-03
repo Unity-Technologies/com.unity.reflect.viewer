@@ -1,10 +1,11 @@
 using System;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 
 namespace Unity.Reflect.Viewer
 {
     [Serializable]
-    public struct UserIdentity : IEquatable<UserIdentity>
+    public struct UserIdentity : IEquatable<UserIdentity>, IUserIdentity
     {
         public string matchmakerId;
         public int colorIndex;

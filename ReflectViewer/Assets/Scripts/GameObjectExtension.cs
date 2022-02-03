@@ -9,20 +9,22 @@ namespace UnityEngine.Reflect
 
         public static Bounds? CalculateBoundsInChildren(this GameObject obj)
         {
-            var renderers = obj.GetComponentsInChildren<MeshRenderer>();
-            Bounds? b = null;
+            var renderers = obj.GetComponentsInChildren<Renderer>();
             if (renderers != null)
             {
-                b = renderers[0].bounds;
+                var b = renderers[0].bounds;
                 if (renderers.Length > 1)
                 {
                     for (int i = 1; i < renderers.Length; i++)
                     {
-                        b.Value.Encapsulate(renderers[i].bounds);
+                        b.Encapsulate(renderers[i].bounds);
                     }
                 }
+
+                return b;
             }
-            return b;
+
+            return null;
         }
 
 

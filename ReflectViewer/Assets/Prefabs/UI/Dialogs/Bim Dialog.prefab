@@ -75,6 +75,8 @@ MonoBehaviour:
   m_IconImage: {fileID: 0}
   m_Interactable: 1
   m_AddSelectableComponent: 0
+  m_OnColor: {r: 0, g: 0.6, b: 1, a: 1}
+  m_OffColor: {r: 0.18039216, g: 0.18039216, b: 0.18039216, a: 1}
 --- !u!1 &2193860468528407691
 GameObject:
   m_ObjectHideFlags: 0
@@ -410,7 +412,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.7475357, y: 0}
+  m_AnchoredPosition: {x: -0.7475281, y: 0}
   m_SizeDelta: {x: -70.89505, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &4573998757268610322
@@ -881,7 +883,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: -92.2}
-  m_SizeDelta: {x: 0, y: 1}
+  m_SizeDelta: {x: -24, y: 1}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6268015065508852041
 CanvasRenderer:
@@ -1433,8 +1435,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -110, y: -101.2}
-  m_SizeDelta: {x: 256, y: -160.17511}
+  m_AnchoredPosition: {x: -12, y: -60}
+  m_SizeDelta: {x: 288, y: -72}
   m_Pivot: {x: 1, y: 1}
 --- !u!223 &9179579182534941649
 Canvas:
@@ -1519,7 +1521,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.10980392, g: 0.10980392, b: 0.10980392, a: 1}
+  m_Color: {r: 0.09411765, g: 0.09411765, b: 0.09411765, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -1564,10 +1566,10 @@ MonoBehaviour:
   m_BimListItemPrefab: {fileID: 4763860761043929510}
   m_ParentTransform: {fileID: 4837482855054554558}
   m_BimGroupDropdown: {fileID: 8290289598732544450}
-  m_FoldoutToggle: {fileID: 729483697378998320}
   m_SearchInput: {fileID: 4737266582655185439}
   m_CancelButton: {fileID: 811469500474330602}
   m_NoSelectionText: {fileID: 2596102723728575565}
+  m_SelectButton: {fileID: 0}
 --- !u!114 &9148719147396010407
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1581,9 +1583,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_HideInVr: 0
-  m_Device: 2
-  m_Alignment: 1
-  m_PositionOffset: {x: -100, y: 0, z: 0}
+  m_Device: 1
+  m_Alignment: 3
+  m_PositionOffset: {x: 100, y: 0, z: 0}
 --- !u!114 &7616533644387160255
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1598,16 +1600,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_FoldedRect:
     serializedVersion: 2
-    x: -110
+    x: -12
     y: -550.2
-    width: 256
+    width: 288
     height: -575.20496
   m_UnfoldedRect:
     serializedVersion: 2
-    x: -110
-    y: -77
-    width: 256
-    height: -136
+    x: -12
+    y: -60
+    width: 288
+    height: -72
 --- !u!1001 &390234792072735702
 PrefabInstance:
   m_ObjectHideFlags: 0

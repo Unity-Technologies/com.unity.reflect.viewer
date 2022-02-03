@@ -1,6 +1,6 @@
 using System;
-using Unity.Reflect.Viewer.UI;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.Data
 {
@@ -10,8 +10,8 @@ namespace Unity.Reflect.Viewer.Data
         [Serializable]
         public struct Entry
         {
-            public DialogType dialogTypeId;
-            public HelpModeEntryID helpModeEntryId; // For buttons without dialog/subdialog
+            public OpenDialogAction.DialogType dialogTypeId;
+            public SetHelpModeIDAction.HelpModeEntryID helpModeEntryId; // For buttons without dialog/subdialog
             public string title;
             public string content;
         }

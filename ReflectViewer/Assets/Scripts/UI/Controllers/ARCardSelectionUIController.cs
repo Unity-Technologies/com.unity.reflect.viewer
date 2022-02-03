@@ -1,9 +1,10 @@
 using System;
-using System.Collections.Generic;
-using SharpFlux;
 using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -19,15 +20,16 @@ namespace Unity.Reflect.Viewer.UI
         CardCarouselController[] m_ARCards;
 
 #pragma warning restore CS0649
-
-        Dictionary<NavigationMode, string> m_SceneDictionary = new Dictionary<NavigationMode, string>();
+        IUISelector<SetNavigationModeAction.NavigationMode> m_NavigationModeSelector;
 
         void Awake()
         {
-            foreach (var info in UIStateManager.current.stateData.navigationState.navigationModeInfos)
-            {
-                m_SceneDictionary[info.navigationMode] = info.modeScenePath;
-            }
+            m_NavigationModeSelector = UISelectorFactory.createSelector<SetNavigationModeAction.NavigationMode>(NavigationContext.current, nameof(INavigationDataProvider.navigationMode));
+        }
+
+        void OnDestroy()
+        {
+            m_NavigationModeSelector?.Dispose();
         }
 
         void Start()
@@ -40,37 +42,42 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        void ARCardClicked(ARMode arMode)
+        void ARCardClicked(SetARModeAction.ARMode arMode)
         {
-            if(UIStateManager.current.walkStateData.walkEnabled)
-                UIStateManager.current.walkStateData.instruction.Cancel();
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            var currentNavigationMode = navigationState.navigationMode == NavigationMode.Walk? NavigationMode.Orbit: navigationState.navigationMode;
-
-            if (currentNavigationMode != NavigationMode.AR)
-            {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.UnloadScene, m_SceneDictionary[currentNavigationMode]));
-
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.LoadScene, m_SceneDictionary[NavigationMode.AR]));
-            }
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusInstructionMode, false));
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.CloseAllDialogs, null));
-
-            navigationState.navigationMode = NavigationMode.AR;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetARMode, arMode));
+            Dispatcher.Dispatch(SetARModeAction.From(arMode));
+            Dispatcher.Dispatch(SetDeltaDNAButtonAction.From($"ARMode_{arMode}"));
+            SelectARMode(arMode);
         }
 
         void OnBgButtonClicked()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+            Dispatcher.Dispatch(OpenDialogAction.From(OpenDialogAction.DialogType.None));
+        }
+
+        public void SelectARMode(SetARModeAction.ARMode arMode)
+        {
+            if (arMode == SetARModeAction.ARMode.None)
+                return;
+
+            Dispatcher.Dispatch(SetWalkEnableAction.From(false));
+
+            var currentNavigationMode = m_NavigationModeSelector.GetValue() == SetNavigationModeAction.NavigationMode.Walk
+                ? SetNavigationModeAction.NavigationMode.Orbit
+                : m_NavigationModeSelector.GetValue();
+
+            if (currentNavigationMode != SetNavigationModeAction.NavigationMode.AR)
+            {
+                Dispatcher.Dispatch(UnloadSceneActions<Project>.From(UIStateManager.current.GetSceneDictionary()[currentNavigationMode]));
+                Dispatcher.Dispatch(LoadSceneActions<Project>.From(UIStateManager.current.GetSceneDictionary()[SetNavigationModeAction.NavigationMode.AR]));
+            }
+
+            Dispatcher.Dispatch(OpenDialogAction.From(OpenDialogAction.DialogType.None));
+            Dispatcher.Dispatch(ClearStatusAction.From(true));
+            Dispatcher.Dispatch(ClearStatusAction.From(false));
+            Dispatcher.Dispatch(SetInstructionMode.From(false));
+            Dispatcher.Dispatch(CloseAllDialogsAction.From(null));
+            Dispatcher.Dispatch(SetNavigationModeAction.From(SetNavigationModeAction.NavigationMode.AR));
+            Dispatcher.Dispatch(SetARModeAction.From(arMode));
         }
     }
 }

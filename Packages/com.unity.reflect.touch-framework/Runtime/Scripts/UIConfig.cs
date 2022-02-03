@@ -73,7 +73,7 @@ namespace Unity.TouchFramework
 
         public static Color zAxisColor { get; } = new Color32(148, 215, 251, 255);
 
-        public static Color projectItemBaseColor { get; } = new Color32(24, 24, 24, 255);
+        public static Color projectItemBaseColor { get; } = new Color32(41, 41, 41, 255);
 
         public static Color projectItemSelectedColor { get; } = new Color32(46, 46, 46, 255);
 

@@ -5,13 +5,15 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.UIElements;
 
 // UserDrawerUIE
 [CustomPropertyDrawer(typeof(UnityUser))]
-public class UserDrawerUIE : PropertyDrawer
+public class UserDrawerUIE: PropertyDrawer
 {
     bool m_valid;
+
     [Serializable]
     class UserDummy
     {
@@ -20,12 +22,13 @@ public class UserDrawerUIE : PropertyDrawer
         public string UserId;
     }
 
-    class UserSO : ScriptableObject
+    class UserSO: ScriptableObject
     {
         public UserDummy user;
     }
-    
-    public override float GetPropertyHeight( SerializedProperty property, GUIContent label ) {
+
+    public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+    {
         // The 6 comes from extra spacing between the fields (2px each)
         if (m_valid)
         {
@@ -34,33 +37,39 @@ public class UserDrawerUIE : PropertyDrawer
         return EditorGUIUtility.singleLineHeight;
     }
 
-    public override void OnGUI( Rect position, SerializedProperty property, GUIContent label ) {
+    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+    {
         var user = ScriptableObject.CreateInstance<UserSO>();
-
         user.user = new UserDummy();
         var realUser = property.serializedObject.targetObject as UIStateManager;
         if (realUser)
         {
             try
             {
-                user.user.AccessToken = realUser.sessionStateData.sessionState.user.AccessToken;
-                user.user.DisplayName = realUser.sessionStateData.sessionState.user.DisplayName;
-                user.user.UserId = realUser.sessionStateData.sessionState.user.UserId;
-                m_valid = true;
+                if (Application.isPlaying)
+                {
+                    using (var userSelector = UISelectorFactory.createSelector<UnityUser>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.user)))
+                    {
+                        user.user.AccessToken = userSelector.GetValue().AccessToken;
+                        user.user.DisplayName = userSelector.GetValue().DisplayName;
+                        user.user.UserId = userSelector.GetValue().UserId;
+                        m_valid = true;
+                    }
+                }
             }
             catch (Exception)
             {
                 m_valid = false;
             }
         }
-    
+
         SerializedObject serializedObject = new UnityEditor.SerializedObject(user);
 
         SerializedProperty serializedPropertyUser = serializedObject.FindProperty("user");
-        
-        EditorGUI.BeginProperty( position, label, property );
 
-        EditorGUI.LabelField( new Rect( position.x, position.y, position.width, 16 ), label );
+        EditorGUI.BeginProperty(position, label, property);
+
+        EditorGUI.LabelField(new Rect(position.x, position.y, position.width, 16), label);
 
         if (m_valid)
         {
@@ -70,14 +79,14 @@ public class UserDrawerUIE : PropertyDrawer
 
             EditorGUI.indentLevel++;
 
-            EditorGUI.PropertyField( tokenRect, serializedPropertyUser.FindPropertyRelative( "AccessToken" ) );
-            EditorGUI.PropertyField( nameRect, serializedPropertyUser.FindPropertyRelative( "DisplayName" ) );
-            EditorGUI.PropertyField( userIdRect, serializedPropertyUser.FindPropertyRelative( "UserId" ) );
+            EditorGUI.PropertyField(tokenRect, serializedPropertyUser.FindPropertyRelative("AccessToken"));
+            EditorGUI.PropertyField(nameRect, serializedPropertyUser.FindPropertyRelative("DisplayName"));
+            EditorGUI.PropertyField(userIdRect, serializedPropertyUser.FindPropertyRelative("UserId"));
 
-            EditorGUI.indentLevel--;            
+            EditorGUI.indentLevel--;
         }
         EditorGUI.EndProperty();
-        
+
         ScriptableObject.DestroyImmediate(user);
     }
 }

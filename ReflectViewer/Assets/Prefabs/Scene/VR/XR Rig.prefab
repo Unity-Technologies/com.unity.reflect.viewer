@@ -84,7 +84,8 @@ MonoBehaviour:
   m_EnableInputTracking: 1
   m_EnableInputActions: 1
   m_ModelPrefab: {fileID: 0}
-  m_ModelTransform: {fileID: 0}
+  m_ModelParent: {fileID: 0}
+  m_Model: {fileID: 0}
   m_AnimateModel: 0
   m_ModelSelectTransition: 
   m_ModelDeSelectTransition: 
@@ -98,6 +99,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: -2024308242397127297, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_RotationAction:
@@ -110,6 +112,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: 8248158260566104461, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_SelectAction:
@@ -122,6 +125,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: -5982496924579745919, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_ActivateAction:
@@ -134,6 +138,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: -5982496924579745919, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_UIPressAction:
@@ -146,6 +151,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: -6395602842196007441, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_HapticDeviceAction:
@@ -158,6 +164,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: 0}
   m_RotateAnchorAction:
     m_UseReference: 1
@@ -169,6 +176,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: -7363382999065477798, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_TranslateAnchorAction:
@@ -181,6 +189,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: 7779212132400271959, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_ButtonPressPoint: 0.5
@@ -259,10 +268,12 @@ MonoBehaviour:
   m_HapticHoverCancelIntensity: 0
   m_HapticHoverCancelDuration: 0
   m_LineType: 0
+  m_BlendVisualLinePoints: 1
   m_MaxRaycastDistance: 30
   m_ReferenceFrame: {fileID: 0}
   m_Velocity: 16
   m_Acceleration: 9.8
+  m_AdditionalGroundHeight: 0.1
   m_AdditionalFlightTime: 0.5
   m_EndPointDistance: 30
   m_EndPointHeight: -10
@@ -275,6 +286,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RaycastTriggerInteraction: 1
+  m_HitClosestOnly: 0
   m_KeepSelectedTargetValid: 1
   m_HoverToSelect: 0
   m_HoverTimeToSelect: 0.5
@@ -283,6 +295,7 @@ MonoBehaviour:
   m_UseForceGrab: 1
   m_RotateSpeed: 2
   m_TranslateSpeed: 0.1
+  m_AnchorRotateReferenceFrame: {fileID: 0}
 --- !u!120 &6606561116491215908
 LineRenderer:
   m_ObjectHideFlags: 0
@@ -519,7 +532,8 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
+  m_Children:
+  - {fileID: 7299119920513103646}
   m_Father: {fileID: 6606561116369276128}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -704,6 +718,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: 0}
   m_RightHandSnapTurnAction:
     m_UseReference: 1
@@ -715,6 +730,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: -6493913391331992944, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
 --- !u!114 &6606561117653970902
@@ -750,6 +766,7 @@ GameObject:
   - component: {fileID: 6606561118053990166}
   - component: {fileID: 6606561118053990170}
   - component: {fileID: 6606561118053990169}
+  - component: {fileID: 6533672847239015848}
   m_Layer: 0
   m_Name: RightHand Controller
   m_TagString: Untagged
@@ -788,7 +805,8 @@ MonoBehaviour:
   m_EnableInputTracking: 1
   m_EnableInputActions: 1
   m_ModelPrefab: {fileID: 0}
-  m_ModelTransform: {fileID: 0}
+  m_ModelParent: {fileID: 0}
+  m_Model: {fileID: 0}
   m_AnimateModel: 0
   m_ModelSelectTransition: 
   m_ModelDeSelectTransition: 
@@ -802,6 +820,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: -3326005586356538449, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_RotationAction:
@@ -814,6 +833,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: 5101698808175986029, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_SelectAction:
@@ -826,6 +846,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: 83097790271614945, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_ActivateAction:
@@ -838,6 +859,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: 83097790271614945, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_UIPressAction:
@@ -850,6 +872,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: 3279264004350380116, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_HapticDeviceAction:
@@ -862,6 +885,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: 0}
   m_RotateAnchorAction:
     m_UseReference: 1
@@ -873,6 +897,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: -5913262927076077117, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_TranslateAnchorAction:
@@ -885,6 +910,7 @@ MonoBehaviour:
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
+      m_Flags: 0
     m_Reference: {fileID: 875253871413052681, guid: ef331088dcbbb4a4898038f5e578cf8b,
       type: 3}
   m_ButtonPressPoint: 0.5
@@ -963,10 +989,12 @@ MonoBehaviour:
   m_HapticHoverCancelIntensity: 0
   m_HapticHoverCancelDuration: 0
   m_LineType: 1
+  m_BlendVisualLinePoints: 1
   m_MaxRaycastDistance: 30
   m_ReferenceFrame: {fileID: 0}
   m_Velocity: 16
   m_Acceleration: 9.8
+  m_AdditionalGroundHeight: 0.1
   m_AdditionalFlightTime: 1
   m_EndPointDistance: 30
   m_EndPointHeight: -10
@@ -979,6 +1007,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RaycastTriggerInteraction: 1
+  m_HitClosestOnly: 0
   m_KeepSelectedTargetValid: 1
   m_HoverToSelect: 0
   m_HoverTimeToSelect: 0.5
@@ -987,6 +1016,7 @@ MonoBehaviour:
   m_UseForceGrab: 1
   m_RotateSpeed: 2
   m_TranslateSpeed: 0.1
+  m_AnchorRotateReferenceFrame: {fileID: 0}
 --- !u!120 &6606561118053990165
 LineRenderer:
   m_ObjectHideFlags: 0
@@ -1221,11 +1251,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa8c26fec70c54848b1aa1c15c2a0772, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_InputActionAsset: {fileID: -944628639613478452, guid: 603b1280fd69e48d9b1e45442fbc61fe,
-    type: 3}
   m_ControllerTransform: {fileID: 6606561118053990167}
   m_SelectionTarget: {fileID: 0}
-  m_TriggerThreshold: 0.5
+  m_InputActionAsset: {fileID: -944628639613478452, guid: 603b1280fd69e48d9b1e45442fbc61fe,
+    type: 3}
+--- !u!114 &6533672847239015848
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6606561118053990160}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b95f93f7f7186df4fb1b3ba6f4b23553, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_ControllerTransform: {fileID: 6606561118053990167}
+  m_SelectionTarget: {fileID: 0}
 --- !u!1 &6606561118237117580
 GameObject:
   m_ObjectHideFlags: 0
@@ -1274,9 +1317,85 @@ MonoBehaviour:
   m_RigBaseGameObject: {fileID: 6606561118237117580}
   m_CameraFloorOffsetObject: {fileID: 6606561116369276129}
   m_CameraGameObject: {fileID: 6606561117452459216}
-  m_TrackingOriginMode: 1
-  m_TrackingSpace: 3
+  m_RequestedTrackingOriginMode: 1
   m_CameraYOffset: 1.36144
+  m_TrackingSpace: 3
+  m_TrackingOriginMode: -2147483648
+--- !u!1001 &1306369724513117263
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 6606561117452459220}
+    m_Modifications:
+    - target: {fileID: 8604838141364589392, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_Name
+      value: AvatarTag
+      objectReference: {fileID: 0}
+    - target: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: dbcb0ab89d50e224a8bab703a71b9e92, type: 3}
+--- !u!4 &7299119920513103646 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8604838141364589393, guid: dbcb0ab89d50e224a8bab703a71b9e92,
+    type: 3}
+  m_PrefabInstance: {fileID: 1306369724513117263}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &6606561116314008954
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1427,15 +1546,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d1379782d53b6bb41840eb4b6d6ce5bc, type: 3}
---- !u!1 &2537076613936561197 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8690462839095153421, guid: d1379782d53b6bb41840eb4b6d6ce5bc,
-    type: 3}
-  m_PrefabInstance: {fileID: 6606561118185615136}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &6253710144931973864 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 965631154444117448, guid: d1379782d53b6bb41840eb4b6d6ce5bc,
+    type: 3}
+  m_PrefabInstance: {fileID: 6606561118185615136}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &2537076613936561197 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8690462839095153421, guid: d1379782d53b6bb41840eb4b6d6ce5bc,
     type: 3}
   m_PrefabInstance: {fileID: 6606561118185615136}
   m_PrefabAsset: {fileID: 0}

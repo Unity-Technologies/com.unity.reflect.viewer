@@ -2180,7 +2180,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &4688576212947907921
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3592,7 +3592,7 @@ MonoBehaviour:
   m_Horizontal: 0
   m_Vertical: 1
   m_MovementType: 1
-  m_Elasticity: 0.1
+  m_Elasticity: 0.01
   m_Inertia: 1
   m_DecelerationRate: 0.135
   m_ScrollSensitivity: 32

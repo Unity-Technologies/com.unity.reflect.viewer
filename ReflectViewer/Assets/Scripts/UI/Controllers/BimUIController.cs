@@ -8,6 +8,9 @@ using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 using static TMPro.TMP_Dropdown;
 
@@ -16,8 +19,8 @@ namespace Unity.Reflect.Viewer.UI
     /// <summary>
     /// Display BIM information
     /// </summary>
-    [RequireComponent(typeof(DialogWindow)), RequireComponent(typeof(FoldoutRect))]
-    public class BimUIController : MonoBehaviour
+    [RequireComponent(typeof(DialogWindow))]
+    public class BimUIController: MonoBehaviour
     {
         public const string k_AllBimOptionName = "All Information";
         public const string k_DefaultNoSelectionText = "Select an object to see its BIM information.";
@@ -34,9 +37,6 @@ namespace Unity.Reflect.Viewer.UI
         TMP_Dropdown m_BimGroupDropdown;
 
         [SerializeField]
-        ButtonControl m_FoldoutToggle;
-
-        [SerializeField]
         TMP_InputField m_SearchInput;
 
         [SerializeField]
@@ -44,37 +44,50 @@ namespace Unity.Reflect.Viewer.UI
 
         [SerializeField]
         TextMeshProUGUI m_NoSelectionText;
+
+        [SerializeField]
+        ToolButton m_SelectButton;
 #pragma warning restore CS0649
 
         DialogWindow m_DialogWindow;
-        FoldoutRect m_FoldoutRect;
 
-        ObjectSelectionInfo m_CurrentObjectSelectionInfo;
         string m_CurrentBimGroup;
-        string m_CachedSearchString;
-        string m_CurrentUserId;
-        DialogType m_currentActiveSubDialog;
+        GameObject m_OldSelectedObject;
+        SpatialSelector m_ObjectSelector;
 
         Stack<BimListItem> m_BimListItemPool = new Stack<BimListItem>();
         List<BimListItem> m_ActiveBimListItem = new List<BimListItem>();
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        IUISelector<SetActiveToolAction.ToolType> m_ActiveToolSelector;
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.projectStateChanged += OnProjectStateDataChanged;
-            UIStateManager.sessionStateChanged += OnSessionStateChanged;
+            m_SelectButton.buttonClicked += OnSelectButtonClicked;
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<ObjectSelectionInfo>(ProjectContext.current,
+                nameof(IObjectSelectorDataProvider.objectSelectionInfo), OnObjectSelectionChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<string>(ProjectContext.current,
+                nameof(IProjectSortDataProvider.bimSearchString), OnBimSearchStringChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current,
+                nameof(IDialogDataProvider.activeDialog), OnActiveDialogChanged));
+            m_DisposeOnDestroy.Add(m_ActiveToolSelector = UISelectorFactory.createSelector<SetActiveToolAction.ToolType>(ToolStateContext.current,
+                nameof(IToolStateDataProvider.activeTool)));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<string>(UIStateContext.current,
+                nameof(IUIStateDataProvider.bimGroup),
+                bimGroup =>
+                {
+                    if (bimGroup == m_CurrentBimGroup)
+                        return;
+
+                    if (string.IsNullOrEmpty(bimGroup))
+                        return;
+
+                    m_CurrentBimGroup = bimGroup;
+                    RefreshShownBimItems();
+                }));
 
             m_DialogWindow = GetComponent<DialogWindow>();
-            m_FoldoutRect = GetComponent<FoldoutRect>();
-
-            if (m_FoldoutToggle.on)
-                m_FoldoutRect.Fold(true);
-            else
-                m_FoldoutRect.Unfold(true);
-            m_FoldoutToggle.onControlTap.AddListener(OnFoldoutToggle);
-
-            m_FoldoutRect.rectFolded.AddListener(() => m_FoldoutToggle.on = true);
-            m_FoldoutRect.rectUnfolded.AddListener(() => m_FoldoutToggle.on = false);
 
             m_BimGroupDropdown.onValueChanged.AddListener(OnBimGroupChanged);
             m_BimGroupDropdown.options.Add(k_AllInfoOption);
@@ -87,23 +100,24 @@ namespace Unity.Reflect.Viewer.UI
 
             m_NoSelectionText.text = k_DefaultNoSelectionText;
             m_NoSelectionText.gameObject.SetActive(true);
+
+            m_ObjectSelector = new SpatialSelector();
         }
 
-        void OnFoldoutToggle(BaseEventData eventData)
+        void OnDestroy()
         {
-            if(m_FoldoutRect.isFolded)
-            {
-                m_FoldoutRect.Unfold();
-            }
-            else
-            {
-                m_FoldoutRect.Fold();
-            }
+            m_SelectButton.buttonClicked -= OnSelectButtonClicked;
+
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
         }
 
-        void OnSessionStateChanged(UISessionStateData data)
+        void OnActiveDialogChanged(OpenDialogAction.DialogType newData)
         {
-            m_CurrentUserId = data.sessionState.user?.UserId;
+            if (newData == OpenDialogAction.DialogType.BimInfo)
+            {
+                m_SearchInput.text = null;
+            }
+            m_SelectButton.selected = newData == OpenDialogAction.DialogType.BimInfo;
         }
 
         void CreateBimListItem(string group, string category, string value)
@@ -127,74 +141,49 @@ namespace Unity.Reflect.Viewer.UI
             m_ActiveBimListItem.Clear();
         }
 
-        void OnStateDataChanged(UIStateData data)
+        void OnObjectSelectionChanged(ObjectSelectionInfo newData)
         {
-            if (m_currentActiveSubDialog != data.activeSubDialog)
+            var currentSelectedObject = newData.CurrentSelectedObject();
+
+            if (currentSelectedObject != m_OldSelectedObject || m_OldSelectedObject == null)
             {
-                m_currentActiveSubDialog = data.activeSubDialog;
-                if (m_currentActiveSubDialog == DialogType.BimInfo)
-                {
-                    m_SearchInput.text = null;
-                }
+                ClearBimList();
+                m_BimGroupDropdown.options.Clear();
+                m_BimGroupDropdown.options.Add(k_AllInfoOption);
+                m_OldSelectedObject = currentSelectedObject;
             }
 
-            if (data.bimGroup == m_CurrentBimGroup)
-                return;
+            var isSelected = currentSelectedObject != null;
+            m_NoSelectionText.gameObject.SetActive(!isSelected);
+            if (isSelected)
+            {
+                var metadata = currentSelectedObject.GetComponentInParent<Metadata>();
+                foreach (var group in metadata.SortedByGroup())
+                {
+                    m_BimGroupDropdown.options.Add(new OptionData(group.Key));
 
-            if (string.IsNullOrEmpty(data.bimGroup))
-                return;
+                    foreach (var parameter in group.Value)
+                    {
+                        if (parameter.Value.visible)
+                            CreateBimListItem(group.Key, parameter.Key, parameter.Value.value);
+                    }
+                }
 
-            m_CurrentBimGroup = data.bimGroup;
+                int targetIndex = 0;
 
-            RefreshShownBimItems();
+                m_BimGroupDropdown
+                    .SetValueWithoutNotify(
+                        targetIndex); // Cant notify or this will trigger the valueChanged and do a dispatch inside a dispatch
+                m_CurrentBimGroup = m_BimGroupDropdown.options[targetIndex].text;
+
+                m_BimGroupDropdown.RefreshShownValue();
+                RefreshShownBimItems();
+            }
         }
 
-        void OnProjectStateDataChanged(UIProjectStateData data)
+        void OnBimSearchStringChanged(string newData)
         {
-            if (data.objectSelectionInfo != m_CurrentObjectSelectionInfo
-            && (data.objectSelectionInfo.userId == m_CurrentUserId || data.objectSelectionInfo.userId == UIStateManager.current.roomConnectionStateData.localUser.matchmakerId))
-            {
-                var oldSelectedObject = m_CurrentObjectSelectionInfo.CurrentSelectedObject();
-                var currentSelectedObject = data.objectSelectionInfo.CurrentSelectedObject();
-                m_CurrentObjectSelectionInfo = data.objectSelectionInfo;
-
-                if(currentSelectedObject != oldSelectedObject)
-                {
-                    ClearBimList();
-                    m_BimGroupDropdown.options.Clear();
-                    m_BimGroupDropdown.options.Add(k_AllInfoOption);
-                }
-
-                var isSelected = currentSelectedObject != null;
-                m_NoSelectionText.gameObject.SetActive(!isSelected);
-                if (isSelected)
-                {
-                    var metadata = currentSelectedObject.GetComponentInParent<Metadata>();
-                    foreach (var group in metadata.SortedByGroup())
-                    {
-                        m_BimGroupDropdown.options.Add(new OptionData(group.Key));
-
-                        foreach (var parameter in group.Value)
-                        {
-                            if (parameter.Value.visible)
-                                CreateBimListItem(group.Key, parameter.Key, parameter.Value.value);
-                        }
-                    }
-                    int targetIndex = 0;
-
-                    m_BimGroupDropdown.SetValueWithoutNotify(targetIndex); // Cant notify or this will trigger the valueChanged and do a dispatch inside a dispatch
-                    m_CurrentBimGroup = m_BimGroupDropdown.options[targetIndex].text;
-
-                    m_BimGroupDropdown.RefreshShownValue();
-                    RefreshShownBimItems();
-                }
-            }
-
-            if (data.bimSearchString != m_CachedSearchString)
-            {
-                SearchBimItem(data.bimSearchString);
-                m_CachedSearchString = data.bimSearchString;
-            }
+            SearchBimItem(newData);
         }
 
         void RefreshShownBimItems()
@@ -208,7 +197,8 @@ namespace Unity.Reflect.Viewer.UI
         void OnBimGroupChanged(int index)
         {
             var groupKey = m_BimGroupDropdown.options[index].text;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetBimGroup, groupKey));
+            Dispatcher.Dispatch(SetBimGroupAction.From(groupKey));
+            Dispatcher.Dispatch(SetDeltaDNAButtonAction.From($"BimSelectionFilter_{groupKey}"));
         }
 
         void OnCancelButtonClicked()
@@ -231,7 +221,8 @@ namespace Unity.Reflect.Viewer.UI
         {
             yield return new WaitForSeconds(0.2f);
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetBimSearch, search));
+            Dispatcher.Dispatch(SetBimSearchAction.From(search));
+            Dispatcher.Dispatch(SetDeltaDNAButtonAction.From($"BimSelectionFilterSearch"));
         }
 
         void SearchBimItem(string search)
@@ -265,9 +256,15 @@ namespace Unity.Reflect.Viewer.UI
 
         public static void DisableMovementMapping(bool disableWASD)
         {
-            var navigationState = UIStateManager.current.stateData.navigationState;
-            navigationState.moveEnabled = !disableWASD;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetNavigationState, navigationState));
+            Dispatcher.Dispatch(SetMoveEnabledAction.From(!disableWASD));
+        }
+
+        void OnSelectButtonClicked()
+        {
+            Dispatcher.Dispatch(SetSpatialSelectorAction.From(m_ObjectSelector));
+            var buttonSelected = m_SelectButton.selected;
+            Dispatcher.Dispatch(SetActiveToolAction.From(buttonSelected ? SetActiveToolAction.ToolType.None : SetActiveToolAction.ToolType.SelectTool));
+            Dispatcher.Dispatch(OpenDialogAction.From(buttonSelected ? OpenDialogAction.DialogType.None : OpenDialogAction.DialogType.BimInfo));
         }
     }
 }

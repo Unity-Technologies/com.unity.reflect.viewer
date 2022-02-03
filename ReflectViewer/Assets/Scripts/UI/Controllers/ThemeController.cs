@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -16,12 +17,10 @@ namespace Unity.Reflect.Viewer.UI
         public float LayoutSize;
     }
 
-    public class ThemeController : MonoBehaviour
+    public class ThemeController: MonoBehaviour
     {
         public const string k_VROpaque = "VROpaque";
         public const string k_Default = "Default";
-
-        string m_CurrentThemeName = k_Default;
 
 #pragma warning disable CS0649
         [SerializeField]
@@ -30,20 +29,25 @@ namespace Unity.Reflect.Viewer.UI
 #pragma warning restore CS0649
 
         List<ThemeContext> m_ThemeContexts;
+        IDisposable m_ThemeNameSelector;
+
+        void OnDestroy()
+        {
+            m_ThemeNameSelector?.Dispose();
+        }
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
+            m_ThemeNameSelector = UISelectorFactory.createSelector<string>(UIStateContext.current, nameof(IUIStateDataProvider.themeName), OnThemeNameChanged);
 
             m_ThemeContexts = GetComponentsInChildren<ThemeContext>(true).ToList();
         }
 
-        void OnStateDataChanged(UIStateData data)
+        void OnThemeNameChanged(string data)
         {
-            if (!string.IsNullOrEmpty(data.themeName) && data.themeName != m_CurrentThemeName)
+            if (!string.IsNullOrEmpty(data))
             {
-                m_CurrentThemeName = data.themeName;
-                ThemeSettings settings = m_ThemeSettings.FirstOrDefault(s => s.Name == data.themeName);
+                ThemeSettings settings = m_ThemeSettings.FirstOrDefault(s => s.Name == data);
                 if (settings != null)
                 {
                     foreach (var context in m_ThemeContexts)

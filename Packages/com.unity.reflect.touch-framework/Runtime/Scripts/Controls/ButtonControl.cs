@@ -41,6 +41,11 @@ namespace Unity.TouchFramework
         [SerializeField]
         bool m_AddSelectableComponent;
 
+        [SerializeField]
+        Color m_OnColor = UIConfig.propertySelectedColor;
+        [SerializeField]
+        Color m_OffColor = UIConfig.propertyBaseColor;
+
         Selectable m_Selectable;
         bool m_On;
         ButtonTapEvent m_OnControlDown = new ButtonTapEvent();
@@ -48,6 +53,7 @@ namespace Unity.TouchFramework
         ButtonTapEvent m_OnControlUp = new ButtonTapEvent();
         ColorTween m_ColorTween;
         TweenRunner<ColorTween> m_TweenRunner;
+        ScrollRect m_ScrollView;
 
         public bool on
         {
@@ -138,7 +144,7 @@ namespace Unity.TouchFramework
                 switch (m_TransitionType)
                 {
                     case TransitionType.ChangeColor when targetImage != null:
-                        targetImage.color = @on ? UIConfig.propertySelectedColor : UIConfig.propertyBaseColor;
+                        targetImage.color = @on ? m_OnColor : m_OffColor;
                         break;
                     case TransitionType.SwapSprite when m_TargetImage != null:
                     {
@@ -168,6 +174,8 @@ namespace Unity.TouchFramework
                 m_Selectable.transition = Selectable.Transition.None;
             }
 
+            m_ScrollView = GetComponentInParent<ScrollRect>();
+
             if (Application.isPlaying)
             {
                 m_ColorTween = new ColorTween()
@@ -187,6 +195,16 @@ namespace Unity.TouchFramework
             EventTriggerUtility.CreateEventTrigger(gameObject, OnPointerDown, EventTriggerType.PointerDown);
             EventTriggerUtility.CreateEventTrigger(gameObject, OnPointerUp, EventTriggerType.PointerUp);
             EventTriggerUtility.CreateEventTrigger(gameObject, OnPointerClick, EventTriggerType.PointerClick);
+
+            //If inside a scroll view, bubble up the drag events
+            if (m_ScrollView != null)
+            {
+                EventTriggerUtility.CreateEventTrigger(gameObject, OnBeginDrag, EventTriggerType.BeginDrag);
+                EventTriggerUtility.CreateEventTrigger(gameObject, OnDrag, EventTriggerType.Drag);
+                EventTriggerUtility.CreateEventTrigger(gameObject, OnEndDrag, EventTriggerType.EndDrag);
+                EventTriggerUtility.CreateEventTrigger(gameObject, OnInitializePotentialDrag, EventTriggerType.InitializePotentialDrag);
+                EventTriggerUtility.CreateEventTrigger(gameObject, OnScroll, EventTriggerType.Scroll);
+            }
 
             UpdateVisualState();
         }
@@ -230,6 +248,31 @@ namespace Unity.TouchFramework
                 return;
 
             onControlTap.Invoke(eventData);
+        }
+
+        void OnBeginDrag(BaseEventData eventData)
+        {
+            m_ScrollView.OnBeginDrag((PointerEventData)eventData);
+        }
+
+        void OnDrag(BaseEventData eventData)
+        {
+            m_ScrollView.OnDrag((PointerEventData)eventData);
+        }
+
+        void OnEndDrag(BaseEventData eventData)
+        {
+            m_ScrollView.OnEndDrag((PointerEventData)eventData);
+        }
+
+        void OnInitializePotentialDrag(BaseEventData eventData)
+        {
+            m_ScrollView.OnInitializePotentialDrag((PointerEventData)eventData);
+        }
+
+        void OnScroll(BaseEventData eventData)
+        {
+            m_ScrollView.OnScroll((PointerEventData)eventData);
         }
     }
 }

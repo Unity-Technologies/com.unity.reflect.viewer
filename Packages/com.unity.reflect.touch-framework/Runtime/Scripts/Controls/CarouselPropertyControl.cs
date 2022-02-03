@@ -158,7 +158,10 @@ namespace Unity.TouchFramework
 
             m_CanClick = true;
             m_CanDragSelect = true;
-            m_InteractingSegment = eventData.selectedObject.GetComponent<Selectable>();
+            if (eventData.selectedObject != null)
+            {
+                m_InteractingSegment = eventData.selectedObject.GetComponent<Selectable>();
+            }
         }
 
         void OnControlPan(BaseEventData eventData)

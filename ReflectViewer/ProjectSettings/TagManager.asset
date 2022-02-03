@@ -8,6 +8,8 @@ TagManager:
   - MiniWorldCamera
   - ShowInMiniWorld
   - Dude
+  - Orphan
+  - IgnoreSpatialSelector
   layers:
   - Default
   - TransparentFX
@@ -25,12 +27,12 @@ TagManager:
   - PlaneSelection
   - BaseBeam
   - Beam
-  - 
+  - HLOD
   - MeasureToolCursor
   - MeasureToolLine
   - 
   - 
-  - 
+  - RenderTextureSource
   - 
   - 
   - 

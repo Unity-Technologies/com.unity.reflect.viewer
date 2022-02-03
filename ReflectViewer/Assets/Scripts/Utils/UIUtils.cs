@@ -1,6 +1,7 @@
 using System;
 using System.Text.RegularExpressions;
-using Unity.Reflect.Viewer.UI;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace UnityEngine.Reflect.Utils
 {
@@ -39,7 +40,7 @@ namespace UnityEngine.Reflect.Utils
         public const string TimeIntervalMinutes = "minutes ago";
         public const string TimeIntervalAnHour = "one hour ago";
         public const string TimeIntervalHours = "hours ago";
-        public const string TimeIntervalYesteday = "yesterday";
+        public const string TimeIntervalYesterday = "yesterday";
         public const string TimeIntervalDays = "days ago";
         public const string TimeIntervalAWeek = "last week";
         public const string TimeIntervalWeeks = "weeks ago";
@@ -84,7 +85,7 @@ namespace UnityEngine.Reflect.Utils
             {
                 if(days == 1)
                 {
-                    return TimeIntervalYesteday;
+                    return TimeIntervalYesterday;
                 }
                 return $"{days.ToString()} {TimeIntervalDays}";
             }
@@ -122,25 +123,25 @@ namespace UnityEngine.Reflect.Utils
         const int k_LargeScreenSizeThreshold = 1280;
         const int k_MediumScreenSizeThreshold = 960;
         const int k_SmallScreenSizeThreshold = 600;
-        public static ScreenSizeQualifier QualifyScreenSize(Vector2 screenSize)
+        public static SetDisplayAction.ScreenSizeQualifier QualifyScreenSize(Vector2 screenSize)
         {
             if (screenSize.x >= k_XLargeScreenSizeThreshold || screenSize.y >= k_XLargeScreenSizeThreshold)
             {
-                return ScreenSizeQualifier.XLarge;
+                return SetDisplayAction.ScreenSizeQualifier.XLarge;
             }
             if (screenSize.x >= k_LargeScreenSizeThreshold || screenSize.y >= k_LargeScreenSizeThreshold)
             {
-                return ScreenSizeQualifier.Large;
+                return SetDisplayAction.ScreenSizeQualifier.Large;
             }
             if (screenSize.x >= k_MediumScreenSizeThreshold || screenSize.y >= k_MediumScreenSizeThreshold)
             {
-                return ScreenSizeQualifier.Medium;
+                return SetDisplayAction.ScreenSizeQualifier.Medium;
             }
             if (screenSize.x >= k_SmallScreenSizeThreshold || screenSize.y >= k_SmallScreenSizeThreshold)
             {
-                return ScreenSizeQualifier.Small;
+                return SetDisplayAction.ScreenSizeQualifier.Small;
             }
-            return ScreenSizeQualifier.XSmall;
+            return SetDisplayAction.ScreenSizeQualifier.XSmall;
         }
 
         const int k_MinimumHeightTablet = 720;
@@ -151,12 +152,12 @@ namespace UnityEngine.Reflect.Utils
         const float k_FallbackDpi = 96;
         const float k_FallbackDpiIpad = 264f;
 
-        public static float GetTargetDpi(float dpi, DisplayType displayType)
+        public static float GetTargetDpi(float dpi, SetDisplayAction.DisplayType displayType)
         {
-            return displayType == DisplayType.Desktop? dpi : k_TargetDPIWindows;
+            return displayType == SetDisplayAction.DisplayType.Desktop? dpi : k_TargetDPIWindows;
         }
 
-        public static float GetScaleFactor(float width, float height, float dpi, DisplayType displayType)
+        public static float GetScaleFactor(float width, float height, float dpi, SetDisplayAction.DisplayType displayType)
         {
             var scaleFactor =  dpi / GetTargetDpi(dpi, displayType);
             Vector2 screenSize = new Vector2(width / scaleFactor, height / scaleFactor);
@@ -168,9 +169,9 @@ namespace UnityEngine.Reflect.Utils
             return scaleFactor;
         }
 
-        static float FindMinimumDeviceHeight(DisplayType displayType)
+        static float FindMinimumDeviceHeight(SetDisplayAction.DisplayType displayType)
         {
-            if (displayType == DisplayType.Tablet)
+            if (displayType == SetDisplayAction.DisplayType.Tablet)
             {
                 return k_MinimumHeightTablet;
             }
@@ -178,7 +179,7 @@ namespace UnityEngine.Reflect.Utils
             return k_MinimumHeightPhone;
         }
 
-        public static DisplayType GetDeviceType(float width, float height, float dpi)
+        public static SetDisplayAction.DisplayType GetDeviceType(float width, float height, float dpi)
         {
             if (Application.isMobilePlatform)
             {
@@ -186,7 +187,7 @@ namespace UnityEngine.Reflect.Utils
             }
             Debug.Log(SystemInfo.deviceType.ToString());
 
-            return DisplayType.Desktop;
+            return SetDisplayAction.DisplayType.Desktop;
         }
 
         public static float GetScreenDpi()
@@ -196,15 +197,21 @@ namespace UnityEngine.Reflect.Utils
             {
                 if (SystemInfo.deviceModel == "iPad8,11" || SystemInfo.deviceModel == "iPad8,12")
                 {
-                    return k_FallbackDpiIpad;
+                    dpi = k_FallbackDpiIpad;
                 }
-
-                return k_FallbackDpi;
+                else
+                {
+                    dpi = k_FallbackDpi;
+                }
             }
+
+            if (Application.isMobilePlatform)
+                return Mathf.Min(250.0f, dpi);
+
             return dpi;
         }
 
-        static DisplayType GetDeviceTypeByDimension(float width, float height, float dpi)
+        static SetDisplayAction.DisplayType GetDeviceTypeByDimension(float width, float height, float dpi)
         {
             float aspectRatio = Mathf.Max(width, height) / Mathf.Min(width, height);
             var diagonalSizeInches = DeviceDiagonalSizeInInches(width, height, dpi);
@@ -212,9 +219,9 @@ namespace UnityEngine.Reflect.Utils
 
             if (isTablet)
             {
-                return DisplayType.Tablet;
+                return SetDisplayAction.DisplayType.Tablet;
             }
-            return DisplayType.Phone;
+            return SetDisplayAction.DisplayType.Phone;
         }
 
         static float DeviceDiagonalSizeInInches(float width, float height, float dpi)
@@ -222,6 +229,11 @@ namespace UnityEngine.Reflect.Utils
             float screenWidth = width / dpi;
             float screenHeight = height / dpi;
             return Mathf.Sqrt(screenWidth * screenWidth + screenHeight * screenHeight);
+        }
+
+        public static string Vector3UrlFormat(Vector3 v)
+        {
+            return $"{v.x},{v.y},{v.z}";
         }
     }
 }

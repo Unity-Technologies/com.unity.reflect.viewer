@@ -12,7 +12,7 @@ namespace Unity.Reflect.Viewer.Builder
         private static void BuildViewer()
         {
             BuildSettingsParser buildSettings = new BuildSettingsParser();
-            buildSettings.StartParsing();
+            buildSettings.StartParsing();            
             BuildPlayer(buildSettings.ActiveBuildTarget, buildSettings.BuildDirectory);
         }
 

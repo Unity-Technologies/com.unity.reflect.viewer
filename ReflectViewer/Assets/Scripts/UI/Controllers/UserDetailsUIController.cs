@@ -1,7 +1,10 @@
 using System;
-using SharpFlux;
+using System.Collections.Generic;
 using SharpFlux.Dispatching;
+using Unity.Reflect.Viewer.Core.Actions;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -22,9 +25,28 @@ namespace Unity.Reflect.Viewer.UI
 #pragma warning restore CS0649
 
         bool m_CachedMicEnabled;
+        protected IUISelector<SetNavigationModeAction.NavigationMode> m_NavigationModeSelector;
+        IUISelector<OpenDialogAction.DialogType> m_ActiveDialogSelector;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        protected override void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+            base.OnDestroy();
+        }
+
+        public override void Awake()
+        {
+            base.Awake();
+            m_DisposeOnDestroy.Add(m_NavigationModeSelector = UISelectorFactory.createSelector<SetNavigationModeAction.NavigationMode>(NavigationContext.current, nameof(INavigationDataProvider.navigationMode)));
+            m_DisposeOnDestroy.Add(m_ActiveDialogSelector = UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog)));
+        }
 
         void Start()
         {
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<IButtonInteractable>(AppBarContext.current, nameof(IAppBarDataProvider.buttonInteractable), OnButtonInteractableChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<IButtonVisibility>(AppBarContext.current, nameof(IAppBarDataProvider.buttonVisibility), OnButtonVisibilityChanged));
+
             if(m_FollowCameraButton != null)
             {
                 m_FollowCameraButton.onClick.AddListener(()=>
@@ -56,7 +78,7 @@ namespace Unity.Reflect.Viewer.UI
         {
             base.UpdateUI();
 
-            var muted = IsLocallyMuted();
+            var muted = IsMuted();
             if (m_MicOnIcon != null)
             {
                 m_MicOnIcon.SetActive(!muted);
@@ -69,33 +91,52 @@ namespace Unity.Reflect.Viewer.UI
 
         void ToggleMicrophone()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ToggleUserMicrophone, MatchmakerId));
+            Dispatcher.Dispatch(ToggleMicrophoneAction.From(MatchmakerId));
         }
 
         void ToggleFollowUserTool()
         {
-            var uiStateData = UIStateManager.current.stateData;
-            var networkUserData = UIStateManager.current.roomConnectionStateData.users.Find(user => user.matchmakerId == MatchmakerId);
-            if (uiStateData.navigationState.navigationMode == NavigationMode.VR)
+            var networkUserData = m_UsersSelector.GetValue().Find(user => user.matchmakerId == MatchmakerId);
+            if (m_NavigationModeSelector.GetValue() == SetNavigationModeAction.NavigationMode.VR)
             {
                 if (!ReferenceEquals(networkUserData.visualRepresentation, null))
                 {
-                    Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Teleport, networkUserData.visualRepresentation.transform.position));
+                    Dispatcher.Dispatch(TeleportAction.From(networkUserData.visualRepresentation.transform.position));
                 }
             }
             else
             {
-                if(UIStateManager.current.walkStateData.walkEnabled)
-                    UIStateManager.current.walkStateData.instruction.Cancel();
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.FollowUser, networkUserData));
+                Dispatcher.Dispatch(SetWalkEnableAction.From(false));
+
+                var followUserData = new FollowUserAction.FollowUserData();
+                followUserData.matchmakerId = networkUserData.matchmakerId;
+                followUserData.visualRepresentationGameObject = networkUserData.visualRepresentation.gameObject;
+                Dispatcher.Dispatch(FollowUserAction.From(followUserData));
+                Dispatcher.Dispatch(SetDeltaDNAButtonAction.From($"FollowUser"));
             }
         }
 
         public void CloseUserInfoDialog()
         {
-            if (UIStateManager.current.stateData.activeDialog == DialogType.CollaborationUserInfo)
+            if (m_ActiveDialogSelector.GetValue() == OpenDialogAction.DialogType.CollaborationUserInfo)
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, DialogType.None));
+                Dispatcher.Dispatch(OpenDialogAction.From(OpenDialogAction.DialogType.None));
+            }
+        }
+
+        void OnButtonVisibilityChanged(IButtonVisibility data)
+        {
+            if (data != null && (ButtonType)data.type == ButtonType.Follow)
+            {
+                m_FollowCameraButton.gameObject.SetActive(data.visible);
+            }
+        }
+
+        void OnButtonInteractableChanged(IButtonInteractable data)
+        {
+            if (data != null && (ButtonType)data.type == ButtonType.Follow)
+            {
+                m_FollowCameraButton.interactable = data.interactable;
             }
         }
     }

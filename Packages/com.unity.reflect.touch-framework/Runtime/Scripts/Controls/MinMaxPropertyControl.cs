@@ -1,12 +1,15 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Unity.TouchFramework
 {
     [DisallowMultipleComponent]
-    public class MinMaxPropertyControl : NumericInputFieldPropertyControl, IPointerDownHandler, IPointerUpHandler
+    public class MinMaxPropertyControl : NumericInputFieldPropertyControl, IPointerDownHandler, IPointerUpHandler,
+        IPropertyValue<IComparable>
     {
         const float k_SliderColorTransitionDuration = 0.2f;
 
@@ -31,6 +34,10 @@ namespace Unity.TouchFramework
         float m_StartDragFloat;
         bool m_Pressed;
 
+        List<Action> m_Handlers = new List<Action>();
+        IComparable m_Value;
+        IComparable  IPropertyValue<IComparable>.value => m_Value;
+
         void Start()
         {
             m_SliderColorTween = new ColorTween()
@@ -42,6 +49,22 @@ namespace Unity.TouchFramework
             m_SliderColorTween.AddOnChangedCallback(SetSliderColor);
             m_SliderColorTweenRunner = new TweenRunner<ColorTween>();
             m_SliderColorTweenRunner.Init(this);
+            onIntValueChanged.AddListener(v =>
+            {
+                m_Value = v;
+                foreach (var handler in m_Handlers)
+                {
+                    handler?.Invoke();
+                }
+            });
+            onFloatValueChanged.AddListener(v =>
+            {
+                m_Value = v;
+                foreach (var handler in m_Handlers)
+                {
+                    handler?.Invoke();
+                }
+            });
         }
 
         void SetSliderColor(Color color)
@@ -156,6 +179,48 @@ namespace Unity.TouchFramework
             m_SliderColorTween.startColor = m_Slider.color;
             m_SliderColorTween.targetColor = m_InactiveColor;
             m_SliderColorTweenRunner.StartTween(m_SliderColorTween, EaseType.EaseOutCubic);
+        }
+
+
+        public void SetRange(int min, int max)
+        {
+            m_MinInt = min;
+            m_MaxInt = max;
+        }
+
+        public void SetRange(float min, float max)
+        {
+            m_MinFloat = min;
+            m_MaxFloat = max;
+        }
+
+        public Type type => m_NumberType == NumberType.Float? typeof(float) : typeof(int);
+
+        public object objectValue
+        {
+            get => m_Value;
+            set
+            {
+                if (m_NumberType == NumberType.Float)
+                {
+                    m_Value = (IComparable)value;
+                    SetValue((float)m_Value);
+                }
+                else
+                {
+                    m_Value = (IComparable)value;
+                    SetValue((int)m_Value);
+                }
+            }
+        }
+        public void AddListener(Action eventFunc)
+        {
+            m_Handlers.Add(eventFunc);
+        }
+
+        public void RemoveListener(Action eventFunc)
+        {
+            m_Handlers.Remove(eventFunc);
         }
     }
 }

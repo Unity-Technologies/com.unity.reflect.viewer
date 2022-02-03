@@ -1,6 +1,12 @@
 {
     "name": "Unity.Reflect.Viewer.Core",
-    "references": [],
+    "rootNamespace": "",
+    "references": [
+        "Unity.Properties.CodeGen",
+        "Unity.TextMeshPro",
+        "Unity.TouchFramework",
+        "Unity.Properties"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

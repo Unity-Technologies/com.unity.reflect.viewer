@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace UnityEngine.Reflect.MeasureTool
 {
     public static class AnchorSelectionRaycast
     {
-        public static void PostRaycast(List<Tuple<GameObject, RaycastHit>> results, AnchorType selectionType)
+        public static void PostRaycast(List<Tuple<GameObject, RaycastHit>> results, ToggleMeasureToolAction.AnchorType selectionType)
         {
             var resultsToRemove = new List<Tuple<GameObject, RaycastHit>>();
             foreach (var tuple in results)
@@ -19,23 +21,31 @@ namespace UnityEngine.Reflect.MeasureTool
                 }
 
                 Mesh mesh = meshCollider.sharedMesh;
-                int[] triangles = mesh.triangles;
-                Vector3[] normals = mesh.normals;
-                Vector3[] vertices = mesh.vertices;
-                List<Vector3> triangleVertices = new List<Vector3> { vertices[triangles[hit.triangleIndex * 3 + 0]], vertices[triangles[hit.triangleIndex * 3 + 1]], vertices[triangles[hit.triangleIndex * 3 + 2]] };
+                var point = hit.point;
+                var normal = hit.normal;
+                // Vertex snapping requires a readable mesh
+                if (mesh.isReadable)
+                {
+                    int[] triangles = mesh.triangles;
+                    Vector3[] normals = mesh.normals;
+                    Vector3[] vertices = mesh.vertices;
+                    List<Vector3> triangleVertices = new List<Vector3> { vertices[triangles[hit.triangleIndex * 3 + 0]], vertices[triangles[hit.triangleIndex * 3 + 1]], vertices[triangles[hit.triangleIndex * 3 + 2]] };
 
-                Vector3 N0 = normals[triangles[hit.triangleIndex * 3 + 0]];
-                Vector3 N1 = normals[triangles[hit.triangleIndex * 3 + 1]];
-                Vector3 N2 = normals[triangles[hit.triangleIndex * 3 + 2]];
-                Vector3 normal = (N0 + N1 + N2) / 3.0f;
+                    Vector3 N0 = normals[triangles[hit.triangleIndex * 3 + 0]];
+                    Vector3 N1 = normals[triangles[hit.triangleIndex * 3 + 1]];
+                    Vector3 N2 = normals[triangles[hit.triangleIndex * 3 + 2]];
+                    normal = meshCollider.transform.rotation * ((N0 + N1 + N2) / 3.0f );
 
-                IAnchor anchor;
+                    point = DetectBestPointSelection(hit.point, triangleVertices);
+                }
+
+                SelectObjectMeasureToolAction.IAnchor anchor;
 
                 switch (selectionType)
                 {
                     default:
-                    case AnchorType.Point:
-                        anchor = new PointAnchor(tuple.Item1.GetInstanceID(), AnchorType.Point, DetectBestPointSelection(hit.point, triangleVertices), normal);
+                    case ToggleMeasureToolAction.AnchorType.Point:
+                        anchor = new PointAnchor(tuple.Item1.GetInstanceID(), ToggleMeasureToolAction.AnchorType.Point, point, normal);
                         break;
 
                     //case AnchorType.Edge:

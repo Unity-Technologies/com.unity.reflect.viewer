@@ -1,0 +1,19 @@
+{
+  "name": "com.unity.properties.ui",
+  "displayName": "Properties UI",
+  "version": "1.7.0-preview",
+  "unity": "2020.1",
+  "unityRelease": "0f1",
+  "description": "Utilities to generate UIElements-based visual trees from types backed by the properties package.",
+  "keywords": [
+    "properties",
+    "unity",
+    "ui"
+  ],
+  "dependencies": {
+    "com.unity.properties": "1.7.0-preview",
+    "com.unity.serialization": "1.7.0-preview",
+    "com.unity.modules.uielements": "1.0.0",
+    "com.unity.test-framework.performance": "2.3.1-preview"
+  }
+}

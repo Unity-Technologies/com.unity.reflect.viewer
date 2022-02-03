@@ -1,9 +1,11 @@
-﻿using System.Collections;
+using System;
+using System.Collections;
 using Unity.MARS.MARSUtils;
-using SharpFlux;
 using SharpFlux.Dispatching;
 using Unity.Reflect.Viewer.UI;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer
 {
@@ -46,24 +48,54 @@ namespace Unity.Reflect.Viewer
 #pragma warning restore CS0649
 
         Vector3 m_ScreenPoint = new Vector3(0.5f, 0.5f, 0.0f);
-
         Camera m_Camera;
-
         Transform m_CursorTransform;
         Transform m_CameraTransform;
-
         bool m_ValidTarget;
         bool? m_CachedValidTarget;
+        PlacementTarget m_LastTarget;
+        bool m_ViewBasedMode;
+        bool m_ViewBasedPlaceMode;
+        Vector3 m_InversePosition;
+        Quaternion m_InverseRotation;
+        IUISelector<IARInstructionUI> m_ARInstructionUISelector;
+        IUISelector<SetModelScaleAction.ArchitectureScale> m_ModelScaleSelector;
+        IUISelector<Transform> m_RootSelector;
+        IUISelector<bool> m_ARAxisTrackingSelector;
+        IUISelector<Transform> m_PlacementRootSelector;
+        IUISelector<Transform> m_BoundingBoxRootNodeSelector;
+        IUISelector<Bounds> m_ZoneBoundsSelector;
 
         public bool ValidTarget
         {
             get => m_ValidTarget;
         }
 
-        PlacementTarget m_LastTarget;
         public PlacementTarget LastTarget { get => m_LastTarget; }
 
         public bool ActiveScanning { get; set; }
+
+        void Awake()
+        {
+            m_PlacementRootSelector = UISelectorFactory.createSelector<Transform>(ARPlacementContext.current, nameof(IARPlacementDataProvider.placementRoot));
+            m_BoundingBoxRootNodeSelector = UISelectorFactory.createSelector<Transform>(ARPlacementContext.current, nameof(IARPlacementDataProvider.boundingBoxRootNode));
+            m_ARInstructionUISelector = UISelectorFactory.createSelector<IARInstructionUI>(ARContext.current, nameof(IARModeDataProvider.currentARInstructionUI));
+            m_ModelScaleSelector = UISelectorFactory.createSelector<SetModelScaleAction.ArchitectureScale>(ARPlacementContext.current, nameof(IARPlacementDataProvider.modelScale));
+            m_RootSelector = UISelectorFactory.createSelector<Transform>(PipelineContext.current, nameof(IPipelineDataProvider.rootNode));
+            m_ARAxisTrackingSelector = UISelectorFactory.createSelector<bool>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.ARAxisTrackingEnabled));
+            m_ZoneBoundsSelector = UISelectorFactory.createSelector<Bounds>(ProjectContext.current, nameof(IProjectBound.zoneBounds));
+        }
+
+        void OnDestroy()
+        {
+            m_PlacementRootSelector?.Dispose();
+            m_BoundingBoxRootNodeSelector?.Dispose();
+            m_ARInstructionUISelector?.Dispose();
+            m_ModelScaleSelector?.Dispose();
+            m_RootSelector?.Dispose();
+            m_ARAxisTrackingSelector?.Dispose();
+            m_ZoneBoundsSelector?.Dispose();
+        }
 
         void Start()
         {
@@ -82,7 +114,7 @@ namespace Unity.Reflect.Viewer
         {
             if (m_ViewBasedMode && m_ViewBasedPlaceMode)
             {
-                AlignViewModelWithARView(UIStateManager.current.m_PlacementRoot.transform);
+                AlignViewModelWithARView(m_PlacementRootSelector.GetValue());
             }
 
             if (!ActiveScanning)
@@ -189,16 +221,14 @@ namespace Unity.Reflect.Viewer
         {
             // TODO: find a better way to update UI
             yield return new WaitForSeconds(0);
-            var placementData = UIStateManager.current.arStateData.placementStateData;
-            placementData.validTarget = m_ValidTarget;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetPlacementState, placementData));
+            Dispatcher.Dispatch(SetValidTargetAction.From( m_ValidTarget));
         }
 
         IEnumerator MoveNext()
         {
             // TODO: move to new input system so we don't need this
             yield return new WaitForSeconds(0);
-            UIStateManager.current.arStateData.currentInstructionUI.Next();
+            m_ARInstructionUISelector.GetValue().Next();
         }
 
         public void DisableCursor()
@@ -214,7 +244,7 @@ namespace Unity.Reflect.Viewer
         /// </summary>
         public void PlaceObject()
         {
-            var placementRootTransform = UIStateManager.current.m_PlacementRoot.transform;
+            var placementRootTransform = m_PlacementRootSelector.GetValue();
 
             // Can't place if we don't have a valid target
             if (!m_ValidTarget && placementRootTransform.position == Vector3.zero)
@@ -225,36 +255,32 @@ namespace Unity.Reflect.Viewer
             placementRootTransform.position = m_CursorTransform.position;
             placementRootTransform.rotation = Quaternion.identity;
 
-            var boundingBoxRoot = UIStateManager.current.m_BoundingBoxRootNode;
-            boundingBoxRoot.SetActive(true);
-
-            var modelRootTransform = UIStateManager.current.m_RootNode.transform;
+            var boundingBoxRoot = m_BoundingBoxRootNodeSelector.GetValue();
+            boundingBoxRoot.gameObject.SetActive(true);
 
             if (m_ViewBasedMode)
             {
-                boundingBoxRoot.transform.localPosition = Vector3.zero;
-                modelRootTransform.localPosition = Vector3.zero;
+                boundingBoxRoot.localPosition = Vector3.zero;
+                m_RootSelector.GetValue().localPosition = Vector3.zero;
                 AlignViewModelWithARView(placementRootTransform);
             }
             else
             {
                 var offset = GetBoundingBoxOffset();
-                boundingBoxRoot.transform.localPosition = -offset;
-                modelRootTransform.localPosition = -offset;
+                boundingBoxRoot.localPosition = -offset;
+                m_RootSelector.GetValue().localPosition = -offset;
             }
         }
 
-        public void RestoreModel(GameObject boundingBoxes, GameObject model)
+        public void RestoreModel(Transform boundingBoxes, Transform model)
         {
-            var modelTransform = model.transform;
-            modelTransform.position = Vector3.zero;
-            modelTransform.rotation = Quaternion.identity;
-            modelTransform.localScale = Vector3.one;
+            model.position = Vector3.zero;
+            model.rotation = Quaternion.identity;
+            model.localScale = Vector3.one;
 
-            var bbTransform = boundingBoxes.transform;
-            bbTransform.position = Vector3.zero;
-            bbTransform.rotation = Quaternion.identity;
-            bbTransform.localScale = Vector3.one / (float) UIStateManager.current.stateData.modelScale;
+            boundingBoxes.position = Vector3.zero;
+            boundingBoxes.rotation = Quaternion.identity;
+            boundingBoxes.localScale = Vector3.one / (float) m_ModelScaleSelector.GetValue();
         }
 
         public void Reset()
@@ -268,8 +294,7 @@ namespace Unity.Reflect.Viewer
 
         public void ResetTransformation()
         {
-            var placementRootTransform = UIStateManager.current.m_PlacementRoot.transform;
-            placementRootTransform.rotation = Quaternion.identity;
+            m_PlacementRootSelector.GetValue().rotation = Quaternion.identity;
             StartCoroutine(ResetScale());
         }
 
@@ -277,13 +302,9 @@ namespace Unity.Reflect.Viewer
         {
             yield return new WaitForSeconds(0);
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, ArchitectureScale.OneToOneHundred));
+            Dispatcher.Dispatch(SetModelScaleAction.From(SetModelScaleAction.ArchitectureScale.OneToOneHundred));
         }
 
-        bool m_ViewBasedMode;
-        bool m_ViewBasedPlaceMode;
-        Vector3 m_InversePosition;
-        Quaternion m_InverseRotation;
         public void SetViewBaseARMode(Transform cameraTransform)
         {
             m_ViewBasedMode = true;
@@ -313,22 +334,22 @@ namespace Unity.Reflect.Viewer
 
         Vector3 GetBoundingBoxOffset()
         {
-            return new Vector3(UIStateManager.current.projectStateData.rootBounds.center.x,
-                UIStateManager.current.projectStateData.rootBounds.min.y,
-                UIStateManager.current.projectStateData.rootBounds.center.z);
+            var bounds = m_ZoneBoundsSelector.GetValue();
+            return new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
         }
 
-        public void AlignModelWithAnchor(GameObject model, Vector3 modelPlaneNormal, Vector3 arPlaneNormal, Vector3 modelAnchor, Vector3 arAnchor)
+        public void AlignModelWithAnchor(Transform model, Vector3 modelPlaneNormal, Vector3 arPlaneNormal, Vector3 modelAnchor, Vector3 arAnchor)
         {
             var distance = modelAnchor - model.transform.position;
-            model.transform.position = arAnchor - distance;
+            model.position = arAnchor - distance;
 
             // orient model with first plane
             float differenceAngle = Vector3.SignedAngle(modelPlaneNormal, arPlaneNormal, Vector3.up);
-            model.transform.RotateAround(arAnchor, Vector3.up, differenceAngle);
-            if (UIStateManager.current.debugStateData.debugOptionsData.ARAxisTrackingEnabled)
+            model.RotateAround(arAnchor, Vector3.up, differenceAngle);
+
+            if (m_ARAxisTrackingSelector.GetValue())
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusWithType,
+                Dispatcher.Dispatch(SetStatusMessageWithType.From(
                     new StatusMessageData { text=$"the AR Alignment angle is {differenceAngle}", type= StatusMessageType.Instruction }));
             }
         }

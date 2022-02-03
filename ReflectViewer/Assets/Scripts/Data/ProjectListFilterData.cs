@@ -1,22 +1,21 @@
 using System;
+using Unity.Properties;
+using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    [Flags]
-    public enum ProjectServerType
+    [Serializable, GeneratePropertyBag]
+    public struct ProjectListFilterData : IEquatable<ProjectListFilterData>, IProjectListFilterDataProvider
     {
-        None = 0,
-        Local = 1 << 0,
-        Network = 1 << 1,
-        Cloud = 1 << 2,
-        All = (Cloud << 1) - 1
-    }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetLandingScreenFilterProjectServerAction.ProjectServerType projectServerType { get; set; }
 
-    [Serializable]
-    public struct ProjectListFilterData : IEquatable<ProjectListFilterData>
-    {
-        public ProjectServerType projectServerType;
-        public string searchString;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public string searchString { get; set; }
 
         public static bool operator ==(ProjectListFilterData a, ProjectListFilterData b)
         {

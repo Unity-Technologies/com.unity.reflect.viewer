@@ -1,22 +1,25 @@
 using System;
+using Unity.Properties;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 
-namespace Unity.Reflect.Viewer
+namespace Unity.Reflect.Viewer.UI
 {
-    public enum DragState
+    [Serializable, GeneratePropertyBag]
+    public struct DragStateData : IEquatable<DragStateData>, IDragStateData
     {
-        None = 0,
-        OnStart = 1,
-        OnUpdate = 2,
-        OnEnd = 3
-    }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public DragState dragState { get; set; }
 
-    [Serializable]
-    public struct DragStateData : IEquatable<DragStateData>
-    {
-        public DragState dragState;
-        public Vector3 position;
-        public int hashObjectDragged;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public Vector3 position { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int hashObjectDragged { get; set; }
+
         public bool Equals(DragStateData other)
         {
             return dragState.Equals(other.dragState) &&

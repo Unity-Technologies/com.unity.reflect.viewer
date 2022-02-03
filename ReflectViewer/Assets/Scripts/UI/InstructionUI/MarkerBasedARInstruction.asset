@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 676b8c9659e5b9040a98db1718bb03a2, type: 3}
+  m_Name: MarkerBasedARInstruction
+  m_EditorClassIdentifier: 
+  m_MarkerControllerResolverRef:
+    exposedName: fc477877b019cba4595d8563f27b0e53
+    defaultValue: {fileID: 0}

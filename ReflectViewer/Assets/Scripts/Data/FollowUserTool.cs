@@ -1,19 +1,32 @@
-
 using System;
+using System.Runtime.InteropServices;
+using Unity.Properties;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    [Serializable]
-    public struct FollowUserTool : IEquatable<FollowUserTool>
+    [Serializable, GeneratePropertyBag]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct FollowUserTool : IEquatable<FollowUserTool>, IFollowUserDataProvider
     {
-        public string userId;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public string userId { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
         public GameObject userObject { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool isFollowing { get; set; }
 
         public bool Equals(FollowUserTool other)
         {
             return userId == other.userId &&
-                userObject == other.userObject;
+                userObject == other.userObject &&
+                isFollowing == other.isFollowing;
         }
 
         public override bool Equals(object obj)
@@ -27,6 +40,7 @@ namespace Unity.Reflect.Viewer.UI
             {
                 var hashCode = userId != null ? userId.GetHashCode() : 1;
                 hashCode = (hashCode * 397) ^ (ReferenceEquals(userObject, null)? 1: userObject.GetHashCode());
+                hashCode = (hashCode * 397) ^ (ReferenceEquals(isFollowing, null)? 1: isFollowing.GetHashCode());
                 return hashCode;
             }
         }

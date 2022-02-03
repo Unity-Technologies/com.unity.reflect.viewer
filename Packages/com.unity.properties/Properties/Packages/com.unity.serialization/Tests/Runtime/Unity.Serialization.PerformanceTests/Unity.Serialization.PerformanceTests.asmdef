@@ -1,0 +1,23 @@
+﻿{
+    "name": "Unity.Serialization.PerformanceTests",
+    "references": [
+        "Unity.Properties",
+        "Unity.Serialization",
+        "Unity.Serialization.Tests",
+        "Unity.Collections",
+        "Unity.PerformanceTesting"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ]
+}

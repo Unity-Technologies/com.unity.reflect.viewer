@@ -1,0 +1,17 @@
+{
+    "name": "Example",
+    "rootNamespace": "",
+    "references": [
+        "Unity.Properties",
+        "Unity.Reflect.Viewer.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

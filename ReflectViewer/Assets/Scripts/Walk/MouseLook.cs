@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 
 namespace Unity.Reflect.Viewer
 {
@@ -21,16 +22,39 @@ namespace Unity.Reflect.Viewer
         Quaternion m_CameraTargetRot;
         bool m_CursorIsLocked = true;
 
-        public void Init(Transform character, Transform camera, InputAction inputAction)
+        public void Init(Transform character, Transform camera, InputActionAsset inputActionAsset)
         {
             m_CharacterTargetRot = character.localRotation;
             m_CameraTargetRot = camera.localRotation;
-            m_InputAction = inputAction;
+            m_InputAction = inputActionAsset["Camera Control Action"];
         }
 
-        public void LookRotation(Transform character, Transform camera)
+        public void LookRotation(Transform character, Transform camera, ref TouchControl joystickTouch, ref TouchControl currentMouseTouch)
         {
-            Vector2 mouseRot = m_InputAction.ReadValue<Vector2>();
+            Vector2 mouseRot = Vector2.zero;
+
+#if (UNITY_ANDROID || UNITY_IOS) && !UNITY_EDITOR
+            if (currentMouseTouch is { isInProgress: false })
+                currentMouseTouch = null;
+
+            Touchscreen touchscreen = Touchscreen.current;
+
+            if (touchscreen != null)
+            {
+                for (int i = 0; i < touchscreen.touches.Count; i++)
+                {
+                    TouchControl touch = touchscreen.touches[i];
+                    if (touch.isInProgress && joystickTouch != touch &&
+                        (IsRightSide(touch.position.ReadValue()) || currentMouseTouch == touch))
+                    {
+                        mouseRot = touch.delta.ReadValue() * 0.1f;
+                        currentMouseTouch = touch;
+                    }
+                }
+            }
+#else
+            mouseRot = m_InputAction.ReadValue<Vector2>();
+#endif
             float yRot = mouseRot.x * XSensitivity;
             float xRot = mouseRot.y * YSensitivity;
 
@@ -57,6 +81,21 @@ namespace Unity.Reflect.Viewer
             }
 
             UpdateCursorLock();
+        }
+
+        bool IsRightSide(Vector2 coordinate)
+        {
+            bool retval = false;
+
+            var boundRect = Screen.safeArea;
+            boundRect.xMin += boundRect.width / 2f;
+
+            if (boundRect.Contains(coordinate))
+            {
+                retval = true;
+            }
+
+            return retval;
         }
 
         public void SetCursorLock(bool value)

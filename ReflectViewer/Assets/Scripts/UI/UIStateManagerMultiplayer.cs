@@ -1,12 +1,14 @@
-using MLAPI;
 using SharpFlux.Stores;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+#if UNITY_ANDROID
+using System.Linq;
+#endif
 using System.Threading.Tasks;
 using Unity.MARS.Providers;
+using Unity.Reflect.Actors;
 using Unity.Reflect.Data;
 using Unity.Reflect.Model;
 using Unity.Reflect.Multiplayer;
@@ -15,62 +17,68 @@ using UnityEngine;
 using UnityEngine.Reflect;
 using UnityEngine.Reflect.Pipeline;
 using UnityEngine.Reflect.Utils;
+using UnityEngine.Reflect.Viewer.Core;
 using VivoxUnity;
 
 namespace Unity.Reflect.Viewer.UI
 {
     public partial class UIStateManager : MonoBehaviour,
-        IStore<UIStateData>, IStore<UISessionStateData>, IStore<UIProjectStateData>, IStore<UIARStateData>, IStore<UIDebugStateData>, IStore<ApplicationStateData>,
-        IStore<RoomConnectionStateData>, IUsesSessionControl, IUsesPointCloud, IUsesPlaneFinding
+        IStore<UIStateData>, IStore<UISessionStateData>, IStore<UIProjectStateData>, IStore<UIARStateData>, IStore<UIDebugStateData>, IStore<ApplicationSettingsStateData>, IStore<PipelineStateData>,
+        IStore<RoomConnectionStateData>, IUsesSessionControl, IUsesPointCloud, IUsesPlaneFinding, IStore<SceneOptionData>, IStore<VRStateData>, IStore<MessageManagerStateData>, IStore<ProjectSettingStateData>, IStore<LoginSettingStateData>, IStore<DeltaDNAStateData>
     {
+        [SerializeField]
+        Transform m_AvatarRoot;
+
         MultiplayerController m_MultiplayerController;
-        VivoxManager m_VivoxManager = new VivoxManager();
-        MicInput m_MicInput;
+        IChannelSession m_ChannelSession;
 
         void AwakeMultiplayer()
         {
+            m_RoomConnectionStateData.vivoxManager = new VivoxManager();
             m_MultiplayerController = GetComponent<MultiplayerController>();
-            m_MicInput = GetComponent<MicInput>();
-            if (m_MicInput != null)
-            {
-                var descriptor = new NetworkedTypeDescriptor(
-                    typeof(float),
-                    (value) => BitConverter.GetBytes((float)value),
-                    (bytes) => BitConverter.ToSingle(bytes, 0));
+            var descriptor = new NetworkedTypeDescriptor(
+                typeof(float),
+                (value) => BitConverter.GetBytes((float)value),
+                (bytes) => BitConverter.ToSingle(bytes, 0));
 
-                NetworkUser.RegisterDescriptorKey("micInput", descriptor);
-                m_MicInput.OnMicLevelChanged += SendMicInput;
-            }
+            NetworkUser.RegisterDescriptorKey("micInput", descriptor);
         }
 
-        void SendMicInput(float micLevel)
+        void SetMicLevel(float micLevel)
         {
-            m_RoomConnectionStateData.localUser.voiceStateData.micVolume = micLevel;
-            m_RoomConnectionStateData.localUser.networkUser?.SetValue("micInput", micLevel);
-            roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+            var localUser = m_RoomConnectionStateData.localUser;
+            localUser.voiceStateData.micVolume = micLevel;
+            localUser.networkUser?.SetValue("micInput", micLevel);
+
+            m_RoomConnectionStateData.localUser = localUser;
+            m_RoomConnectionContextTarget.UpdateValueWith(nameof(m_RoomConnectionStateData.localUser), ref localUser);
         }
 
         public UserIdentity GetUserIdentityFromSession(string id)
         {
-            if (id == m_UISessionStateData.sessionState.userIdentity.matchmakerId)
-                return m_UISessionStateData.sessionState.userIdentity;
+            if (id == null || id == ((UserIdentity)m_UISessionStateData.userIdentity).matchmakerId)
+                return (UserIdentity)m_UISessionStateData.userIdentity;
             else
             {
-                for (int i = 0; i < m_UISessionStateData.sessionState.rooms.Length; i++)
+                for (int i = 0; i < m_UISessionStateData.rooms.Length; i++)
                 {
-                    for (int j = 0; j < m_UISessionStateData.sessionState.rooms[i].users.Count; j++)
+                    ProjectRoom projectRoom = (ProjectRoom)m_UISessionStateData.rooms[i];
+                    for (int j = 0; j < projectRoom.users.Count; j++)
                     {
-                        if (m_UISessionStateData.sessionState.rooms[i].users[j].matchmakerId == id)
-                            return m_UISessionStateData.sessionState.rooms[i].users[j];
+                        if (projectRoom.users[j].matchmakerId == id)
+                            return projectRoom.users[j];
                     }
                 }
-                for (int j = 0; j < m_UISessionStateData.sessionState.linkSharedProjectRoom.users.Count; j++)
-                {
-                    if (m_UISessionStateData.sessionState.linkSharedProjectRoom.users[j].matchmakerId == id)
-                        return m_UISessionStateData.sessionState.linkSharedProjectRoom.users[j];
-                }
 
+                ProjectRoom linkSharedProjectRoom = (ProjectRoom)m_UISessionStateData.linkSharedProjectRoom;
+                for (int j = 0; j < linkSharedProjectRoom.users.Count; j++)
+                {
+                    if (linkSharedProjectRoom.users[j].matchmakerId == id)
+                        return linkSharedProjectRoom.users[j];
+                }
             }
+
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData, UpdateNotification.ForceNotify);
             return default;
         }
 
@@ -90,34 +98,43 @@ namespace Unity.Reflect.Viewer.UI
             NetworkUser.OnUserPrefabCreated += OnNetcodeUserEntered;
             NetworkUser.OnUserPrefabDestroyed += OnNetcodeUserLeft;
 
-            SyncObjectBinding.OnCreated += SetUserSelectedObject;
-
-            m_VivoxManager.onVivoxParticipantJoined += AssignParticipant;
+            m_RoomConnectionStateData.vivoxManager.onVivoxParticipantJoined += AssignParticipant;
         }
 
-        private void SetUserSelectedObject(GameObject obj)
+        void ConnectMultiplayerToActorSystem()
         {
-            var syncObj = obj.GetComponent<SyncObjectBinding>();
+            m_ViewerBridge.GameObjectCreating += SetUserSelectedObject;
+        }
 
-            for (int i = 0; i < m_RoomConnectionStateData.users.Count; i++)
+        void SetUserSelectedObject(GameObjectCreating data)
+        {
+            foreach (var go in data.GameObjectIds)
             {
-                var original = m_RoomConnectionStateData.users[i];
-                if (original.selectedStreamKey.key == syncObj.streamKey.key && original.selectedStreamKey.source == syncObj.streamKey.source && original.selectedObject != obj)
+                var syncObj = go.GameObject.GetComponent<SyncObjectBinding>();
+
+                for (int i = 0; i < m_RoomConnectionStateData.users.Count; i++)
                 {
-                    original.selectedObject = obj;
-                    m_RoomConnectionStateData.users[i] = original; // I dont like this because its changing the iterated elements while continuing the iteration
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+                    var original = m_RoomConnectionStateData.users[i];
+                    if (original.selectedStreamKey.key == syncObj.streamKey.key && original.selectedStreamKey.source == syncObj.streamKey.source && original.selectedObject != go.GameObject)
+                    {
+                        original.selectedObject = go.GameObject;
+                        m_RoomConnectionStateData.users[i] = original; // I dont like this because its changing the iterated elements while continuing the iteration
+                        m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
+                    }
                 }
             }
         }
 
         void AssignParticipant(IParticipant obj)
         {
-            if(obj.ParticipantId == m_UISessionStateData.sessionState.userIdentity.vivoxParticipantId)
+            if (obj.ParticipantId == ((UserIdentity)m_UISessionStateData.userIdentity).vivoxParticipantId)
             {
-                m_RoomConnectionStateData.localUser.vivoxParticipant = obj;
-                roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+                var localUser = m_RoomConnectionStateData.localUser;
+                localUser.vivoxParticipant = obj;
+                m_RoomConnectionStateData.localUser = localUser;
+                m_RoomConnectionContextTarget.UpdateValueWith(nameof(m_RoomConnectionStateData.localUser), ref localUser);
                 OnParticipantPropertyChange(obj, new PropertyChangedEventArgs("IsMutedForAll"));
+                m_ChannelSession = obj.ParentChannelSession;
                 obj.PropertyChanged += OnLocalParticipantPropertyChanged;
             }
             else
@@ -127,8 +144,9 @@ namespace Unity.Reflect.Viewer.UI
                 {
                     var original = m_RoomConnectionStateData.users[existingUserIndex];
                     original.vivoxParticipant = obj;
+                    original.voiceStateData.isServerMuted = obj.IsMutedForAll;
                     m_RoomConnectionStateData.users[existingUserIndex] = original;
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+                    m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
                     OnParticipantPropertyChange(obj, new PropertyChangedEventArgs("IsMutedForAll"));
                     obj.PropertyChanged += OnParticipantPropertyChange;
                 }
@@ -137,46 +155,55 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnLocalParticipantPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            var participant = (IParticipant)sender;
-            switch (e.PropertyName)
+            if (m_ChannelSession?.ChannelState == ConnectionState.Connected)
             {
-                case "LocalMute":
-                    m_RoomConnectionStateData.localUser.voiceStateData.isLocallyMuted = participant.LocalMute;
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
-                    break;
-                case "AudioEnergy":
-                    m_RoomConnectionStateData.localUser.voiceStateData.micVolume = (float)participant.AudioEnergy;
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
-                    break;
-                case "IsMutedForAll":
-                    m_RoomConnectionStateData.localUser.voiceStateData.isServerMuted = participant.IsMutedForAll;
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
-                    break;
+                var participant = (IParticipant)sender;
+	            var localUser = m_RoomConnectionStateData.localUser;
+                switch (e.PropertyName)
+                {
+                    case "LocalMute":
+	                    localUser.voiceStateData.isLocallyMuted = participant.LocalMute;
+	                    m_RoomConnectionContextTarget.UpdateValueWith(nameof(m_RoomConnectionStateData.localUser), ref localUser);
+                        break;
+                    case "AudioEnergy":
+                        SetMicLevel((float)participant.AudioEnergy);
+                        break;
+                    case "IsMutedForAll":
+	                    localUser.voiceStateData.isServerMuted = participant.IsMutedForAll;
+	                    m_RoomConnectionContextTarget.UpdateValueWith(nameof(m_RoomConnectionStateData.localUser), ref localUser);
+                        break;
+                }
             }
         }
 
         void OnParticipantPropertyChange(object sender, PropertyChangedEventArgs e)
         {
-            var participant = (IParticipant)sender;
-            var existingUserIndex = m_RoomConnectionStateData.users.FindIndex(u => GetUserIdentityFromSession(u.matchmakerId).vivoxParticipantId == participant.ParticipantId);
-            if (existingUserIndex != -1)
+            if (m_ChannelSession?.ChannelState == ConnectionState.Connected)
             {
-                var original = m_RoomConnectionStateData.users[existingUserIndex];
-                switch (e.PropertyName)
+                var participant = (IParticipant)sender;
+                var existingUserIndex = m_RoomConnectionStateData.users.FindIndex(u => GetUserIdentityFromSession(u.matchmakerId).vivoxParticipantId == participant.ParticipantId);
+                if (existingUserIndex != -1)
                 {
-                    case "LocalMute":
-                        original.voiceStateData.isLocallyMuted = participant.LocalMute;
-                        original.visualRepresentation.muted = original.voiceStateData.isLocallyMuted || original.voiceStateData.isServerMuted;
-                        m_RoomConnectionStateData.users[existingUserIndex] = original;
-                        roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
-                        break;
-                    case "IsMutedForAll":
-                        original.voiceStateData.isServerMuted = participant.IsMutedForAll;
-                        original.visualRepresentation.muted = original.voiceStateData.isLocallyMuted || original.voiceStateData.isServerMuted;
-                        m_RoomConnectionStateData.users[existingUserIndex] = original;
-                        roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
-                        break;
+	                var users = m_RoomConnectionStateData.users;
+	                var original = users[existingUserIndex];
+                    switch (e.PropertyName)
+                    {
+                        case "LocalMute":
+                            original.voiceStateData.isLocallyMuted = participant.LocalMute;
+                            users[existingUserIndex] = original;
+                            break;
+                        case "IsMutedForAll":
+                            original.voiceStateData.isServerMuted = participant.IsMutedForAll;
+                            original.visualRepresentation.muted = original.voiceStateData.isServerMuted;
+	                        users[existingUserIndex] = original;
+                            break;
+						default:
+							return;
+                    }
+	                m_RoomConnectionStateData.users = users;
+	                m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
                 }
+
             }
         }
 
@@ -190,6 +217,7 @@ namespace Unity.Reflect.Viewer.UI
                     {
                         return;
                     }
+
                     if (muteTask.IsFaulted)
                     {
                         Debug.LogError(muteTask.Exception);
@@ -198,9 +226,8 @@ namespace Unity.Reflect.Viewer.UI
 
                     var localParticipant = m_RoomConnectionStateData.localUser.vivoxParticipant;
                     bool isMuted = m_RoomConnectionStateData.localUser.voiceStateData.isServerMuted;
-                    m_MicInput.enabled = isMuted;
                     localParticipant.SetIsMuteForAll(localParticipant.ParticipantId, !isMuted, muteTask.Result.AccessToken,
-                        callback => roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData));
+                        callback => m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify));
                 });
             }
             else
@@ -209,9 +236,51 @@ namespace Unity.Reflect.Viewer.UI
                 if (user.vivoxParticipant != null)
                 {
                     user.vivoxParticipant.LocalMute = !user.vivoxParticipant.LocalMute;
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+                    m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
                 }
             }
+        }
+
+        void MuteUser(string matchmakerId)
+        {
+            var user = m_RoomConnectionStateData.users.Find(data => data.matchmakerId == matchmakerId);
+
+            if (user.voiceStateData.isServerMuted)
+                return;
+
+            if (m_RoomConnectionStateData.vivoxManager.IsConnected)
+            {
+                if (user.vivoxParticipant != null)
+                {
+                    PlayerClientBridge.ChatClientManager.RequestMuteUnmuteCredentialsAsync(user.vivoxParticipant.ParticipantId, muteTask =>
+                    {
+                        if (muteTask.IsCanceled)
+                        {
+                            return;
+                        }
+
+                        if (muteTask.IsFaulted)
+                        {
+                            Debug.LogError(muteTask.Exception);
+                            return;
+                        }
+
+                        var localParticipant = m_RoomConnectionStateData.localUser.vivoxParticipant;
+                        user.vivoxParticipant.SetIsMuteForAll(localParticipant.ParticipantId, true, muteTask.Result.AccessToken,
+                            callback => m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify));
+                    });
+                }
+            }
+            else
+            {
+                user.voiceStateData.isServerMuted = true;
+                m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
+            }
+        }
+
+        void ShowAvatars(bool value)
+        {
+            m_AvatarRoot.gameObject.SetActive(value);
         }
 
         void OnLobbyStatusChanged(ConnectionStatusDetails obj)
@@ -219,11 +288,16 @@ namespace Unity.Reflect.Viewer.UI
             switch (obj.Status)
             {
                 case Multiplayer.ConnectionStatus.Connected:
-                    m_UISessionStateData.sessionState.collaborationState |= CollaborationState.ConnectedMatchmaker;
-                    sessionStateChanged?.Invoke(m_UISessionStateData);
+                    m_UISessionStateData.collaborationState |= CollaborationState.ConnectedMatchmaker;
+                    m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
+
+                    // Look for async ready condition
+                    Debug.Log($"OnLobbyStatusChanged TryConsumeDeepLink");
+                    TryConsumeInteropRequest();
                     break;
                 case Multiplayer.ConnectionStatus.Disconnected:
-                    m_UISessionStateData.sessionState.collaborationState &= ~CollaborationState.ConnectedMatchmaker;
+                    m_UISessionStateData.collaborationState &= ~CollaborationState.ConnectedMatchmaker;
+                    m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
                     if (obj.Error == null)
                     {
                         // Voluntary Disconnect, we clear the UI instantle
@@ -234,6 +308,7 @@ namespace Unity.Reflect.Viewer.UI
                         // TODO: Involuntary Disconnect, we can do something different
                         ClearSessionUIState();
                     }
+
                     break;
             }
         }
@@ -243,13 +318,13 @@ namespace Unity.Reflect.Viewer.UI
             switch (obj.Status)
             {
                 case Multiplayer.ConnectionStatus.Connected:
-                    m_UISessionStateData.sessionState.collaborationState |= CollaborationState.ConnectedRoom;
-                    sessionStateChanged?.Invoke(m_UISessionStateData);
+                    m_UISessionStateData.collaborationState |= CollaborationState.ConnectedRoom;
+                    m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
                     break;
                 case Multiplayer.ConnectionStatus.Disconnected:
-                    m_UISessionStateData.sessionState.collaborationState &= ~CollaborationState.ConnectedRoom;
-                    m_VivoxManager.LeaveChannel();
-                    m_VivoxManager.Logout();
+                    m_UISessionStateData.collaborationState &= ~CollaborationState.ConnectedRoom;
+                    m_RoomConnectionStateData.vivoxManager.LeaveChannel();
+                    m_RoomConnectionStateData.vivoxManager.Logout();
                     m_RoomConnectionStateData.localUser = NetworkUserData.defaultData;
                     if (obj.Error == null)
                     {
@@ -261,6 +336,7 @@ namespace Unity.Reflect.Viewer.UI
                         // TODO: Involuntary Disconnect, we can do something different
                         ClearRoomUIState();
                     }
+
                     break;
             }
         }
@@ -270,11 +346,12 @@ namespace Unity.Reflect.Viewer.UI
             switch (obj.Status)
             {
                 case Multiplayer.ConnectionStatus.Connected:
-                    m_UISessionStateData.sessionState.collaborationState |= CollaborationState.ConnectedNetcode;
-                    sessionStateChanged?.Invoke(m_UISessionStateData);
+                    m_UISessionStateData.collaborationState |= CollaborationState.ConnectedNetcode;
+                    m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
                     break;
                 case Multiplayer.ConnectionStatus.Disconnected:
-                    m_UISessionStateData.sessionState.collaborationState &= ~CollaborationState.ConnectedNetcode;
+                    m_UISessionStateData.collaborationState &= ~CollaborationState.ConnectedNetcode;
+                    m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
                     if (obj.Error == null)
                     {
                         // Voluntary Disconnect, we clear the UI instantle
@@ -285,13 +362,14 @@ namespace Unity.Reflect.Viewer.UI
                         // TODO: Involuntary Disconnect, we can do something different
                         ClearRoomUIState();
                     }
+
                     break;
             }
         }
 
         void OnVivoxLoginResult(Task<VoiceLoginCredentials> loginTask)
         {
-            m_VivoxManager.LoginAsync(loginTask.Result).ContinueWith(t =>
+            m_RoomConnectionStateData.vivoxManager.LoginAsync(loginTask.Result).ContinueWith(t =>
             {
                 if (t.IsCanceled)
                     return;
@@ -302,9 +380,7 @@ namespace Unity.Reflect.Viewer.UI
                     return;
                 }
 
-
                 PlayerClientBridge.ChatClientManager.RequestChannelCredentialsAsync(m_RoomConnectionStateData.localUser.voiceStateData.isServerMuted, OnVivoxChannelResult);
-
             }, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
@@ -318,75 +394,82 @@ namespace Unity.Reflect.Viewer.UI
                 Debug.LogError(channelTask.Exception);
                 return;
             }
-            m_VivoxManager.JoinChannelAsync(channelTask.Result);
+
+            m_RoomConnectionStateData.vivoxManager.JoinChannelAsync(channelTask.Result);
         }
 
         void AddPlayerToSession(PlayerInfo playerInfo)
         {
             var identity = new UserIdentity(playerInfo.Id, playerInfo.ColorIndex, playerInfo.Name, playerInfo.Connected, playerInfo.VoiceChatId);
 
-            if(playerInfo.IsSelf)
+            if (playerInfo.IsSelf)
             {
-                m_UISessionStateData.sessionState.userIdentity = identity;
+                m_UISessionStateData.userIdentity = identity;
             }
             else
             {
                 // Add or update user in the session
-                var roomIndex = Array.FindIndex(m_UISessionStateData.sessionState.rooms, (r) => r.project.serverProjectId == playerInfo.RoomId);
-                if(roomIndex != -1)
+                var roomIndex = Array.FindIndex(m_UISessionStateData.rooms, (r) => ((ProjectRoom)r).project.serverProjectId == playerInfo.RoomId);
+                if (roomIndex != -1)
                 {
-                    var userIndex = m_UISessionStateData.sessionState.rooms[roomIndex].users.FindIndex(u => u.matchmakerId == playerInfo.Id);
+                    var projectRoom = (ProjectRoom)m_UISessionStateData.rooms[roomIndex];
+                    var userIndex = projectRoom.users.FindIndex(u => u.matchmakerId == playerInfo.Id);
 
                     if (userIndex == -1)
-                        m_UISessionStateData.sessionState.rooms[roomIndex].users.Add(identity);
+                        projectRoom.users.Add(identity);
                     else
-                        m_UISessionStateData.sessionState.rooms[roomIndex].users[userIndex] = identity;
+                        projectRoom.users[userIndex] = identity;
                 }
                 else
                 {
-                    var userIndex = m_UISessionStateData.sessionState.linkSharedProjectRoom.users.FindIndex(u => u.matchmakerId == playerInfo.Id);
+                    var linkSharedProjectRoom = (ProjectRoom)m_UISessionStateData.linkSharedProjectRoom;
+                    var userIndex = linkSharedProjectRoom.users.FindIndex(u => u.matchmakerId == playerInfo.Id);
 
                     if (userIndex == -1)
-                        m_UISessionStateData.sessionState.linkSharedProjectRoom.users.Add(identity);
+                        linkSharedProjectRoom.users.Add(identity);
                     else
-                        m_UISessionStateData.sessionState.linkSharedProjectRoom.users[userIndex] = identity;
+                        linkSharedProjectRoom.users[userIndex] = identity;
                 }
             }
-            sessionStateChanged?.Invoke(m_UISessionStateData);
+
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData, UpdateNotification.ForceNotify);
         }
 
         void RemovePlayerFromSession(PlayerInfo playerInfo)
         {
             if (playerInfo.IsSelf)
             {
-                m_UISessionStateData.sessionState.userIdentity = new UserIdentity(null, -1, sessionStateData.sessionState.user?.DisplayName, DateTime.MinValue, null);
+                m_UISessionStateData.userIdentity = new UserIdentity(null, -1, m_UISessionStateData.user?.DisplayName, DateTime.MinValue, null);
             }
             else
             {
                 //Remove user from session rooms
-                var roomIndex = Array.FindIndex(m_UISessionStateData.sessionState.rooms, (r) => r.project.serverProjectId == playerInfo.RoomId);
+                var roomIndex = Array.FindIndex(m_UISessionStateData.rooms, (r) => ((ProjectRoom)r).project.serverProjectId == playerInfo.RoomId);
                 if (roomIndex != -1)
                 {
-                    var userIndex = m_UISessionStateData.sessionState.rooms[roomIndex].users.FindIndex(u => u.matchmakerId == playerInfo.Id);
-                    m_UISessionStateData.sessionState.rooms[roomIndex].users.RemoveAt(userIndex);
+                    var userIndex = ((ProjectRoom)m_UISessionStateData.rooms[roomIndex]).users.FindIndex(u => u.matchmakerId == playerInfo.Id);
+                    ((ProjectRoom)m_UISessionStateData.rooms[roomIndex]).users.RemoveAt(userIndex);
                 }
                 else
                 {
-                    var userIndex = m_UISessionStateData.sessionState.linkSharedProjectRoom.users.FindIndex(u => u.matchmakerId == playerInfo.Id);
-                    m_UISessionStateData.sessionState.linkSharedProjectRoom.users.RemoveAt(userIndex);
+                    var userIndex = ((ProjectRoom)m_UISessionStateData.linkSharedProjectRoom).users.FindIndex(u => u.matchmakerId == playerInfo.Id);
+                    ((ProjectRoom)m_UISessionStateData.linkSharedProjectRoom).users.RemoveAt(userIndex);
                 }
             }
-            sessionStateChanged?.Invoke(m_UISessionStateData);
+
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData, UpdateNotification.ForceNotify);
         }
 
         void AddPlayerToRoom(PlayerInfo playerInfo)
         {
-            if (m_UIProjectStateData.activeProject.serverProjectId != playerInfo.RoomId)
+            if (m_ProjectSettingStateData.activeProject.serverProjectId != playerInfo.RoomId)
                 return;
 
             if (playerInfo.IsSelf)
             {
-                m_RoomConnectionStateData.localUser.matchmakerId = playerInfo.Id;
+                var localUser = m_RoomConnectionStateData.localUser;
+                localUser.matchmakerId = playerInfo.Id;
+                m_RoomConnectionStateData.localUser = localUser;
                 PlayerClientBridge.ChatClientManager.RequestLoginCredentialsAsync(OnVivoxLoginResult);
             }
             else
@@ -417,42 +500,44 @@ namespace Unity.Reflect.Viewer.UI
                 else
                     m_RoomConnectionStateData.users[existingUserIndex] = userData;
 
-
                 if (userData.vivoxParticipant == null)
                 {
                     var identity = GetUserIdentityFromSession(playerInfo.Id);
-                    var participant = m_VivoxManager.GetParticipant(identity.vivoxParticipantId);
+                    var participant = m_RoomConnectionStateData.vivoxManager.GetParticipant(identity.vivoxParticipantId);
                     if (participant != null)
                         AssignParticipant(participant);
                 }
             }
-            roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+
+            m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
         }
 
         void RemovePlayerFromRoom(PlayerInfo playerInfo)
         {
             //Remove user from room connection
-            if (m_UIProjectStateData.activeProject.serverProjectId == playerInfo.RoomId)
+            if (m_ProjectSettingStateData.activeProject.serverProjectId == playerInfo.RoomId)
             {
                 if (playerInfo.IsSelf)
                 {
                     m_RoomConnectionStateData.localUser = NetworkUserData.defaultData;
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+                    m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData);
                 }
                 else
                 {
                     var userRoomIndex = m_RoomConnectionStateData.users.FindIndex((data) => data.matchmakerId == playerInfo.Id);
                     if (userRoomIndex == -1)
                     {
-                        Debug.LogError("Player left matchaker room but was already removed from UI room");
+                        Debug.LogError("Player left matchmaker room but was already removed from UI room");
                         return;
                     }
+
                     OnNetcodeUserLeft(m_RoomConnectionStateData.users[userRoomIndex].matchmakerId, m_RoomConnectionStateData.users[userRoomIndex].networkUser);
                     m_RoomConnectionStateData.users.RemoveAt(userRoomIndex);
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+                    m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
                 }
             }
         }
+
         void SetNetworkSelected(ObjectSelectionInfo info)
         {
             if (m_RoomConnectionStateData.localUser.networkUser != null)
@@ -475,18 +560,25 @@ namespace Unity.Reflect.Viewer.UI
                         PersistentKeyName = ""
                     };
                 }
+
                 m_RoomConnectionStateData.localUser.networkUser.SetValue(NetworkUser.k_SelectionDataKey, key);
+                m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData);
             }
         }
 
-        private void OnNetcodeUserEntered(string userId, NetworkUser user)
+        void OnNetcodeUserEntered(string userId, NetworkUser user)
         {
             if (user.IsOwner)
             {
-                m_RoomConnectionStateData.localUser.networkUser = user;
-                m_RoomConnectionStateData.localUser.matchmakerId = userId;
+                var localUser = m_RoomConnectionStateData.localUser;
+                localUser.networkUser = user;
+                localUser.matchmakerId = userId;
+
+                m_RoomConnectionStateData.localUser = localUser;
                 user.OnValueChange += DispatchLocalUserDataChanged;
-                SetNetworkSelected(m_UIProjectStateData.objectSelectionInfo);
+                m_RoomConnectionContextTarget.UpdateValueWith(nameof(m_RoomConnectionStateData.localUser), ref localUser);
+
+                SetNetworkSelected((ObjectSelectionInfo)(m_UIProjectStateData.objectSelectionInfo ?? new ObjectSelectionInfo()));
             }
             else
             {
@@ -498,7 +590,7 @@ namespace Unity.Reflect.Viewer.UI
 
                 if (userData.visualRepresentation == null)
                 {
-                    userData.visualRepresentation = m_MultiplayerController.CreateVisualRepresentation(m_RootNode.transform);
+                    userData.visualRepresentation = m_MultiplayerController.CreateVisualRepresentation(m_AvatarRoot);
                 }
 
                 var identity = GetUserIdentityFromSession(userId);
@@ -520,30 +612,34 @@ namespace Unity.Reflect.Viewer.UI
                 else
                     m_RoomConnectionStateData.users.Add(userData);
 
+                m_RoomConnectionStateData.users = new List<NetworkUserData>(m_RoomConnectionStateData.users);
                 user.OnValueChange += DispatchRemoteUserDataChanged;
 
                 if (userData.vivoxParticipant == null && identity != default)
                 {
-                    var participant = m_VivoxManager.GetParticipant(identity.vivoxParticipantId);
+                    var participant = m_RoomConnectionStateData.vivoxManager.GetParticipant(identity.vivoxParticipantId);
                     if (participant != null)
                         AssignParticipant(participant);
                 }
             }
+
             Debug.LogFormat("{0} MLAPI user [{1}:{2}] joined room", user.IsOwner ? "Local" : "Remote", userId, user.OwnerClientId);
-            roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+            m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
         }
 
-        private void OnNetcodeUserLeft(string userId, NetworkUser user)
+        void OnNetcodeUserLeft(string userId, NetworkUser user)
         {
-            if(userId == m_RoomConnectionStateData.localUser.matchmakerId)
+            if (userId == m_RoomConnectionStateData.localUser.matchmakerId)
             {
-                m_RoomConnectionStateData.localUser.networkUser = null;
-                roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+                var localUser = m_RoomConnectionStateData.localUser;
+                localUser.networkUser = null;
+                m_RoomConnectionStateData.localUser = localUser;
+                m_RoomConnectionContextTarget.UpdateValueWith(nameof(m_RoomConnectionStateData.localUser), ref localUser);
             }
             else
             {
                 var indexToRemove = m_RoomConnectionStateData.users.FindIndex((data) => data.matchmakerId == userId);
-                if(indexToRemove == -1)
+                if (indexToRemove == -1)
                     return;
                 if (indexToRemove != -1)
                 {
@@ -554,40 +650,73 @@ namespace Unity.Reflect.Viewer.UI
                     originalData.visualRepresentation = null;
                     originalData.networkUser = null;
                     m_RoomConnectionStateData.users[indexToRemove] = originalData;
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+                    m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
                 }
             }
-            Debug.LogFormat("{0} MLAPI user [{1}:{2}] left room", user.IsOwner ? "Local" : "Remote", userId, user.OwnerClientId);
+
+            if (user != null)
+            {
+                Debug.LogFormat("{0} MLAPI user [{1}:{2}] left room", user.IsOwner ? "Local" : "Remote", userId, user.OwnerClientId);
+            }
+            else
+            {
+                Debug.LogFormat($"MLAPI user [{userId}:] left room");
+            }
         }
 
-        private void DispatchLocalUserDataChanged(NetworkUser user, string key, object value)
+        void DispatchLocalUserDataChanged(NetworkUser user, string key, object value)
         {
             switch (key)
             {
                 case NetworkUser.k_SelectionDataKey:
                     var casted = (Multiplayer.Netcode.StreamKey)value;
                     var streamKey = new StreamKey(casted.Source, PersistentKey.GetKey<SyncObjectInstance>(casted.PersistentKeyName));
-                    m_RoomConnectionStateData.localUser.selectedStreamKey = streamKey;
-                    if (m_ReflectPipeline.TryGetNode(out InstanceConverterNode converter) && converter.processor.TryGetInstance(streamKey, out var instance))
+                    var localUser = m_RoomConnectionStateData.localUser;
+                    localUser.selectedStreamKey = streamKey;
+
+                    if (string.IsNullOrEmpty(streamKey.source) || streamKey.key == default)
                     {
-                        m_RoomConnectionStateData.localUser.selectedObject = instance.gameObject;
+                        localUser.selectedObject = null;
+                        m_RoomConnectionStateData.localUser = localUser;
+                        m_RoomConnectionContextTarget.UpdateValueWith(nameof(m_RoomConnectionStateData.localUser), ref localUser);
+                        return;
                     }
-                    else
-                    {
-                        m_RoomConnectionStateData.localUser.selectedObject = null;
-                    }
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+
+                    var manifestRef = m_Reflect.Hook.Systems.ActorRunner.GetActorHandle<ManifestActor>();
+                    var golRef = m_Reflect.Hook.Systems.ActorRunner.GetActorHandle<GameObjectLifecycleActor>();
+                    m_Bridge.ForwardRpcBlocking(manifestRef, new GetStableId<StreamKey>(streamKey),
+                        (Boxed<EntryStableGuid> b) =>
+                        {
+                            m_Bridge.ForwardRpcBlocking(golRef, new RunFuncOnGameObject(default, b.Value, go => go),
+                                (GameObject go) =>
+                                {
+                                    localUser.selectedObject = go;
+                                    m_RoomConnectionStateData.localUser = localUser;
+                                    m_RoomConnectionContextTarget.UpdateValueWith(nameof(m_RoomConnectionStateData.localUser), ref localUser);
+                                }, ex =>
+                                {
+                                    if (ex is MissingGameObjectException)
+                                    {
+                                        localUser.selectedObject = null;
+                                        m_RoomConnectionStateData.localUser = localUser;
+                                        m_RoomConnectionContextTarget.UpdateValueWith(nameof(m_RoomConnectionStateData.localUser), ref localUser);
+                                    }
+                                    else if (!(ex is OperationCanceledException))
+                                        Debug.LogException(ex);
+                                });
+                        },
+                        ex => Debug.LogException(ex));
                     break;
             }
         }
 
         public void OnApplicationQuit()
         {
-            m_VivoxManager.LeaveChannel();
-            m_VivoxManager.Logout();
+            m_RoomConnectionStateData.vivoxManager.LeaveChannel();
+            m_RoomConnectionStateData.vivoxManager.Logout();
         }
 
-        private void ClearRoomUIState()
+        void ClearRoomUIState()
         {
             for (int i = 0; i < m_RoomConnectionStateData.users.Count; i++)
             {
@@ -598,21 +727,23 @@ namespace Unity.Reflect.Viewer.UI
                 original.voiceStateData = VoiceStateData.defaultData;
                 m_RoomConnectionStateData.users[i] = original;
             }
+
             m_RoomConnectionStateData.users.Clear();
-            roomConnectionStateChanged?.Invoke(roomConnectionStateData);
+            m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
         }
 
-        private void ClearSessionUIState()
+        void ClearSessionUIState()
         {
-            m_UISessionStateData.sessionState.userIdentity = new UserIdentity(null, -1, sessionStateData.sessionState.user?.DisplayName, DateTime.UtcNow, null);
-            foreach (var room in m_UISessionStateData.sessionState.rooms)
+            m_UISessionStateData.userIdentity = new UserIdentity(null, -1, m_UISessionStateData.user?.DisplayName, DateTime.UtcNow, null);
+            foreach (var room in m_UISessionStateData.rooms)
             {
-                room.users.Clear();
+                ((ProjectRoom)room).users.Clear();
             }
-            sessionStateChanged?.Invoke(sessionStateData);
+
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData, UpdateNotification.ForceNotify);
         }
 
-        private void DispatchRemoteUserDataChanged(NetworkUser user, string key, object value)
+        void DispatchRemoteUserDataChanged(NetworkUser user, string key, object value)
         {
             var index = m_RoomConnectionStateData.users.FindIndex((userData) => userData.matchmakerId == user.MatchmakerUserId);
             if (index == -1)
@@ -628,7 +759,7 @@ namespace Unity.Reflect.Viewer.UI
                     originalData.visualRepresentation.normalizedMicLevel = (float)value;
                     originalData.voiceStateData.micVolume = (float)value;
                     m_RoomConnectionStateData.users[index] = originalData;
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+                    m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
                     break;
                 case NetworkUser.k_PositionDataKey:
                     if (originalData.visualRepresentation == null)
@@ -644,37 +775,67 @@ namespace Unity.Reflect.Viewer.UI
                     var casted = (Multiplayer.Netcode.StreamKey)value;
                     var streamKey = new StreamKey(casted.Source, PersistentKey.GetKey<SyncObjectInstance>(casted.PersistentKeyName));
                     originalData.selectedStreamKey = streamKey;
-                    if (m_ReflectPipeline.TryGetNode(out InstanceConverterNode converter) && converter.processor.TryGetInstance(streamKey, out var instance))
-                    {
-                        originalData.selectedObject = instance.gameObject;
-                    }
-                    else
+
+                    var manifestHandle = m_Reflect.Hook.Systems.ActorRunner.GetActorHandle<ManifestActor>();
+                    var goLifecycleHandle = m_Reflect.Hook.Systems.ActorRunner.GetActorHandle<GameObjectLifecycleActor>();
+                    if (string.IsNullOrEmpty(streamKey.source) || streamKey.key == default)
                     {
                         originalData.selectedObject = null;
+                        m_RoomConnectionStateData.users[index] = originalData;
+                        m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
+                        return;
                     }
-                    m_RoomConnectionStateData.users[index] = originalData;
-                    roomConnectionStateChanged?.Invoke(m_RoomConnectionStateData);
+
+                    m_Bridge.ForwardRpcBlocking(manifestHandle, new GetStableId<StreamKey>(streamKey),
+                        (Boxed<EntryStableGuid> b) =>
+                        {
+                            m_Bridge.ForwardRpcBlocking(goLifecycleHandle, new RunFuncOnGameObject(default, b.Value, go => go),
+                                (GameObject go) =>
+                                {
+                                    originalData.selectedObject = go;
+                                    m_RoomConnectionStateData.users[index] = originalData;
+                                    m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
+                                }, ex =>
+                                {
+                                    if (ex is MissingGameObjectException)
+                                    {
+                                        originalData.selectedObject = null;
+                                        m_RoomConnectionStateData.users[index] = originalData;
+                                        m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
+                                    }
+                                    else if (!(ex is OperationCanceledException))
+                                        Debug.LogException(ex);
+                                });
+                        },
+                        ex =>
+                        {
+                            // key may not exist yet. This may happen if the scenes are not identical between viewers (live sync, baked objects)
+                            // Just remove the selectedObject for this user
+                            originalData.selectedObject = null;
+                            m_RoomConnectionStateData.users[index] = originalData;
+                            m_RoomConnectionContextTarget.UpdateWith(ref m_RoomConnectionStateData, UpdateNotification.ForceNotify);
+                        });
                     break;
             }
         }
 
 #if UNITY_ANDROID
-        private void OnApplicationPause(bool pause)
+        void OnApplicationPause(bool pause)
         {
-            m_VivoxManager.SetInputMuted(pause);
-            m_VivoxManager.SetOutputMuted(pause);
+            m_RoomConnectionStateData.vivoxManager.SetInputMuted(pause);
+            m_RoomConnectionStateData.vivoxManager.SetOutputMuted(pause);
 
             if (pause)
             {
                 PlayerClientBridge.MatchmakerManager.Disconnect();
             }
-            else
+            else if(m_UISessionStateData.user != null)
             {
-                PlayerClientBridge.MatchmakerManager.Connect(m_UISessionStateData.sessionState.user.AccessToken, m_MultiplayerController.connectToLocalServer);
-                PlayerClientBridge.MatchmakerManager.MonitorRooms(sessionStateData.sessionState.rooms.Select(r => r.project.serverProjectId));
-                if (m_UIProjectStateData.activeProject != Project.Empty)
+                PlayerClientBridge.MatchmakerManager.Connect(m_UISessionStateData.user.AccessToken, m_MultiplayerController.connectToLocalServer);
+                PlayerClientBridge.MatchmakerManager.MonitorRooms(m_UISessionStateData.rooms.Select(r => ((ProjectRoom)r).project.serverProjectId));
+                if (m_ProjectSettingStateData.activeProject != Project.Empty)
                 {
-                    PlayerClientBridge.MatchmakerManager.JoinRoom(m_UIProjectStateData.activeProject.serverProjectId);
+                    PlayerClientBridge.MatchmakerManager.JoinRoom(m_ProjectSettingStateData.activeProject.serverProjectId, () => m_ProjectSettingStateData.accessToken.CloudServicesAccessToken);
                 }
             }
         }

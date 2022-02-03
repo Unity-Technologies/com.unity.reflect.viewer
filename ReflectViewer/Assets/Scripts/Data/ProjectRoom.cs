@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
 
 namespace Unity.Reflect.Viewer.UI
 {
     [Serializable]
-    public struct ProjectRoom : IEquatable<ProjectRoom>
+    public struct ProjectRoom : IEquatable<ProjectRoom>, IProjectRoom
     {
         public Project project;
         public List<UserIdentity> users;
@@ -15,6 +16,7 @@ namespace Unity.Reflect.Viewer.UI
             this.project = project;
             this.users = new List<UserIdentity>(users);
         }
+
         public bool Equals(ProjectRoom other)
         {
             return

@@ -69,7 +69,7 @@ namespace UnityEngine.Reflect.Pipeline
 
         protected override URPMaterialConverter Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
-            var p = new URPMaterialConverter(hook.services.eventHub, hook.services.memoryTracker, textureCacheParam.value, output, m_ReflectUniversalRp);
+            var p = new URPMaterialConverter(hook.Services.EventHub, hook.Services.MemoryTracker, textureCacheParam.value, output, m_ReflectUniversalRp);
 
             input.streamEvent = p.OnStreamEvent;
 

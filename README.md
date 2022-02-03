@@ -10,7 +10,11 @@ This is a repository for all publicly released packages, tests, and demo project
 ## Contents
 
 ### Supported Unity Versions
-This project supports the latest LTS version of Unity 2020.
+This project supports the latest LTS version of Unity 2019.
+
+### Packages
+[com.unity.touch-framework](Packages/com.unity.touch-framework/README.md)
+The touch-framework package in-development at [Official Repo](https://github.com/Unity-Technologies/VirtualProduction/blob/develop/README.md).
 
 <a name="Installation"></a>
 ## Installation

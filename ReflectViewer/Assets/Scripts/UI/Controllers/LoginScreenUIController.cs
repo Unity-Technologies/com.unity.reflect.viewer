@@ -1,13 +1,14 @@
-﻿using System;
+using System;
 using System.Linq;
-using SharpFlux;
 using SharpFlux.Dispatching;
 using TMPro;
 using Unity.Reflect.Utils;
 using Unity.TouchFramework;
 using UnityEngine;
-using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.UI;
+using Unity.Reflect.Runtime;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -19,6 +20,8 @@ namespace Unity.Reflect.Viewer.UI
         TextMeshProUGUI m_RegionText;
         [SerializeField]
         TextMeshProUGUI m_WelcomeText;
+        [SerializeField]
+        TextMeshProUGUI m_HeaderText;
         [SerializeField]
         Button m_LoginButton;
         [SerializeField]
@@ -52,13 +55,16 @@ namespace Unity.Reflect.Viewer.UI
 
         [SerializeField]
         TextMeshProUGUI m_CloudSettingDebugInfo;
+
 #pragma warning restore CS0649
 
-        LoginState? m_LoginState;
         bool m_IsRegionPopupOpen;
         int m_ClickCount;
 
         bool m_CloudOtherSelected;
+        IUISelector<bool> m_VREnableSelector;
+        IUISelector<LoginState> m_LoggedStateSelector;
+        IUISelector<bool> m_LinkShareLoggedOutSelector;
 
         void Awake()
         {
@@ -74,6 +80,7 @@ namespace Unity.Reflect.Viewer.UI
             {
                 button.regionButtonClicked += OnRegionOptionButtonClicked;
             }
+
             foreach (var button in m_CloudButtons)
             {
                 button.cloudButtonClicked += OnCloudOptionButtonClicked;
@@ -83,21 +90,86 @@ namespace Unity.Reflect.Viewer.UI
             m_CloudCancelButton.onClick.AddListener(OnCloudCancelButtonClicked);
 
             UIStateManager.loginSettingChanged += OnLoginSettingChanged;
-            UIStateManager.sessionStateChanged += OnSessionStateChanged;
-            UIStateManager.stateChanged += OnStateChanged;
+
+            m_VREnableSelector = UISelectorFactory.createSelector<bool>(VRContext.current, nameof(IVREnableDataProvider.VREnable), OnVREnableChanged);
+            m_LoggedStateSelector = UISelectorFactory.createSelector<LoginState>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.loggedState), OnLoggedStateChanged);
+            m_LinkShareLoggedOutSelector = UISelectorFactory.createSelector<bool>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.linkShareLoggedOut));
 
             UpdateSettings();
+
+            // Init to LoginState.LoginSessionFromCache state.
+            // If no previous session is found, LoginState.LoggedOut will be dispatched and UI will get unlocked.
+            OnLoginSessionFromCache();
         }
 
-        void OnStateChanged(UIStateData data)
+        void OnDestroy()
         {
-            m_LoginButton.interactable = !data.VREnable;
+            m_VREnableSelector?.Dispose();
+            m_LoggedStateSelector?.Dispose();
+            m_LinkShareLoggedOutSelector?.Dispose();
         }
 
-        void OnSessionStateChanged(UISessionStateData sessionStateData)
+        void OnVREnableChanged(bool newData)
         {
-            m_WelcomeText.text = sessionStateData.sessionState.linkShareLoggedOut ?
-            "Log in with your Unity account to open the shared project" : "Login with your Unity account to get started";
+            m_LoginButton.interactable = !newData;
+        }
+
+        void OnLoginSessionFromCache()
+        {
+            m_LoginButton.gameObject.SetActive(false);
+            m_LoginButton.enabled = false;
+            m_HeaderText.text = "Welcome to Reflect";
+            m_WelcomeText.text = "Looking for previous user session...";
+        }
+
+        void OnIncompleteLoginFlow()
+        {
+            Debug.Log($"Login flow incomplete, user can now try again.");
+            m_LoginButton.gameObject.SetActive(true);
+            m_LoginButton.enabled = true;
+            m_LoginButton.GetComponentInChildren<TextMeshProUGUI>().text = "Try again";
+            m_HeaderText.text = "Awaiting browser login response";
+            m_WelcomeText.text = "Please complete the sign-in form in your browser.";
+        }
+
+        void OnLoggedStateChanged(LoginState sessionStateData)
+        {
+            switch (sessionStateData)
+            {
+                case LoginState.LoginSessionFromCache:
+                    OnLoginSessionFromCache();
+                    break;
+                case LoginState.LoggedIn:
+                    m_LoginButton.gameObject.SetActive(false);
+                    m_LoginButton.enabled = false;
+                    break;
+                case LoginState.LoggingIn:
+#if UNITY_IOS
+                    m_LoginButton.gameObject.SetActive(true);
+                    m_LoginButton.enabled = true;
+                    m_LoginButton.GetComponentInChildren<TextMeshProUGUI>().text = "Try again";
+                    m_WelcomeText.text = "Please complete the sign-in form in your browser.";
+#else
+                    m_LoginButton.gameObject.SetActive(false);
+                    m_LoginButton.enabled = false;
+                    m_WelcomeText.text = "";
+#endif
+                    m_HeaderText.text = "Awaiting browser login response";
+                    break;
+                case LoginState.ProcessingToken:
+                    m_LoginButton.gameObject.SetActive(false);
+                    m_LoginButton.enabled = false;
+                    m_HeaderText.text = "Fetching user information...";
+                    m_WelcomeText.text = "";
+                    break;
+                case LoginState.LoggedOut:
+                    m_LoginButton.gameObject.SetActive(true);
+                    m_LoginButton.enabled = true;
+                    m_LoginButton.GetComponentInChildren<TextMeshProUGUI>().text = "Login";
+                    m_HeaderText.text = "Welcome to Reflect";
+                    m_WelcomeText.text = m_LinkShareLoggedOutSelector.GetValue() ? "Log in with your Unity account to open the shared project" : "Login with your Unity account to get started";
+                    break;
+            }
         }
 
         void UpdateSettings()
@@ -168,7 +240,7 @@ namespace Unity.Reflect.Viewer.UI
                         m_CloudSettingDebugInfo.text = $"Environment: {environmentInfo.customUrl}";
                     else
                         m_CloudSettingDebugInfo.text =
-                            $"Environment: {ProjectServerClient.ProjectServerAddress(environmentInfo.provider)}";
+                            $"Environment: {ProjectServerClient.ProjectServerAddress(environmentInfo.provider, Protocol.Http)}";
                 }
                 else
                 {
@@ -183,14 +255,34 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnLoginButtonClicked()
         {
-            var session = UIStateManager.current.sessionStateData;
-            switch (session.sessionState.loggedState)
+            switch (m_LoggedStateSelector.GetValue())
             {
                 case LoginState.LoggingIn:
                 case LoginState.LoggedOut:
-                    Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, "Logging in..."));
-                    Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.Login, null));
+                    Dispatcher.Dispatch(SetStatusMessage.From("Logging in..."));
+                    Dispatcher.Dispatch(SetLoginAction.From(LoginState.LoggingIn));
                     break;
+            }
+        }
+
+        void OnApplicationFocus(bool hasFocus)
+        {
+            if (SessionStateContext<UnityUser, LinkPermission>.current != null)
+            {
+                if (hasFocus)
+                {
+                    switch (m_LoggedStateSelector.GetValue())
+                    {
+                        case LoginState.LoggingIn:
+                            // User refocus the viewer before browser login was completed.
+                            OnIncompleteLoginFlow();
+                            break;
+                        case LoginState.ProcessingToken:
+                            // OS level refocus after user completed sign in.
+                            Debug.Log($"Sign in completed. Now processing token...");
+                            break;
+                    }
+                }
             }
         }
 
@@ -203,9 +295,9 @@ namespace Unity.Reflect.Viewer.UI
         void SetActiveRegionPopup(bool active)
         {
             if (active)
-                m_RegionOptionArrow.transform.eulerAngles = new Vector3(0,0,0);
+                m_RegionOptionArrow.transform.eulerAngles = new Vector3(0, 0, 0);
             else
-                m_RegionOptionArrow.transform.eulerAngles = new Vector3(0,0,180);
+                m_RegionOptionArrow.transform.eulerAngles = new Vector3(0, 0, 180);
 
             m_RegionPopup.SetActive(active);
             m_IsRegionPopupOpen = active;
@@ -214,7 +306,7 @@ namespace Unity.Reflect.Viewer.UI
         void SetActiveCloudPopup(bool active)
         {
             m_CloudPopup.SetActive(active);
-            m_LoginButton.interactable = !active && !UIStateManager.current.stateData.VREnable;
+            m_LoginButton.interactable = !active && !m_VREnableSelector.GetValue();
             m_RegionButton.interactable = !active;
         }
 
@@ -223,11 +315,10 @@ namespace Unity.Reflect.Viewer.UI
             EnvironmentInfo environmentInfo = LocaleUtils.GetEnvironmentInfo();
             environmentInfo.provider = provider;
             environmentInfo.cloudEnvironment = CloudEnvironment.Production;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetLoginSetting, environmentInfo));
+            Dispatcher.Dispatch(SetLoginSettingActions<EnvironmentInfo>.From(environmentInfo));
 
             SetActiveRegionPopup(false);
         }
-
 
         void OnCloudOKButtonClicked()
         {
@@ -240,7 +331,8 @@ namespace Unity.Reflect.Viewer.UI
             // if set to Default, remove player pref
             if (optionItemButton.cloudOption == CloudOption.Default)
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.DeleteCloudEnvironmentSetting, null));
+                Dispatcher.Dispatch(DeleteCloudEnvironmentSetting<EnvironmentInfo>.From(true));
+                Dispatcher.Dispatch(DeleteCloudEnvironmentSetting<EnvironmentInfo>.From(false));
                 return;
             }
 
@@ -268,14 +360,13 @@ namespace Unity.Reflect.Viewer.UI
 
             environmentInfo.customUrl = m_CloudURLInput.text;
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetLoginSetting, environmentInfo));
-
+            Dispatcher.Dispatch(SetLoginSettingActions<EnvironmentInfo>.From(environmentInfo));
         }
+
         void OnCloudCancelButtonClicked()
         {
             SetActiveCloudPopup(false);
         }
-
 
         void OnRegionOptionButtonClicked(RegionOption regionOption)
         {
@@ -287,8 +378,8 @@ namespace Unity.Reflect.Viewer.UI
             {
                 SetRegionOption(RegionUtils.Provider.GCP);
             }
-
         }
+
         void OnCloudOptionButtonClicked(CloudOption cloudOption)
         {
             m_CloudOtherSelected = cloudOption == CloudOption.Other;
@@ -326,6 +417,7 @@ namespace Unity.Reflect.Viewer.UI
             {
                 SetActiveCloudPopup(true);
             }
+
             m_ClickCount = 0;
         }
 

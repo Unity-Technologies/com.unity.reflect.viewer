@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -27,9 +28,23 @@ namespace Unity.Reflect.Viewer.UI
         float m_DefaultAzimuth;
         float m_DefaultAltitude;
 
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
+
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.altitude), (alt) =>
+            {
+                m_AltitudeDialControl.selectedValue = alt;
+            }));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<int>(SunStudyContext.current, nameof(ISunstudyDataProvider.azimuth), (az) =>
+            {
+                m_AzimuthDialControl.selectedValue = az;
+            }));
         }
 
         void Start()
@@ -40,17 +55,6 @@ namespace Unity.Reflect.Viewer.UI
 
             m_MainButton.onClick.AddListener(OnMainButtonClicked);
             m_SecondaryButton.onClick.AddListener(OnSecondaryButtonClicked);
-
-            m_DefaultAzimuth = UIStateManager.current.stateData.sunStudyData.azimuth;
-            m_DefaultAltitude = UIStateManager.current.stateData.sunStudyData.altitude;
-            m_AzimuthDialControl.selectedValue = m_DefaultAzimuth;
-            m_AltitudeDialControl.selectedValue = m_DefaultAltitude;
-        }
-
-        void OnStateDataChanged(UIStateData data)
-        {
-            m_AzimuthDialControl.selectedValue = data.sunStudyData.azimuth;
-            m_AltitudeDialControl.selectedValue = data.sunStudyData.altitude;
         }
 
         public static string GetAltAzStatusMessage(SunStudyData sunStudyData)
@@ -60,47 +64,29 @@ namespace Unity.Reflect.Viewer.UI
                 ", Azimuth: " + Math.Round(sunStudyData.azimuth, 2);
         }
 
+        // See old commit for previous implementation
         void OnAltitudeDialValueChanged(float value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            data.altitude = value;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+
         }
 
         void OnAzimuthDialValueChanged(float value)
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            data.azimuth = value;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
         }
 
         void OnResetButtonClicked()
         {
-            var data = UIStateManager.current.stateData.sunStudyData;
-            data.azimuth = m_DefaultAzimuth;
-            data.altitude = m_DefaultAltitude;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudy, data));
+
         }
 
         void OnMainButtonClicked()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, false));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, TimeRadialUIController.m_previousToolbar));
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.activeTool = ToolType.None;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ClearStatus, null));
+
         }
 
         void OnSecondaryButtonClicked()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetSunStudyMode, false));
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetActiveToolbar, ToolbarType.TimeOfDayYearDial));
-            var toolState = UIStateManager.current.stateData.toolState;
-            toolState.activeTool = ToolType.SunstudyTool;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-            var sunStudyData = UIStateManager.current.stateData.sunStudyData;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetStatusMessage, TimeRadialUIController.GetTimeStatusMessage(sunStudyData)));
+
         }
     }
 }

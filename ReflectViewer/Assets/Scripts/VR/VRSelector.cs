@@ -1,182 +1,100 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using SharpFlux;
 using SharpFlux.Dispatching;
+using Unity.Reflect;
 using Unity.Reflect.Viewer;
 using Unity.Reflect.Viewer.UI;
 using UnityEngine.InputSystem;
-using UnityEngine.Reflect.MeasureTool;
-using UnityEngine.Reflect.Viewer.Pipeline;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.XR.Interaction.Toolkit;
 
 namespace UnityEngine.Reflect.Viewer
 {
     [RequireComponent(typeof(XRController))]
-    public class VRSelector : MonoBehaviour
+    public class VRSelector: VRPointer
     {
-        #pragma warning disable 0649
-        [SerializeField] InputActionAsset m_InputActionAsset;
-        [SerializeField] Transform m_ControllerTransform;
-        [SerializeField] XRBaseInteractable m_SelectionTarget;
-        [SerializeField] float m_TriggerThreshold = 0.5f;
-        #pragma warning restore 0649
+#pragma warning disable 0649
+        [SerializeField]
+        InputActionAsset m_InputActionAsset;
+#pragma warning restore 0649
 
         InputAction m_SelectAction;
-        ISpatialPicker<Tuple<GameObject, RaycastHit>> m_ObjectPicker;
-        bool m_CanSelect;
-        bool m_Pressed;
-        Ray m_Ray;
         string m_CurrentUserId;
-        bool m_IsMeasureToolEnable;
-        MeasureToolStateData? m_CachedMeasureToolStateData;
-
-        readonly List<Tuple<GameObject, RaycastHit>> m_Results = new List<Tuple<GameObject, RaycastHit>>();
 
         ObjectSelectionInfo m_ObjectSelectionInfo;
+        GameObject m_PreviousGameObject;
+        bool m_CanSelect;
+        List<IDisposable> m_Disposables = new List<IDisposable>();
+        IUISelector<NetworkUserData> m_LocalUserGetter;
+        IUISelector<NetworkUserData> m_UserGetter;
 
-        void Start()
+        void Awake()
         {
             m_SelectionTarget.gameObject.SetActive(false);
+            UIStateContext.current.stateChanged += StateChange;
 
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.projectStateChanged += OnProjectStateDataChanged;
-            UIStateManager.sessionStateChanged += OnSessionStateChanged;
-            UIStateManager.externalToolChanged += OnToolStateDataChanged;
-            UIStateManager.roomConnectionStateChanged += OnRoomConnectionStateChanged;
+
+            m_Disposables.Add(UISelectorFactory.createSelector<IPicker>(ProjectContext.current, nameof(IObjectSelectorDataProvider.objectPicker), OnObjectSelectorChanged));
+            m_Disposables.Add(UISelectorFactory.createSelector<UnityUser>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.user), OnUserChanged));
+            m_Disposables.Add(m_LocalUserGetter = UISelectorFactory.createSelector<NetworkUserData>(RoomConnectionContext.current, nameof(IRoomConnectionDataProvider<NetworkUserData>.localUser), OnLocalUserChanged));
+            m_Disposables.Add(m_UserGetter = UISelectorFactory.createSelector<NetworkUserData>(RoomConnectionContext.current, nameof(IRoomConnectionDataProvider<NetworkUserData>.users)));
+            m_Disposables.Add(UISelectorFactory.createSelector<SetActiveToolAction.ToolType>(ToolStateContext.current, nameof(IToolStateDataProvider.activeTool),
+                type => m_CanSelect = m_ShowPointer = type == SetActiveToolAction.ToolType.SelectTool));
 
             m_SelectAction = m_InputActionAsset["VR/Select"];
+            m_SelectAction.Enable();
+            m_SelectAction.performed += OnSelectTrigger;
         }
 
-        void OnDestroy()
+        void OnUserChanged(UnityUser newData)
         {
-            UIStateManager.stateChanged -= OnStateDataChanged;
-            UIStateManager.projectStateChanged -= OnProjectStateDataChanged;
-            UIStateManager.sessionStateChanged -= OnSessionStateChanged;
-            UIStateManager.externalToolChanged -= OnToolStateDataChanged;
-            UIStateManager.roomConnectionStateChanged -= OnRoomConnectionStateChanged;
+            m_CurrentUserId = newData.UserId;
         }
 
-        void OnRoomConnectionStateChanged(RoomConnectionStateData data)
+        protected override void OnDestroy()
         {
-            // Check if current user had change Id
-            var matchmakerId = UIStateManager.current.roomConnectionStateData.localUser.matchmakerId;
-            if (!string.IsNullOrEmpty(matchmakerId) && m_CurrentUserId != matchmakerId)
-            {
-                m_CurrentUserId = matchmakerId;
-            }
+            UIStateContext.current.stateChanged -= StateChange;
+            m_Disposables.ForEach(x => x.Dispose());
+            base.OnDestroy();
         }
 
-        void OnToolStateDataChanged(ExternalToolStateData toolData)
-        {
-            if (!UIStateManager.current.stateData.VREnable)
-                return;
-
-            var data = toolData.measureToolStateData;
-
-            if (m_CachedMeasureToolStateData == null || m_CachedMeasureToolStateData.Value.toolState != data.toolState)
-            {
-                if (data.toolState)
-                {
-                    m_CanSelect = true;
-                    m_IsMeasureToolEnable = true;
-                    m_SelectionTarget.gameObject.SetActive(true);
-                }
-                else
-                {
-                    m_CanSelect = false;
-                    m_IsMeasureToolEnable = false;
-                    m_SelectionTarget.gameObject.SetActive(false);
-                    CleanCache();
-                }
-
-                m_CachedMeasureToolStateData = data;
-            }
-        }
-
-        void Update()
+        void OnSelectTrigger(InputAction.CallbackContext obj)
         {
             if (!m_CanSelect)
                 return;
 
-            var isButtonPressed = m_SelectAction.ReadValue<float>() > m_TriggerThreshold;
+            m_ObjectSelectionInfo.selectedObjects = m_Results.Select(x => x.Item1).Where(x => x != null).ToList();
 
-            UpdateTarget();
-
-            if (!isButtonPressed)
-            {
-                m_Pressed = false;
-                return;
-            }
-
-            if (!m_Pressed)
-            {
-                m_ObjectSelectionInfo.selectedObjects = m_Results.Select(x => x.Item1).ToList();
-                //Only keep the first element
-                if (m_ObjectSelectionInfo.selectedObjects.Count > 1)
-                {
-                    m_ObjectSelectionInfo.selectedObjects = m_ObjectSelectionInfo.selectedObjects.GetRange(0, 1);
-                }
-                m_ObjectSelectionInfo.currentIndex = 0; // TODO: deep selection in VR?
-                m_ObjectSelectionInfo.userId = m_CurrentUserId;
-                m_ObjectSelectionInfo.colorId = 0;
-
-                if(!m_IsMeasureToolEnable)
-                    Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SelectObjects, m_ObjectSelectionInfo));
-
-                m_Pressed = true;
-            }
-        }
-
-        void OnStateDataChanged(UIStateData data)
-        {
-            m_CanSelect = (data.toolState.activeTool == ToolType.SelectTool) || m_IsMeasureToolEnable;
-
-            if (m_SelectionTarget == null || m_SelectionTarget.gameObject == null)
+            if (m_ObjectSelectionInfo.selectedObjects.Count == 0)
                 return;
 
-            if(!m_CanSelect)
-                CleanCache();
-
-            m_SelectionTarget.gameObject.SetActive(m_CanSelect);
-        }
-
-        void CleanCache()
-        {
-            if (m_ObjectPicker != null)
+            if (m_ObjectSelectionInfo.selectedObjects[0] == m_PreviousGameObject)
             {
-                ((SpatialSelector)m_ObjectPicker).CleanCache();
+                m_ObjectSelectionInfo.currentIndex = (m_ObjectSelectionInfo.currentIndex + 1) % m_ObjectSelectionInfo.selectedObjects.Count;
             }
+            else if (m_ObjectSelectionInfo.selectedObjects.Count > 1)
+            {
+                m_ObjectSelectionInfo.selectedObjects = m_ObjectSelectionInfo.selectedObjects.GetRange(0, 1);
+                m_ObjectSelectionInfo.currentIndex = 0;
+            }
+
+            m_ObjectSelectionInfo.userId = m_CurrentUserId;
+            m_ObjectSelectionInfo.colorId = 0;
+
+            Dispatcher.Dispatch(SelectObjectAction.From(m_ObjectSelectionInfo));
+
+            m_PreviousGameObject = m_ObjectSelectionInfo.selectedObjects[0];
         }
 
-        void OnProjectStateDataChanged(UIProjectStateData data)
+        void OnLocalUserChanged(NetworkUserData localUser)
         {
-            m_ObjectPicker = data.objectPicker;
-        }
-
-        void OnSessionStateChanged(UISessionStateData data)
-        {
-            m_CurrentUserId = data.sessionState.user.UserId;
-        }
-
-        void UpdateTarget()
-        {
-            m_Ray.origin = m_ControllerTransform.position;
-            m_Ray.direction = m_ControllerTransform.forward;
-
-            // disable the target first so it doesn't interfere with the raycasts
-            m_SelectionTarget.gameObject.SetActive(false);
-
-            // pick
-            m_Results.Clear();
-            m_ObjectPicker.VRPick(m_Ray, m_Results);
-
-            // enable the target if there is a valid hit
-            if (m_Results.Count == 0)
-                return;
-
-            m_SelectionTarget.transform.position = m_Results[0].Item2.point;
-            m_SelectionTarget.gameObject.SetActive(true);
+            var matchmakerId = localUser.matchmakerId;
+            if (!string.IsNullOrEmpty(matchmakerId) && m_CurrentUserId != matchmakerId)
+            {
+                m_CurrentUserId = matchmakerId;
+            }
         }
     }
 }

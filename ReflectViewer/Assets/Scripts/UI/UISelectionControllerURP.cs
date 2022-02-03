@@ -5,18 +5,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    public class UISelectionControllerURP : UISelectionController
+    public class UISelectionControllerURP: UISelectionController
     {
         MultiSelectionOutlineFeature m_MultiSelectionOutlineFeature;
         ScriptableRendererData[] m_RendererDatas;
-        int m_CachedQuality = -1;
         Texture2D m_CachedPalette;
         Coroutine m_WaitCoroutine;
+        IDisposable m_QualityStateDataSelector;
 
         protected override void Awake()
         {
@@ -24,23 +25,23 @@ namespace Unity.Reflect.Viewer.UI
 
             UpdateRendererDatas((UniversalRenderPipelineAsset)GraphicsSettings.currentRenderPipeline);
 
-            UIStateManager.applicationStateChanged += OnQualityChanged;
+            m_QualityStateDataSelector = UISelectorFactory.createSelector<int>(ApplicationSettingsContext.current, nameof(IApplicationSettingsDataProvider<QualityState>.qualityStateData) + "." + nameof(IQualitySettingsDataProvider.qualityLevel)
+                , (qualityLevel) =>
+                {
+                    var pipeline = (UniversalRenderPipelineAsset)QualitySettings.GetRenderPipelineAssetAt(qualityLevel);
+
+                    if (m_WaitCoroutine != null)
+                    {
+                        StopCoroutine(m_WaitCoroutine);
+                    }
+                    m_WaitCoroutine = StartCoroutine(WaitForRendererPipelineChange(pipeline));
+                });
         }
 
-        void OnQualityChanged(ApplicationStateData data)
+        protected override void OnDestroy()
         {
-            if (data.qualityStateData.qualityLevel == m_CachedQuality)
-                return;
-
-            var pipeline = (UniversalRenderPipelineAsset)QualitySettings.GetRenderPipelineAssetAt(data.qualityStateData.qualityLevel);
-
-            if (m_WaitCoroutine != null)
-            {
-                StopCoroutine(m_WaitCoroutine);
-            }
-            m_WaitCoroutine = StartCoroutine(WaitForRendererPipelineChange(pipeline));
-
-            m_CachedQuality = data.qualityStateData.qualityLevel;
+            m_QualityStateDataSelector?.Dispose();
+            base.OnDestroy();
         }
 
         IEnumerator WaitForRendererPipelineChange(UniversalRenderPipelineAsset pipeline)
@@ -60,12 +61,15 @@ namespace Unity.Reflect.Viewer.UI
         void UpdateRendererDatas(UniversalRenderPipelineAsset pipeline)
         {
             FieldInfo propertyInfo = pipeline.GetType(  ).GetField( "m_RendererDataList", BindingFlags.Instance | BindingFlags.NonPublic );
-            m_RendererDatas = ((ScriptableRendererData[]) propertyInfo?.GetValue( pipeline ));
+            m_RendererDatas = ((ScriptableRendererData[])propertyInfo?.GetValue(pipeline));
         }
 
         protected override void ChangePalette(Texture2D texture)
         {
             m_CachedPalette = texture;
+
+            if (m_RendererDatas == null)
+                return;
 
             foreach (var rendererData in m_RendererDatas)
             {
@@ -79,6 +83,9 @@ namespace Unity.Reflect.Viewer.UI
 
         protected override void UpdateMultiSelection()
         {
+            if (m_RendererDatas == null)
+                return;
+
             foreach (var rendererData in m_RendererDatas)
             {
                 var multiselectionFeature = rendererData.rendererFeatures.OfType<MultiSelectionOutlineFeature>().FirstOrDefault();

@@ -25,7 +25,6 @@ MonoBehaviour:
   - id: 9
   - id: 10
   - id: 11
-  - id: 12
   m_Connections:
   - output: 5f4be3dc-1a72-43e2-b0ff-9592f8d8f6e8
     input: a7b53f01-56bc-432e-865d-98e91bcd73c7
@@ -44,7 +43,7 @@ MonoBehaviour:
   - output: 701af90d-3db6-4500-8162-cd546f09b4d1
     input: 8f998df8-9e11-4b93-878c-76fd3a885657
   - output: 701af90d-3db6-4500-8162-cd546f09b4d1
-    input: 03283d0d-394d-43bb-b268-1e0040184c7e
+    input: 29ee4efe-8a72-4bbe-835f-e05672ea416c
   - output: 701af90d-3db6-4500-8162-cd546f09b4d1
     input: c5ebf73b-fa93-4502-9b74-330ea6b2a4ed
   - output: 701af90d-3db6-4500-8162-cd546f09b4d1
@@ -71,8 +70,6 @@ MonoBehaviour:
     input: 37db15dc-b43e-4325-abe3-579491797faa
   - output: 1ad3c8bb-ad95-4d6c-9b24-8dfd0524369f
     input: c511b6c6-da84-4683-81fc-586f77c833b9
-  - output: 3dd78b84-506c-4f20-ba29-0e872f90397e
-    input: 29ee4efe-8a72-4bbe-835f-e05672ea416c
   m_ParamKeys:
   - b95eac42-d115-4210-8af8-c4083b0c1672
   - 533e4d9d-b51c-428d-b288-2c329c44335d
@@ -424,15 +421,3 @@ MonoBehaviour:
           onGlobalBoundsCalculated:
             m_PersistentCalls:
               m_Calls: []
-    0000000C:
-      type: {class: StreamInstanceLimiterNode, ns: UnityEngine.Reflect.Viewer.Pipeline,
-        asm: ReflectViewer}
-      data:
-        instanceInput:
-          m_Id: 03283d0d-394d-43bb-b268-1e0040184c7e
-        instanceOutput:
-          m_Id: 3dd78b84-506c-4f20-ba29-0e872f90397e
-        settings:
-          m_Bypass: 1
-          m_InstancesPerFrameLimiter: {fileID: 0}
-          m_Limit: 10

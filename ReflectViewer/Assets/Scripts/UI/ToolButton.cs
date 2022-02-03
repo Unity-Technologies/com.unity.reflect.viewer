@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections;
-using System.Configuration;
+using SharpFlux.Dispatching;
 using Unity.TouchFramework;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -36,11 +37,7 @@ namespace Unity.Reflect.Viewer.UI
 
         public bool selected
         {
-            get
-            {
-                return m_Selected;
-
-            }
+            get { return m_Selected; }
             set
             {
                 if (m_Selected == value)
@@ -64,6 +61,7 @@ namespace Unity.Reflect.Viewer.UI
         {
             if (!m_LongPressed)
             {
+                Dispatcher.Dispatch(SetDeltaDNAButtonAction.From($"{transform.parent.name}_{transform.name}"));
                 buttonClicked?.Invoke();
             }
         }
@@ -85,7 +83,7 @@ namespace Unity.Reflect.Viewer.UI
             m_LongPressed = false;
         }
 
-        private IEnumerator DelayPress(float delay)
+        IEnumerator DelayPress(float delay)
         {
             yield return new WaitForSeconds(delay);
             OnLongPress();

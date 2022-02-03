@@ -1,0 +1,14 @@
+.unity-properties__type-name__parent-type-name {
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow:ellipsis;
+    padding-right: 0;
+    min-width: 0;
+}
+
+.unity-properties__type-name__nested-type-name {
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow:ellipsis;
+    min-width: 0;
+}

@@ -1,0 +1,10 @@
+.unity-properties__property__type-name
+{
+    border-color: #161616;
+    background-color: #282828;
+}
+
+.unity-properties__property__attributes
+{
+    color: #8e8e8e;
+}

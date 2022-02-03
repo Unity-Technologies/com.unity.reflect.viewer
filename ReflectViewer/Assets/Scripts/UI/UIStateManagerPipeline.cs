@@ -3,8 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using SharpFlux.Stores;
+using Unity.MARS;
 using Unity.MARS.Providers;
-using Unity.Reflect.IO;
+using Unity.Reflect.ActorFramework;
+using Unity.Reflect.Actors;
+using Unity.Reflect.Collections;
+using Unity.Reflect.Geometry;
 using Unity.TouchFramework;
 using Unity.XRTools.ModuleLoader;
 using UnityEngine;
@@ -14,7 +18,10 @@ using UnityEngine.Reflect.Viewer;
 using UnityEngine.Reflect.Viewer.Pipeline;
 using UnityEngine.SceneManagement;
 using Unity.Reflect.Multiplayer;
-using Unity.Reflect.Streaming;
+using UnityEngine.Reflect.Viewer.Core;
+using Unity.Reflect.Viewer.Actors;
+using UnityEngine.Reflect.Viewer.Core.Actions;
+using Unity.Reflect.Source.Utils.Errors;
 #if UNITY_EDITOR
 using UnityEditor.MARS.Simulation;
 #endif
@@ -25,16 +32,11 @@ namespace Unity.Reflect.Viewer.UI
     /// Component that hold the state of the UI.
     /// Partial Class with non SharpFlux Connexions, Pipeline, ProjectLister and LoginManager
     /// </summary>
-    public partial class UIStateManager : MonoBehaviour,
-        IStore<UIStateData>, IStore<UISessionStateData>, IStore<UIProjectStateData>, IStore<UIARStateData>,
-        IStore<UIDebugStateData>, IStore<ApplicationStateData>, IStore<RoomConnectionStateData>, IStore<UIWalkStateData>,
-        IUsesSessionControl, IUsesPointCloud, IUsesPlaneFinding
+    public partial class UIStateManager: IStore<SceneOptionData>, IStore<VRStateData>
     {
 #pragma warning disable CS0649
         [SerializeField]
-        ViewerReflectPipeline m_ReflectPipeline;
-        [SerializeField]
-        RuntimeReflectBootstrapper m_Reflect;
+        ViewerReflectBootstrapper m_Reflect;
         [SerializeField]
         PopUpManager m_PopUpManager;
         [SerializeField]
@@ -43,23 +45,16 @@ namespace Unity.Reflect.Viewer.UI
         float m_WaitingDelayToCloseStreamIndicator = 1f;
         [SerializeField]
         ViewerMessageManager m_MessageManager;
-        [SerializeField]
-        DisplayController m_DisplayController;
 #pragma warning restore CS0649
 
         [SerializeField, Tooltip("Reflect Session Manager")]
         public LoginManager m_LoginManager;
         public LinkSharingManager m_LinkSharingManager;
+        public AccessTokenManagerUpdater m_AccessTokenManagerUpdater;
         public ArgumentParser m_ArgumentParser;
         public SunStudy.SunStudy m_SunStudy;
-        public GameObject m_RootNode;
-        public GameObject m_BoundingBoxRootNode;
-        public GameObject m_PlacementRoot;
-        public GameObject m_PlacementRules;
-        public List<GameObject> m_PlacementRulesPrefabs;
 
-        static readonly int k_UseTexture = Shader.PropertyToID("_UseTexture");
-        readonly object syncRoot = new object();
+        public EmbeddedProjectsComponent EmbeddedProjects;
 
         const float k_Timeout = 0.5f;
 
@@ -69,12 +64,10 @@ namespace Unity.Reflect.Viewer.UI
         Coroutine m_WaitStreamIndicatorCoroutine;
         WaitForSeconds m_WaitDelay;
 
-        SpatialFilterNode m_SpatialFilter;
-        MetadataFilterNode m_MetadataFilter;
-        LightFilterNode m_LightFilterNode;
+        ActorSystemSetup m_LasLoadedAsset;
 
-        bool m_UseExperimentalActorSystem;
         BridgeActor.Proxy m_Bridge;
+        ViewerBridgeActor.Proxy m_ViewerBridge;
 
         const string k_BadVRConfigurationTitle = "Missing OpenXR Setup";
         const string k_BadVRConfiguration = "Please setup an OpenXR compatible VR device before switching to VR navigation mode.";
@@ -86,8 +79,20 @@ namespace Unity.Reflect.Viewer.UI
         const string k_AccessDeniedText = "You don't have access to the project you are trying to open.";
         const string k_ConnectionErrorTitle = "Connection Failed";
         const string k_ConnectionErrorText = "Connection to cloud services failed.";
-        string m_CachedLinkToken = "";
+        const string k_ProjectNotFoundTitle = "Linked project not found";
+        const string k_ProjectNotFoundText = "The server hosting the linked project may be unavailable or the linked project no longer exists.";
+        const string k_StopLoadDueToMemoryLimitationsText = "Objects have stopped loading due to memory limitations";
+        const string k_OpenProjectList = "Open Project List";
+        const string k_Login = "Login";
+        const string k_Close = "Close";
+        const string k_Error = "Error";
+        const string k_NoSeats = "Cannot Assign Seat";
+        const string k_MaxSeatsLoggedIn = "Maximum number of seats reached. Try again later or ask the owner to assign more seats to the project.";
+        const string k_MaxSeatsLoggedOut = "Maximum number of seats reached. Try login to your Unity account to gain access or ask the owner to assign more seats to the project.";
         OpenInViewerInfo m_CachedOpenInViewerInfo = null;
+        Dictionary<string, string> m_QueryArgs = new Dictionary<string, string>();
+        MARSSession m_MarsSession = null;
+        GameObject m_MarsSessionGameObject = null;
 
         IProvidesSessionControl IFunctionalitySubscriber<IProvidesSessionControl>.provider { get; set; }
         IProvidesPointCloud IFunctionalitySubscriber<IProvidesPointCloud>.provider { get; set; }
@@ -95,6 +100,11 @@ namespace Unity.Reflect.Viewer.UI
 
         [SerializeField]
         bool m_VerboseLogging;
+
+        Project m_RequestedProject = Project.Empty;
+        Project m_CurrentOpenProject = Project.Empty;
+
+        SpatialSelector m_TeleportSelector;
 
         public bool verboseLogging
         {
@@ -104,31 +114,44 @@ namespace Unity.Reflect.Viewer.UI
 
         void AwakePipeline()
         {
-            m_UseExperimentalActorSystem = m_Reflect != null && m_Reflect.EnableExperimentalActorSystem;
+            PipelineContext.current.ForceOnStateChanged();
 
             m_OrbitModeUIController = GetComponent<OrbitModeUIController>();
             m_ThumbnailController = GetComponent<ThumbnailController>();
 
+            m_LoginManager.tokenUpdated.AddListener(OnTokenUpdated);
             m_LoginManager.userLoggedIn.AddListener(OnUserLoggedIn);
             m_LoginManager.userLoggedOut.AddListener(OnUserLoggedOut);
+            m_LoginManager.authenticationFailed.AddListener(OnAuthenticationFailed);
 
             m_NavigationModeUIController.badVRConfigurationEvent.AddListener(OnBadVRConfiguration);
 
             m_LoginManager.linkSharingDetected.AddListener(OnLinkSharingDetected);
             m_LoginManager.openInViewerDetected.AddListener(OnOpenInViewerDetected);
 
-            m_LinkSharingManager.linkSharingProjectInfoEvent.AddListener(OnLinkSharingProjectInfo);
-            m_LinkSharingManager.sharingLinkCreated.AddListener(OnSharingLinkCreated);
+            m_LoginManager.linkSharingDetectedWithArgs.AddListener(OnLinkSharingDetectedWithArgs);
+            m_LoginManager.openInViewerDetectedWithArgs.AddListener(OnOpenInViewerDetectedWithArgs);
 
+            m_LinkSharingManager.sharingLinkCreated.AddListener(OnSharingLinkCreated);
             m_LinkSharingManager.linkCreatedExceptionEvent.AddListener(OnLinkCreatedException);
-            m_LinkSharingManager.projectInfoExceptionEvent.AddListener(OnProjectInfoException);
+
+            // License Manager
+            m_AccessTokenManagerUpdater.createAccessTokenEvent.AddListener(OnCreateAccessToken);
+            m_AccessTokenManagerUpdater.createAccessTokenExceptionEvent.AddListener(OnCreateAccessTokenException);
+
+            m_AccessTokenManagerUpdater.createAccessTokenWithLinkTokenEvent.AddListener(OnAccessTokenCreatedWithLinkToken);
+            m_AccessTokenManagerUpdater.createAccessTokenWithLinkTokenExceptionEvent.AddListener(OnCreateAccessTokenException);
+
+            m_AccessTokenManagerUpdater.refreshAccessTokenEvent.AddListener(OnRefreshAccessToken);
+            m_AccessTokenManagerUpdater.refreshAccessTokenExceptionEvent.AddListener(OnGeneralException);
+
+            m_AccessTokenManagerUpdater.accessTokenExceptionEvent.AddListener(OnGeneralException);
 
             m_ArgumentParser = new ArgumentParser();
             m_ArgumentParser.Parse();
 
             m_WaitDelay = new WaitForSeconds(m_WaitingDelayToCloseStreamIndicator);
 
-            m_DisplayController.OnDisplayChanged += OnDisplayChanged;
 #if UNITY_EDITOR
             SimulationSettings.instance.ShowSimulatedEnvironment = false;
             SimulationSettings.instance.ShowSimulatedData = false;
@@ -149,165 +172,231 @@ namespace Unity.Reflect.Viewer.UI
             this.PauseSession();
             m_OrbitModeUIController.ResetCamera();
 
+            // Deactivate mars session to avoid memory leak
+            if (m_ProjectSettingStateData.activeProject == Project.Empty)
+            {
+                // if a project is already opened, we don't disable mars session
+                EnableMARSSession(false);
+            }
+
             yield return null;
+
+            // for the Anonymous user with Public Link Sharing test in Editor
+            // m_AccessTokenManagerUpdater.CreateAccessTokenWithLinkToken("Kd0H5qM6W4EKr5VuXJLQ2eLkATzEFfeIOmiQRewWpoUGQ",
+            //     null, OpenProjectFromLinkSharing);
+        }
+
+        void EnableMARSSession(bool activate)
+        {
+            Debug.Log($"Enable MARSSession: {activate}");
+            if (m_MarsSession == null)
+            {
+                m_MarsSession = FindObjectOfType<MARSSession>();
+                if (m_MarsSession == null)
+                {
+                    Debug.Log($"Cannot find MARSSession Script");
+                    return;
+                }
+            }
+
+            m_MarsSession.enabled = activate;
+
+            if (m_MarsSessionGameObject == null)
+            {
+                m_MarsSessionGameObject = GameObject.FindGameObjectWithTag("MarsSession");
+                if (m_MarsSessionGameObject == null)
+                {
+                    Debug.Log($"Cannot find MARSSession GameObject");
+                    return;
+                }
+            }
+
+            m_MarsSessionGameObject.SetActive(activate);
+        }
+
+        void OnTokenUpdated(string token)
+        {
+            if (!string.IsNullOrEmpty(token))
+            {
+                // update session state
+                m_UISessionStateData.loggedState = LoginState.ProcessingToken;
+            }
+
+            RefreshProjectList();
+        }
+
+        void RefreshProjectList()
+        {
+            m_UISessionStateData.projectListState = ProjectListState.AwaitingUserData;
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
         }
 
         void OnUserLoggedIn(UnityUser changedUser)
         {
+            // if anonymous user and already opened a project
+            if ((m_UISessionStateData.user == null ||
+                    string.IsNullOrWhiteSpace(m_UISessionStateData.user.AccessToken)) &&
+                m_ProjectSettingStateData.activeProject != Project.Empty)
+            {
+                Debug.Log("OnUserLoggedIn: exiting guest session and activating new logged in Unity account user");
+                m_AppBarStateData.buttonInteractable = new ButtonInteractable { type = (int)ButtonType.ProjectList, interactable = true };
+                m_AppBarContextTarget.UpdateWith(ref m_AppBarStateData);
+                m_AppBarStateData.buttonInteractable = new ButtonInteractable { type = (int)ButtonType.LinkSharing, interactable = true };
+                m_AppBarContextTarget.UpdateWith(ref m_AppBarStateData);
 
-            PlayerClientBridge.MatchmakerManager.Connect( changedUser.AccessToken, m_MultiplayerController.connectToLocalServer);
+                PlayerClientBridge.MatchmakerManager.LeaveRoom();
+
+                m_UISessionStateData.loggedState = LoginState.LoggedIn;
+                m_UISessionStateData.projectListState = ProjectListState.AwaitingUserData;
+                m_UISessionStateData.user = changedUser;
+                m_UISessionStateData.userIdentity = new UserIdentity(null, -1, changedUser?.DisplayName, DateTime.MinValue, null);
+                m_UISessionStateData.linkShareLoggedOut = false;
+                m_UISessionStateData.rooms = new IProjectRoom[] { };
+
+                ReflectProjectsManager.Dispose();
+                var authClient = new AuthClient(changedUser);
+                ReflectProjectsManager.Init(changedUser, m_Reflect.Hook, authClient);
+
+                ConnectPipelineFactoryEvents();
+                ReflectProjectsManager.RefreshProjects();
+                m_UIStateData.progressData.progressState = SetProgressStateAction.ProgressState.PendingIndeterminate;
+                m_ProgressContextTarget.UpdateWith(ref m_UIStateData.progressData);
+                m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
+
+                m_AccessTokenManagerUpdater.ReleaseAccessTokenManager(m_ProjectSettingStateData.activeProject, () =>
+                {
+                    Debug.Log("Release AccessToken completed");
+                    m_AccessTokenManagerUpdater.CreateAccessTokenWithLinkToken(m_UISessionStateData.cachedLinkToken, m_UISessionStateData.user.AccessToken, accessToken =>
+                    {
+                        Debug.Log("Create new AccessToken from Link completed");
+                        OpenProject(new Project(accessToken.UnityProject), accessToken);
+                    });
+                });
+                return;
+            }
+
+            PlayerClientBridge.MatchmakerManager.Connect(changedUser.AccessToken, m_MultiplayerController.connectToLocalServer);
 
             m_UIStateData.colorPalette = PlayerClientBridge.MatchmakerManager.Palette.Select(c =>
-               new Color(c.R / (float)255, c.G / (float)255, c.B / (float)255)
-           ).ToArray();
+                new Color(c.R / (float)255, c.G / (float)255, c.B / (float)255)
+            ).ToArray();
 
             // clear status message
             m_MessageManager.ClearAllMessage();
 
             // show landing screen when log in
-            m_UIStateData.activeDialog = DialogType.LandingScreen;
+            m_UIStateData.activeDialog = OpenDialogAction.DialogType.LandingScreen;
 
             // update session state
-            m_UISessionStateData.sessionState.loggedState = LoginState.LoggedIn;
-            m_UISessionStateData.sessionState.user = changedUser;
-            m_UISessionStateData.sessionState.userIdentity = new UserIdentity(null, -1, changedUser?.DisplayName, DateTime.MinValue, null);
-            m_UISessionStateData.sessionState.linkShareLoggedOut = false;
+            m_UISessionStateData.loggedState = LoginState.LoggedIn;
+            m_UISessionStateData.projectListState = ProjectListState.AwaitingUserData;
+            m_UISessionStateData.user = changedUser;
+            m_UISessionStateData.userIdentity = new UserIdentity(null, -1, changedUser?.DisplayName, DateTime.MinValue, null);
+            m_UISessionStateData.linkShareLoggedOut = false;
 
-            var useExperimentalActorSystem = m_Reflect != null && m_Reflect.EnableExperimentalActorSystem;
-            if (!useExperimentalActorSystem)
-                m_ReflectPipeline.SetUser(changedUser);
-            else
-            {
-                // Hack: Pipeline is in its own assembly, not available in Unity.Reflect
-                var storage = new PlayerStorage(UnityEngine.Reflect.ProjectServer.ProjectDataPath, true, false);
-                var auth = new AuthClient(changedUser, storage);
-                ReflectPipelineFactory.SetUser(changedUser, m_Reflect.Hook, auth, storage);
-            }
-            // connect Pipeline events
-            ConnectPipelineEvents();
+            // Hack: Pipeline is in its own assembly, not available in Unity.Reflect
+            var auth = new AuthClient(changedUser);
+            ReflectProjectsManager.Init(changedUser, m_Reflect.Hook, auth);
+
             // connect all Pipeline Factory events
             ConnectPipelineFactoryEvents();
 
             ConnectMultiplayerEvents();
-            // refreshProjects
-            ReflectPipelineFactory.RefreshProjects();
 
-            m_UIStateData.progressData.progressState = ProgressData.ProgressState.PendingIndeterminate;
-            stateChanged?.Invoke(m_UIStateData);
-            sessionStateChanged?.Invoke(m_UISessionStateData);
+            // refreshProjects
+            ReflectProjectsManager.RefreshProjects();
+
+            m_UIStateData.progressData.progressState = SetProgressStateAction.ProgressState.PendingIndeterminate;
+            m_ProgressContextTarget.UpdateWith(ref m_UIStateData.progressData);
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
+            m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
         }
 
         void ConnectPipelineFactoryEvents()
         {
             // listing projects events
-            ReflectPipelineFactory.projectsRefreshCompleted.AddListener(OnProjectsRefreshCompleted);
-            ReflectPipelineFactory.projectLocalDataDeleted +=  OnProjectLocalDataDeleted;
-            ReflectPipelineFactory.projectDeleteProgressChanged +=  OnProjectDeleteProgressChanged;
+            ReflectProjectsManager.projectsRefreshCompleted.AddListener(OnProjectsRefreshCompleted);
+            ReflectProjectsManager.projectsRefreshException +=  OnProjectsRefreshException;
+            ReflectProjectsManager.projectDeleteProgressChanged +=  OnProjectDeleteProgressChanged;
 
-            ReflectPipelineFactory.projectDataDownloaded +=  OnProjectDataDownloaded;
-            ReflectPipelineFactory.projectDownloadProgressChanged +=  OnProjectDownloadProgressChanged;
-        }
-
-        void ConnectPipelineEvents()
-        {
-            if (m_ReflectPipeline == null)
-                return;
-            var useExperimentalActorSystem = m_Reflect != null && m_Reflect.EnableExperimentalActorSystem;
-
-            if (!useExperimentalActorSystem && m_ReflectPipeline.HasPipelineAsset)
-            {
-                if (m_ReflectPipeline.TryGetNode<SpatialFilterNode>(out var spatialFilterNode))
-                {
-                    spatialFilterNode.settings.memoryLevelChanged.AddListener(OnMemoryLevelChanged);
-                }
-                // initial bounds
-                if (m_ReflectPipeline.TryGetNode<BoundingBoxControllerNode>(out var boundingBoxControllerNode))
-                {
-                    boundingBoxControllerNode.settings.onGlobalBoundsCalculated.AddListener(OnBoundsChanged);
-                }
-                // use BoundingBoxFilter as a fallback if there is no SpatialFilter in this pipeline
-                else if (m_ReflectPipeline.TryGetNode<BoundingBoxFilterNode>(out var boundingBoxFilterNode))
-                {
-                    boundingBoxFilterNode.settings.onBoundsCalculated.AddListener(OnBoundsChanged);
-                }
-
-                if (m_ReflectPipeline.TryGetNode<MetadataFilterNode>(out var metadataFilterNode))
-                {
-                    metadataFilterNode.settings.groupsChanged.AddListener(OnMetadataGroupsChanged);
-                    metadataFilterNode.settings.categoriesChanged.AddListener(OnMetadataCategoriesChanged);
-                }
-
-                if (m_ReflectPipeline.TryGetNode<StreamIndicatorNode>(out var streamIndicatorNode))
-                {
-                    streamIndicatorNode.settings.instanceStreamBegin.AddListener(OnInstanceStreamBegin);
-                    streamIndicatorNode.settings.instanceStreamEnd.AddListener(OnInstanceStreamEnd);
-                    streamIndicatorNode.settings.gameObjectStreamEvent.AddListener(OnGameObjectStreamEvent);
-                    streamIndicatorNode.settings.gameObjectStreamEnd.AddListener(OnGameObjectStreamEnd);
-
-                    streamIndicatorNode.settings.assetCountModified.AddListener(OnAssetCountModified);
-                    streamIndicatorNode.settings.instanceCountModified.AddListener(OnInstanceCountModified);
-                    streamIndicatorNode.settings.gameObjectCountModified.AddListener(OnGameObjectCountModified);
-                }
-            }
-            else if (useExperimentalActorSystem)
-            {
-                // This function is called in OnUserLoggedIn, which doesn't make any sense because the pipeline is not instantiated yet.
-                // The hooking for actor system is done when the actor system is instantiated instead in OpenProject (see way below...)
-            }
+            ReflectProjectsManager.projectStatusChanged += onProjectStatusChanged;
+            ReflectProjectsManager.projectDownloadProgressChanged += OnProjectDownloadProgressChanged;
         }
 
         void OnAssetCountModified(StreamCountData streamCountData)
         {
-            m_UIDebugStateData.statsInfoData.assetsCountData = streamCountData;
-            debugStateChanged?.Invoke(m_UIDebugStateData);
+            var statsInfoData = m_UIDebugStateData.statsInfoData;
+            statsInfoData.assetsCountData = streamCountData;
+            m_UIDebugStateData.statsInfoData = statsInfoData;
+            m_DebugOptionContextTarget.UpdateWith(ref m_UIDebugStateData.debugOptionsData);
+            m_StateInfoContextTarget.UpdateWith(ref m_UIDebugStateData.statsInfoData);
         }
 
         void OnInstanceCountModified(StreamCountData streamCountData)
         {
-            m_UIDebugStateData.statsInfoData.instancesCountData = streamCountData;
-            debugStateChanged?.Invoke(m_UIDebugStateData);
+            var statsInfoData = m_UIDebugStateData.statsInfoData;
+            statsInfoData.instancesCountData = streamCountData;
+            m_UIDebugStateData.statsInfoData = statsInfoData;
+            m_DebugOptionContextTarget.UpdateWith(ref m_UIDebugStateData.debugOptionsData);
+            m_StateInfoContextTarget.UpdateWith(ref m_UIDebugStateData.statsInfoData);
         }
 
         void OnGameObjectCountModified(StreamCountData streamCountData)
         {
-            m_UIDebugStateData.statsInfoData.gameObjectsCountData = streamCountData;
-            debugStateChanged?.Invoke(m_UIDebugStateData);
+            var statsInfoData = m_UIDebugStateData.statsInfoData;
+            statsInfoData.gameObjectsCountData = streamCountData;
+            m_UIDebugStateData.statsInfoData = statsInfoData;
+            m_DebugOptionContextTarget.UpdateWith(ref m_UIDebugStateData.debugOptionsData);
+            m_StateInfoContextTarget.UpdateWith(ref m_UIDebugStateData.statsInfoData);
         }
 
         bool m_InstanceStreamEnd;
+
+        Coroutine m_StreamingProgressedCoro;
 
         void OnGameObjectStreamEvent(int currentCount, int totalCount)
         {
             if (m_InstanceStreamEnd)
             {
-                m_UIStateData.progressData.progressState = ProgressData.ProgressState.PendingDeterminate;
+                m_UIStateData.progressData.progressState = SetProgressStateAction.ProgressState.PendingDeterminate;
                 m_UIStateData.progressData.currentProgress = Math.Min(currentCount, totalCount);
                 m_UIStateData.progressData.totalCount = totalCount;
                 m_UIStateData.progressData.message = "Streaming...";
-                m_MessageManager.SetStatusMessage($"Streaming... {currentCount}/{totalCount}");
-                stateChanged?.Invoke(m_UIStateData);
 
-                if (m_WaitStreamIndicatorCoroutine != null)
-                {
-                    StopCoroutine(m_WaitStreamIndicatorCoroutine);
-                }
+                if (m_StreamingProgressedCoro != null)
+                    return;
 
-                m_WaitStreamIndicatorCoroutine = StartCoroutine(WaitCloseStreamIndicator());
+                m_StreamingProgressedCoro = StartCoroutine(DelayedUIUpdateForStreamingProgressed());
             }
+        }
+
+        IEnumerator DelayedUIUpdateForStreamingProgressed()
+        {
+            yield return new WaitForSeconds(0.2f);
+
+            m_MessageManager.SetStatusMessage($"Streaming... {m_UIStateData.progressData.currentProgress}/{m_UIStateData.progressData.totalCount}");
+            m_ProgressContextTarget.UpdateWith(ref m_UIStateData.progressData);
+
+
+            if (m_WaitStreamIndicatorCoroutine != null)
+                StopCoroutine(m_WaitStreamIndicatorCoroutine);
+
+            m_WaitStreamIndicatorCoroutine = StartCoroutine(WaitCloseStreamIndicator());
+            m_StreamingProgressedCoro = null;
         }
 
         IEnumerator WaitCloseStreamIndicator()
         {
             yield return m_WaitDelay;
 
-            if(!m_ARStateData.arEnabled || m_ARStateData.instructionUIState == InstructionUIState.Completed)
+            if (!m_ARStateData.arEnabled || m_ARStateData.instructionUIState == SetInstructionUIStateAction.InstructionUIState.Completed)
             {
-                m_UIProjectStateData.activeProjectThumbnail = m_ThumbnailController.CaptureActiveProjectThumbnail(current.projectStateData);
-                projectStateChanged?.Invoke(m_UIProjectStateData);
+                m_ProjectSettingStateData.activeProjectThumbnail = m_ThumbnailController.CaptureActiveProjectThumbnail(current.m_UIProjectStateData);
+                m_ProjectManagementContextTarget.UpdateWith(ref m_ProjectSettingStateData);
             }
 
-            m_UIStateData.progressData.progressState = ProgressData.ProgressState.NoPendingRequest;
-            stateChanged?.Invoke(m_UIStateData);
+            m_UIStateData.progressData.progressState = SetProgressStateAction.ProgressState.NoPendingRequest;
+            m_ProgressContextTarget.UpdateWith(ref m_UIStateData.progressData);
 
             m_WaitStreamIndicatorCoroutine = null;
         }
@@ -320,18 +409,27 @@ namespace Unity.Reflect.Viewer.UI
         void OnInstanceStreamBegin()
         {
             m_InstanceStreamEnd = false;
-            m_UIStateData.progressData.progressState = ProgressData.ProgressState.PendingIndeterminate;
-            stateChanged?.Invoke(m_UIStateData);
+            m_UIStateData.progressData.progressState = SetProgressStateAction.ProgressState.PendingIndeterminate;
+            m_ProgressContextTarget.UpdateWith(ref m_UIStateData.progressData);
         }
 
-        void OnGameObjectStreamEnd()
-        {
-        }
+        void OnGameObjectStreamEnd() { }
 
         void OnBoundsChanged(Bounds bb)
         {
             m_UIProjectStateData.rootBounds = bb;
-            projectStateChanged?.Invoke(projectStateData);
+            if (m_UIProjectStateData.zoneBounds == default)
+            {
+                m_UIProjectStateData.zoneBounds = bb;
+            }
+
+            m_ProjectStateContextTarget.UpdateWith(ref m_UIProjectStateData);
+        }
+
+        void OnSceneZonesChanged(Bounds bb)
+        {
+            m_UIProjectStateData.zoneBounds = bb;
+            m_ProjectStateContextTarget.UpdateWith(ref m_UIProjectStateData);
         }
 
         void OnMemoryLevelChanged(MemoryLevel memoryLevel)
@@ -345,73 +443,74 @@ namespace Unity.Reflect.Viewer.UI
                 case MemoryLevel.Medium:
                 case MemoryLevel.High:
                 case MemoryLevel.Critical:
-                    m_MessageManager.SetStatusMessage("Objects have stop loading due to memory limitations", StatusMessageType.Warning);
+                    m_MessageManager.SetStatusMessage(k_StopLoadDueToMemoryLimitationsText, StatusMessageType.Warning);
                     break;
             }
         }
 
         void OnMetadataGroupsChanged(IEnumerable<string> groups)
         {
-            if(!EnumerableExtension.SafeSequenceEquals(groups, m_UIProjectStateData.filterGroupList))
+            if (!EnumerableExtension.SafeSequenceEquals(groups, m_UIProjectStateData.filterGroupList))
             {
                 m_UIProjectStateData.filterGroupList = new List<string>(groups);
-                projectStateChanged?.Invoke(m_UIProjectStateData);
+                m_ProjectStateContextTarget.UpdateWith(ref m_UIProjectStateData, UpdateNotification.ForceNotify);
             }
         }
 
-        void OnMetadataCategoriesChanged(string group, IEnumerable<string> categories)
+        void OnMetadataCategoriesChanged(string group, Diff<string> diff)
         {
-            if(m_UIStateData.filterGroup == group)
-            {
-                GetFilterItemInfos(m_UIStateData.filterGroup, filters =>
-                {
-                    m_UIProjectStateData.filterItemInfos = filters;
-                    projectStateChanged?.Invoke(m_UIProjectStateData);
-                });
-            }
+            var items = new List<SetVisibleFilterAction.IFilterItemInfo>(m_UIProjectStateData.filterItemInfos);
+
+            foreach(var category in diff.Added)
+                items.Add(new MetadataGroupFilter(group, category, true));
+
+            m_UIProjectStateData.filterItemInfos = items;
+
+            m_LastReceivedFilterItemInfo = items;
+            if (m_DelayedNotifyCoro != null)
+                return;
+
+            m_DelayedNotifyCoro = StartCoroutine(DelayedNotify());
         }
 
-        void GetFilterItemInfos(string groupKey, Action<List<FilterItemInfo>> callback)
+        Coroutine m_DelayedNotifyCoro;
+        List<SetVisibleFilterAction.IFilterItemInfo> m_LastReceivedFilterItemInfo;
+
+        IEnumerator DelayedNotify()
         {
-            var useExperimentalActorSystem = m_Reflect != null && m_Reflect.EnableExperimentalActorSystem;
+            yield return new WaitForSeconds(0.2f);
+            NotifyFilterItemInfos();
+            m_LastReceivedFilterItemInfo = null;
+            m_DelayedNotifyCoro = null;
+        }
 
-            if (!useExperimentalActorSystem)
+        void NotifyFilterItemInfos()
+        {
+            m_ProjectStateContextTarget.UpdateValueWith(nameof(m_UIProjectStateData.filterItemInfos), ref m_LastReceivedFilterItemInfo);
+        }
+
+        void OnObjectMetadataChanged(List<(DynamicGuid, Dictionary<string, string>)> idToGroupToFilterKeys)
+        {
+            if (!m_UIProjectStateData.highlightFilter.IsValid)
+                return;
+
+            var highlightActorHandle = m_Reflect.Hook.Systems.ActorRunner.GetActorHandle<HighlightActor>();
+            var highlightedInstances = new List<DynamicGuid>();
+            var otherInstances = new List<DynamicGuid>();
+
+            foreach (var (id, groupToFilterKeys) in idToGroupToFilterKeys)
             {
-                var filterKeys = m_MetadataFilter.processor.GetFilterKeys(groupKey);
-                var filterItemInfo = new FilterItemInfo
-                {
-                    groupKey = groupKey
-                };
-
-                var result = new List<FilterItemInfo>();
-                foreach (var filterKey in filterKeys)
-                {
-                    filterItemInfo.filterKey = filterKey;
-                    filterItemInfo.visible = m_MetadataFilter.processor.IsVisible(groupKey, filterKey);
-                    filterItemInfo.highlight = m_MetadataFilter.processor.IsHighlighted(groupKey, filterKey);
-                    result.Add(filterItemInfo);
-                }
-
-                callback(result);
+                if (groupToFilterKeys.TryGetValue(m_UIProjectStateData.highlightFilter.groupKey, out var filterKey) && filterKey == m_UIProjectStateData.highlightFilter.filterKey)
+                    highlightedInstances.Add(id);
+                else
+                    otherInstances.Add(id);
             }
-            else
-            {
-                var bridge = m_Reflect.Hook.systems.ActorRunner.Bridge;
-                bridge.GetFilterStates(groupKey, filters =>
-                {
-                    var result = new List<FilterItemInfo>();
-                    var filterItemInfo = new FilterItemInfo { groupKey = groupKey };
-                    foreach (var filter in filters)
-                    {
-                        filterItemInfo.filterKey = filter.Key;
-                        filterItemInfo.visible = filter.IsVisible;
-                        filterItemInfo.highlight = filter.isHighlighted;
-                        result.Add(filterItemInfo);
-                    }
 
-                    callback(result);
-                });
-            }
+            if (highlightedInstances.Count > 0)
+                m_Bridge.ForwardNet(highlightActorHandle, new AddToHighlight { HighlightedInstances = highlightedInstances });
+
+            if (otherInstances.Count > 0)
+                m_Bridge.ForwardNet(highlightActorHandle, new RemoveFromHighlight { OtherInstances = otherInstances });
         }
 
         void OnUserLoggedOut()
@@ -422,115 +521,141 @@ namespace Unity.Reflect.Viewer.UI
             m_MessageManager.ClearAllMessage();
 
             // show login screen when log out
-            m_UIStateData.activeDialog = DialogType.LoginScreen;
+            m_UIStateData.activeDialog = OpenDialogAction.DialogType.LoginScreen;
 
-            stateChanged?.Invoke(stateData);
+            m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
+
             // update session state
-            m_UISessionStateData.sessionState.loggedState = LoginState.LoggedOut;
-            m_UISessionStateData.sessionState.user = null;
-            m_UISessionStateData.sessionState.userIdentity = default;
-            sessionStateChanged?.Invoke(sessionStateData);
+            m_UISessionStateData.loggedState = LoginState.LoggedOut;
+            m_UISessionStateData.user = null;
+            m_UISessionStateData.userIdentity = default;
+            m_UISessionStateData.rooms = new IProjectRoom[] { };
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
             PlayerClientBridge.MatchmakerManager.LeaveRoom();
             PlayerClientBridge.MatchmakerManager.Disconnect();
-
         }
 
-        void OnProjectsRefreshCompleted(List<Project> projects)
+        void OnAuthenticationFailed(string errroMessage)
         {
+#if UNITY_EDITOR
+            m_LoginManager.userLoggedOut?.Invoke();
+#else
+            m_LoginManager.Logout();
+#endif
+        }
 
-            m_UIStateData.progressData.progressState = ProgressData.ProgressState.NoPendingRequest;
-            ForceSendStateChangedEvent();
+        void OnProjectsRefreshCompleted(IList<Project> projects)
+        {
+            m_UIStateData.progressData.progressState = SetProgressStateAction.ProgressState.NoPendingRequest;
+            m_ProgressContextTarget.UpdateWith(ref m_UIStateData.progressData);
 
-            List<ProjectRoom> newProjects = new List<ProjectRoom>();
-            foreach(var proj in projects)
+            var allProjects = new List<Project>(projects);
+
+            if (EmbeddedProjects != null)
+            {
+                // Process embedded projects
+                allProjects.AddRange(EmbeddedProjects.projectsData.Select(projectData => new EmbeddedProject(projectData)));
+            }
+
+            var newProjects = new List<IProjectRoom>();
+            foreach (var proj in allProjects)
             {
                 ProjectRoom toAdd;
-                var existingProjectIndex = Array.FindIndex(m_UISessionStateData.sessionState.rooms, pr => pr.project.serverProjectId == proj.serverProjectId);
-                if(existingProjectIndex != -1)
+                var existingProjectIndex = Array.FindIndex(m_UISessionStateData.rooms, pr => ((ProjectRoom)pr).project.serverProjectId == proj.serverProjectId);
+                if (existingProjectIndex != -1)
                 {
-                    toAdd = new ProjectRoom(proj, m_UISessionStateData.sessionState.rooms[existingProjectIndex].users.ToArray());
+                    toAdd = new ProjectRoom(proj, ((ProjectRoom)m_UISessionStateData.rooms[existingProjectIndex]).users.ToArray());
                 }
                 else
                 {
                     toAdd = new ProjectRoom(proj);
                 }
+
                 newProjects.Add(toAdd);
             }
 
-            m_UISessionStateData.sessionState.rooms = newProjects.ToArray();
-            ForceSendSessionStateChangedEvent();
+            m_UISessionStateData.rooms = newProjects.ToArray();
+            m_UISessionStateData.projectListState = ProjectListState.Ready;
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData, UpdateNotification.ForceNotify);
 
             PlayerClientBridge.MatchmakerManager.MonitorRooms(projects.Select(p => p.serverProjectId));
 
-            if (m_CachedOpenInViewerInfo != null)
+            // Look for async ready condition
+            Debug.Log("OnProjectsRefreshCompleted TryConsumeDeepLink");
+            TryConsumeInteropRequest();
+        }
+
+        void TryConsumeInteropRequest()
+        {
+            if (m_UISessionStateData.projectListState.Equals(ProjectListState.Ready) &&
+                m_UISessionStateData.collaborationState >= CollaborationState.ConnectedMatchmaker)
             {
-                if (!TryOpenProject(m_CachedOpenInViewerInfo))
+                if (m_CachedOpenInViewerInfo != null)
                 {
-                    PopupAccessDeniedMessage();
+                    Debug.Log("Try consume cached 'Open in Project' request");
+                    if (!TryOpenKnownProject(m_CachedOpenInViewerInfo))
+                    {
+                        PopupAccessDeniedMessage();
+                    }
+
+                    m_CachedOpenInViewerInfo = null;
                 }
-                m_CachedOpenInViewerInfo = null;
-            }
 
-            if (!string.IsNullOrWhiteSpace(m_CachedLinkToken))
+                if (m_UISessionStateData.isOpenWithLinkSharing && !string.IsNullOrWhiteSpace(m_UISessionStateData.cachedLinkToken))
+                {
+                    if (m_ProjectSettingStateData.activeProject.Equals(Project.Empty))
+                    {
+                        Debug.Log("Try create access token for cached 'Deep Link' request");
+                        m_AccessTokenManagerUpdater.CreateAccessTokenWithLinkToken(m_UISessionStateData.cachedLinkToken, m_UISessionStateData.user.AccessToken, OpenProjectFromLinkSharing);
+                    }
+                    else
+                    {
+                        if (!m_UISessionStateData.cachedLinkToken.Contains($"{m_ProjectSettingStateData.activeProject.UnityProject.LinkToken}"))
+                        {
+                            m_AccessTokenManagerUpdater.CreateAccessTokenWithLinkToken(m_UISessionStateData.cachedLinkToken, m_UISessionStateData.user.AccessToken, OpenProjectFromLinkSharing);
+                        }
+                    }
+                }
+            }
+        }
+
+        void OnProjectDeleteProgressChanged(Project project, int progress, int total)
+        {
+            m_UIStateData.progressData.progressState = SetProgressStateAction.ProgressState.PendingDeterminate;
+            m_UIStateData.progressData.currentProgress = progress;
+            m_UIStateData.progressData.totalCount = total;
+            m_UIStateData.progressData.message = "Deleting";
+            m_ProgressContextTarget.UpdateWith(ref m_UIStateData.progressData);
+        }
+
+        void onProjectStatusChanged(Project project, ProjectsManager.Status status)
+        {
+            if (status == ProjectsManager.Status.Downloaded || status == ProjectsManager.Status.Deleted)
             {
-                m_LinkSharingManager.ProcessSharingToken(m_UISessionStateData.sessionState.user.AccessToken, m_CachedLinkToken);
-                m_CachedLinkToken = string.Empty;
+                m_UIStateData.progressData.progressState = SetProgressStateAction.ProgressState.NoPendingRequest;
+                m_ProgressContextTarget.UpdateWith(ref m_UIStateData.progressData);
             }
         }
 
-        void OnProjectLocalDataDeleted(Project project)
+        void OnProjectDownloadProgressChanged(Project project, int progress, int total)
         {
-            m_UIStateData.progressData.progressState = ProgressData.ProgressState.NoPendingRequest;
-            m_UIStateData.selectedProjectOption = project;
-            m_UIStateData.projectOptionIndex++;
-            stateChanged?.Invoke(m_UIStateData);
-        }
-
-        void OnProjectDeleteProgressChanged(int progress, int total, string message)
-        {
-            m_UIStateData.progressData.progressState = ProgressData.ProgressState.PendingDeterminate;
+            m_UIStateData.progressData.progressState = SetProgressStateAction.ProgressState.PendingDeterminate;
             m_UIStateData.progressData.currentProgress = progress;
             m_UIStateData.progressData.totalCount = total;
-            m_UIStateData.progressData.message = message;
-            stateChanged?.Invoke(m_UIStateData);
+            m_UIStateData.progressData.message = "Downloading";
+            m_ProgressContextTarget.UpdateWith(ref m_UIStateData.progressData);
         }
 
-        void OnProjectDataDownloaded(Project project)
-        {
-            m_UIStateData.progressData.progressState = ProgressData.ProgressState.NoPendingRequest;
-            m_UIStateData.selectedProjectOption = project;
-            m_UIStateData.projectOptionIndex++;
-            stateChanged?.Invoke(m_UIStateData);
-        }
-
-        void OnProjectDownloadProgressChanged(int progress, int total, string message)
-        {
-            m_UIStateData.progressData.progressState = ProgressData.ProgressState.PendingDeterminate;
-            m_UIStateData.progressData.currentProgress = progress;
-            m_UIStateData.progressData.totalCount = total;
-            m_UIStateData.progressData.message = message;
-            stateChanged?.Invoke(m_UIStateData);
-        }
-
-        void OnBadVRConfiguration(bool VRDeviceDisconnected, Action onDismiss)
+        void OnBadVRConfiguration(Action onRetry)
         {
             var data = m_PopUpManager.GetModalPopUpData();
-            if (VRDeviceDisconnected)
-            {
-                data.title = k_VRDeviceDisconnectedTitle;
-                data.text = k_VRDeviceDisconnected;
-                data.negativeText = "Dismiss";
-                // Let user continue since he could connect the device later on
-                data.negativeCallback = delegate
-                {
-                    onDismiss();
-                };
-            }
-            else
-            {
-                data.title = k_BadVRConfigurationTitle;
-                data.text = k_BadVRConfiguration;
-            }
+            data.title = k_VRDeviceDisconnectedTitle;
+            data.text = k_VRDeviceDisconnected;
+            data.positiveText = "Retry";
+
+            // Let user continue since he could connect the device later on
+            data.positiveCallback = onRetry;
+            data.negativeText = "Dismiss";
             m_PopUpManager.DisplayModalPopUp(data);
         }
 
@@ -544,8 +669,9 @@ namespace Unity.Reflect.Viewer.UI
                 yield return null;
             }
 
-            stateChanged.Invoke(m_UIStateData);
-            projectStateChanged.Invoke(m_UIProjectStateData);
+            m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
+            m_ProjectStateContextTarget.UpdateWith(ref m_UIProjectStateData);
+            m_ProjectManagementContextTarget.UpdateWith(ref m_ProjectSettingStateData);
         }
 
         IEnumerator UnloadAsyncScene(string scenePath)
@@ -559,252 +685,168 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        void OnDisplayChanged(DisplayData data)
+        IEnumerator ReloadProject()
         {
-            UpdateDisplayData(data);
-        }
-
-        protected void UpdateDisplayData(DisplayData data)
-        {
-            m_UIStateData.display = data;
-            stateChanged?.Invoke(m_UIStateData);
-        }
-
-        void CloseProject()
-        {
-            if (m_UIProjectStateData.activeProject != Project.Empty)
+            if (m_ProjectSettingStateData.activeProject != Project.Empty)
             {
-                m_MessageManager.SetStatusMessage($"Closing {m_UIProjectStateData.activeProject.name}...");
+                yield return null;
+                OpenProject(m_ProjectSettingStateData.activeProject, m_ProjectSettingStateData.accessToken, true);
+            }
+        }
 
-                m_ReflectPipeline?.CloseProject();
+        void CloseProject(bool isRestarting = false)
+        {
+            if (m_CurrentOpenProject != Project.Empty)
+            {
+                if (!isRestarting)
+                    m_MessageManager.SetStatusMessage($"Closing {m_ProjectSettingStateData.activeProject.name}...");
+
+                m_AccessTokenManagerUpdater.ReleaseAccessTokenManager(m_ProjectSettingStateData.activeProject);
+
+                m_Reflect.StreamingStarting -= OnStreamingStarting;
+                var runner = m_Reflect.Hook.Systems.ActorRunner;
+                runner.StopActorSystem();
+
                 m_UIStateData.toolbarsEnabled = false;
-                m_UIStateData.navigationState.EnableAllNavigation(false);
-                stateChanged?.Invoke(m_UIStateData);
-                m_UIProjectStateData.activeProject = Project.Empty;
-                m_UIProjectStateData.activeProjectThumbnail = null;
+                m_UIStateData.navigationStateData.EnableAllNavigation(false);
+                m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
+                m_NavigationContextTarget.UpdateWith(ref m_UIStateData.navigationStateData);
+                m_ProjectSettingStateData.activeProject = Project.Empty;
+                m_CurrentOpenProject = Project.Empty;
+                m_ProjectSettingStateData.activeProjectThumbnail = null;
                 m_UIProjectStateData.objectSelectionInfo = default;
-                projectStateChanged?.Invoke(projectStateData);
+                m_UIProjectStateData.filterItemInfos = new List<SetVisibleFilterAction.IFilterItemInfo>();
+                m_LastReceivedFilterItemInfo = new List<SetVisibleFilterAction.IFilterItemInfo>();
+                if (m_DelayedNotifyCoro != null)
+                {
+                    StopCoroutine(m_DelayedNotifyCoro);
+                    m_DelayedNotifyCoro = null;
+                }
+
+                m_ProjectManagementContextTarget.UpdateWith(ref m_ProjectSettingStateData);
 
                 PlayerClientBridge.MatchmakerManager.LeaveRoom();
 
                 //If it was a link shared project open
-                if(m_UISessionStateData.sessionState.linkSharedProjectRoom.project.UnityProject != null && m_UISessionStateData.sessionState.linkSharedProjectRoom.project.serverProjectId == m_UIProjectStateData.activeProject.serverProjectId)
+                if (((ProjectRoom)m_UISessionStateData.linkSharedProjectRoom).project?.UnityProject != null && ((ProjectRoom)m_UISessionStateData.linkSharedProjectRoom).project?.serverProjectId == m_ProjectSettingStateData.activeProject.serverProjectId)
                 {
-                    m_UISessionStateData.sessionState.linkSharedProjectRoom = default;
+                    m_UISessionStateData.linkSharedProjectRoom = default;
+                    m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
                 }
 
+                m_TeleportSelector?.Dispose();
+                m_TeleportSelector = null;
             }
         }
 
         void CloseAllDialogs()
         {
-            m_UIStateData.activeDialog = DialogType.None;
-            m_UIStateData.activeOptionDialog = OptionDialogType.None;
-            m_UIStateData.activeSubDialog = DialogType.None;
-            stateChanged?.Invoke(m_UIStateData);
+            m_UIStateData.activeDialog = OpenDialogAction.DialogType.None;
+            m_UIStateData.activeOptionDialog = CloseAllDialogsAction.OptionDialogType.None;
+            m_UIStateData.activeSubDialog = OpenDialogAction.DialogType.None;
+            m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
         }
 
         void ResetToolBars()
         {
             m_UIStateData.toolbarsEnabled = true;
-            m_UIStateData.toolState.activeTool = ToolType.OrbitTool;
-            m_UIStateData.toolState.orbitType = OrbitType.OrbitAtPoint;
-            m_UIStateData.activeToolbar = ToolbarType.OrbitSidebar;
-            stateChanged?.Invoke(m_UIStateData);
+            m_UIStateData.toolState.activeTool = SetActiveToolAction.ToolType.None;
+            m_UIStateData.toolState.orbitType = SetOrbitTypeAction.OrbitType.OrbitAtPoint;
+            m_UIStateData.activeToolbar = SetActiveToolBarAction.ToolbarType.OrbitSidebar;
+            m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
+            m_ToolStateContextTarget.UpdateWith(ref m_UIStateData.toolState);
+
+            m_ARStateData.arToolStateData.selectionEnabled = true;
+            m_ARStateData.arToolStateData.measureToolEnabled = true;
+            m_ARToolStateContextTarget.UpdateWith( ref m_ARStateData.arToolStateData);
         }
 
-        void ResetExternalTools()
+        void RequestOpenProject(Project project)
         {
-            m_ExternalToolStateData.measureToolStateData.toolState = false;
-            externalToolChanged?.Invoke(m_ExternalToolStateData);
+            if (m_RequestedProject == project || m_CurrentOpenProject.serverProjectId == project.serverProjectId)
+            {
+                return;
+            }
+
+            m_RequestedProject = project;
+
+            if (project is EmbeddedProject || !project.IsConnectedToServer)
+            {
+                OpenProject(project);
+                return;
+            }
+
+            m_AccessTokenManagerUpdater.CreateAccessToken(project,
+                m_UISessionStateData.user.AccessToken,
+                OpenProject);
         }
 
-        void OpenProject(Project project)
+        void OnStreamingStarting(BridgeActor.Proxy bridge)
         {
-            CloseProject();
+            m_UIProjectStateData.rootBounds = default;
+            m_UIProjectStateData.zoneBounds = default;
+            m_ProjectStateContextTarget.UpdateWith(ref m_UIProjectStateData);
 
-            CloseAllDialogs();
+            bridge.Subscribe<GlobalBoundsUpdated>(ctx => OnBoundsChanged(ctx.Data.GlobalBounds));
+            bridge.Subscribe<SceneZonesChanged>(ctx => OnSceneZonesChanged(ctx.Data.Zones[0].Bounds.ToUnity()));
 
+            bridge.Subscribe<MetadataGroupsChanged>(ctx => OnMetadataGroupsChanged(ctx.Data.GroupKeys));
+            bridge.Subscribe<MetadataCategoriesChanged>(ctx => OnMetadataCategoriesChanged(ctx.Data.GroupKey, ctx.Data.FilterKeys));
+            bridge.Subscribe<ObjectMetadataChanged>(ctx => OnObjectMetadataChanged(ctx.Data.IdToGroupToFilterKeys));
 
-            m_UIProjectStateData.activeProject = project;
-
-            var projectIndex = Array.FindIndex(m_UISessionStateData.sessionState.rooms, (room) => room.project.serverProjectId == project.serverProjectId);
-            if (projectIndex == -1) // Opening a project not in the project list
+            bridge.Subscribe<AssetCountChanged>(ctx =>
             {
-                m_UISessionStateData.sessionState.linkSharedProjectRoom = new ProjectRoom(project);
-            }
+                var statsInfoData = m_UIDebugStateData.statsInfoData;
+                statsInfoData.assetsCountData = new StreamCountData
+                {
+                    addedCount = ctx.Data.ItemCount.NbAdded,
+                    changedCount = ctx.Data.ItemCount.NbChanged,
+                    removedCount = ctx.Data.ItemCount.NbRemoved
+                };
+                m_UIDebugStateData.statsInfoData = statsInfoData;
+                m_DebugOptionContextTarget.UpdateWith(ref m_UIDebugStateData.debugOptionsData);
+                m_StateInfoContextTarget.UpdateWith(ref m_UIDebugStateData.statsInfoData);
+            });
 
-
-            m_MessageManager.SetStatusMessage($"Opening {m_UIProjectStateData.activeProject.name}...");
-            stateChanged?.Invoke(m_UIStateData);
-
-            m_UIProjectStateData.activeProjectThumbnail = ThumbnailController.LoadThumbnailForProject(m_UIProjectStateData.activeProject);
-            projectStateChanged?.Invoke(projectStateData);
-
-            var useExperimentalActorSystem = m_Reflect != null && m_Reflect.EnableExperimentalActorSystem;
-
-            if (!useExperimentalActorSystem)
+            bridge.Subscribe<InstanceCountChanged>(ctx =>
             {
-                m_ReflectPipeline.OpenProject(projectStateData.activeProject);
-                m_ReflectPipeline.TryGetNode(out m_MetadataFilter);
-                m_ReflectPipeline.TryGetNode(out m_LightFilterNode);
-                m_ReflectPipeline.TryGetNode(out m_SpatialFilter);
-            }
-            else
-            {
-                var runner = m_Reflect.Hook.systems.ActorRunner;
-                runner.Instantiate(m_Reflect.Asset, project, m_Reflect, m_UISessionStateData.sessionState.user);
-                runner.StartActorSystem();
-                m_Bridge = runner.Bridge;
-                m_Bridge.Subscribe<GlobalBoundsUpdated>(ctx => OnBoundsChanged(ctx.Data.GlobalBounds));
-
-                m_Bridge.Subscribe<MetadataGroupsChanged>(ctx => OnMetadataGroupsChanged(ctx.Data.GroupKeys));
-                m_Bridge.Subscribe<MetadataCategoriesChanged>(ctx => OnMetadataCategoriesChanged(ctx.Data.GroupKey, ctx.Data.FilterKeys));
-
-                m_Bridge.Subscribe<AssetCountChanged>(ctx =>
+                if (m_UIDebugStateData.statsInfoData.instancesCountData.addedCount == 0 && ctx.Data.ItemCount.NbAdded > 0)
                 {
-                    m_UIDebugStateData.statsInfoData.assetsCountData.addedCount = ctx.Data.ItemCount.NbAdded;
-                    m_UIDebugStateData.statsInfoData.assetsCountData.changedCount = ctx.Data.ItemCount.NbChanged;
-                    m_UIDebugStateData.statsInfoData.assetsCountData.removedCount = ctx.Data.ItemCount.NbRemoved;
-                    debugStateChanged?.Invoke(m_UIDebugStateData);
-                });
-
-                m_Bridge.Subscribe<InstanceCountChanged>(ctx =>
-                {
-                    if (m_UIDebugStateData.statsInfoData.instancesCountData.addedCount == 0 && ctx.Data.ItemCount.NbAdded > 0)
-                    {
-                        OnInstanceStreamBegin();
-                        OnInstanceStreamEnd();
-                    }
-
-                    m_UIDebugStateData.statsInfoData.instancesCountData.addedCount = ctx.Data.ItemCount.NbAdded;
-                    m_UIDebugStateData.statsInfoData.instancesCountData.changedCount = ctx.Data.ItemCount.NbChanged;
-                    m_UIDebugStateData.statsInfoData.instancesCountData.removedCount = ctx.Data.ItemCount.NbRemoved;
-                    debugStateChanged?.Invoke(m_UIDebugStateData);
-                });
-
-                m_Bridge.Subscribe<GameObjectCountChanged>(ctx =>
-                {
-                    m_UIDebugStateData.statsInfoData.gameObjectsCountData.addedCount = ctx.Data.ItemCount.NbAdded;
-                    m_UIDebugStateData.statsInfoData.gameObjectsCountData.changedCount = ctx.Data.ItemCount.NbChanged;
-                    m_UIDebugStateData.statsInfoData.gameObjectsCountData.removedCount = ctx.Data.ItemCount.NbRemoved;
-                    debugStateChanged?.Invoke(m_UIDebugStateData);
-                });
-
-                m_Bridge.Subscribe<GameObjectCountChanged>(ctx =>
-                {
-                    m_UIDebugStateData.statsInfoData.gameObjectsCountData.addedCount = ctx.Data.ItemCount.NbAdded;
-                    m_UIDebugStateData.statsInfoData.gameObjectsCountData.changedCount = ctx.Data.ItemCount.NbChanged;
-                    m_UIDebugStateData.statsInfoData.gameObjectsCountData.removedCount = ctx.Data.ItemCount.NbRemoved;
-                    debugStateChanged?.Invoke(m_UIDebugStateData);
-                });
-
-                m_Bridge.Subscribe<StreamingProgressed>(ctx => OnGameObjectStreamEvent(ctx.Data.NbStreamed, ctx.Data.Total));
-
-                runner.Bridge.SendUpdateManifests();
-            }
-
-            // set enable texture and light
-            if (m_UIStateData.sceneOptionData.enableTexture)
-                Shader.SetGlobalFloat(k_UseTexture, 1);
-            else
-                Shader.SetGlobalFloat(k_UseTexture, 0);
-
-            if (!useExperimentalActorSystem)
-            {
-                if (m_LightFilterNode != null)
-                {
-                    m_UIStateData.sceneOptionData.enableLightData = m_LightFilterNode.settings.enableLights;
-                }
-            }
-            else
-            {
-                var bridge = m_Reflect.Hook.systems.ActorRunner.Bridge;
-                m_UIStateData.sceneOptionData.enableLightData = bridge.GetFirstMatchingSettings<LightActor.Settings>().EnableLights;
-            }
-
-            m_BoundingBoxRootNode.SetActive(true);
-            if (!useExperimentalActorSystem)
-            {
-                if (m_ReflectPipeline.TryGetNode<BoundingBoxControllerNode>(out var boundingBoxControllerNode))
-                {
-                    boundingBoxControllerNode.settings.displayOnlyBoundingBoxes = false;
-                    m_UIDebugStateData.debugOptionsData.useDebugBoundingBoxMaterials =
-                        boundingBoxControllerNode.settings.useDebugMaterials;
-                    m_UIDebugStateData.debugOptionsData.useStaticBatching =
-                        boundingBoxControllerNode.settings.useStaticBatching;
-                }
-                if (m_ReflectPipeline.TryGetNode<SpatialFilterNode>(out var spatialFilterNode))
-                {
-                    m_UIProjectStateData.teleportPicker = new SpatialSelector
-                    {
-                        SpatialPicker = spatialFilterNode.SpatialPicker,
-                        WorldRoot = m_RootNode.transform
-                    };
-                    m_UIDebugStateData.debugOptionsData.spatialPriorityWeights = new Vector3(
-                        spatialFilterNode.settings.priorityWeightAngle,
-                        spatialFilterNode.settings.priorityWeightDistance,
-                        spatialFilterNode.settings.priorityWeightSize);
-                    // ensure depth culling is off by default on devices that don't support AsycGPUReadback
-                    spatialFilterNode.settings.cullingSettings.useDepthCulling &= m_UIStateData.deviceCapability.HasFlag(DeviceCapability.SupportsAsyncGPUReadback);
+                    OnInstanceStreamBegin();
+                    OnInstanceStreamEnd();
                 }
 
-                // [AEC-2238] force StreamLimiter usage on Android to mitigate slowdown on second project load
-#if UNITY_ANDROID && !UNITY_EDITOR
-                if (m_ReflectPipeline.TryGetNode<StreamInstanceLimiterNode>(out var streamInstanceLimiterNode))
+                var statsInfoData = m_UIDebugStateData.statsInfoData;
+                statsInfoData.instancesCountData = new StreamCountData
                 {
-                    streamInstanceLimiterNode.settings.bypass = false;
-                }
-#endif
-            }
-            else
+                    addedCount = ctx.Data.ItemCount.NbAdded,
+                    changedCount = ctx.Data.ItemCount.NbChanged,
+                    removedCount = ctx.Data.ItemCount.NbRemoved
+                };
+                m_UIDebugStateData.statsInfoData = statsInfoData;
+                m_DebugOptionContextTarget.UpdateWith(ref m_UIDebugStateData.debugOptionsData);
+                m_StateInfoContextTarget.UpdateWith(ref m_UIDebugStateData.statsInfoData);
+            });
+
+            bridge.Subscribe<GameObjectCountChanged>(ctx =>
             {
-                var bridge = m_Reflect.Hook.systems.ActorRunner.Bridge;
-
-                var boxSettings = bridge.GetFirstMatchingSettings<BoundingBoxActor.Settings>();
-                if (boxSettings != null)
+                var statsInfoData = m_UIDebugStateData.statsInfoData;
+                statsInfoData.gameObjectsCountData = new StreamCountData
                 {
-                    boxSettings.DisplayOnlyBoundingBoxes = false;
-                    m_UIDebugStateData.debugOptionsData.useDebugBoundingBoxMaterials = boxSettings.UseDebugMaterials;
-                    m_UIDebugStateData.debugOptionsData.useStaticBatching = boxSettings.UseStaticBatching;
-                }
+                    addedCount = ctx.Data.ItemCount.NbAdded,
+                    changedCount = ctx.Data.ItemCount.NbChanged,
+                    removedCount = ctx.Data.ItemCount.NbRemoved
+                };
+                m_UIDebugStateData.statsInfoData = statsInfoData;
+                m_DebugOptionContextTarget.UpdateWith(ref m_UIDebugStateData.debugOptionsData);
+                m_StateInfoContextTarget.UpdateWith(ref m_UIDebugStateData.statsInfoData);
+            });
 
-                var spatialSettings = bridge.GetFirstMatchingSettings<SpatialActor.Settings>();
-                if (spatialSettings != null)
-                {
-                    // Todo: Fix SpatialPicker
-                    //m_UIProjectStateData.teleportPicker = new SpatialSelector
-                    //{
-                    //    SpatialPicker = spatialFilterNode.SpatialPicker,
-                    //    WorldRoot = m_RootNode.transform
-                    //};
-                    m_UIDebugStateData.debugOptionsData.spatialPriorityWeights = new Vector3(
-                        spatialSettings.PriorityWeightAngle,
-                        spatialSettings.PriorityWeightDistance,
-                        spatialSettings.PriorityWeightSize);
-                    // ensure depth culling is off by default on devices that don't support AsycGPUReadback
-                    spatialSettings.UseDepthCulling &= m_UIStateData.deviceCapability.HasFlag(DeviceCapability.SupportsAsyncGPUReadback);
-                }
-            }
+            bridge.Subscribe<StreamingProgressed>(ctx => OnGameObjectStreamEvent(ctx.Data.NbStreamed, ctx.Data.Total));
 
-            // reset the toolbars
-            ResetToolBars();
-            // reset the external tools
-            ResetExternalTools();
-            m_UIStateData.navigationState.EnableAllNavigation(true);
+            bridge.Subscribe<ReloadProject>(ctx => StartCoroutine(ReloadProject()));
 
-            m_UIStateData.settingsToolStateData = new SettingsToolStateData
-            {
-                bimFilterEnabled = true,
-                sceneOptionEnabled = true,
-                sunStudyEnabled = true
-            };
-
-            stateChanged?.Invoke(m_UIStateData);
-            debugStateChanged?.Invoke(m_UIDebugStateData);
-
-            PlayerClientBridge.MatchmakerManager.JoinRoom(m_UIProjectStateData.activeProject.serverProjectId);
-
+            ConnectMultiplayerToActorSystem();
         }
 
         void OnOpenInViewerDetected(OpenInViewerInfo openInViewerInfo)
@@ -812,41 +854,46 @@ namespace Unity.Reflect.Viewer.UI
             // Can only process one at a time
             if (m_CachedOpenInViewerInfo == null)
             {
-                var session = m_UISessionStateData;
-                switch (session.sessionState.loggedState)
+                var isLogged = m_UISessionStateData.loggedState.Equals(LoginState.LoggedIn);
+                m_UISessionStateData.linkShareLoggedOut = !isLogged;
+
+                // Process openInViewerInfo only when user project list has been received
+                if (isLogged && m_UISessionStateData.projectListState.Equals(ProjectListState.Ready))
                 {
-                    case LoginState.LoggedIn:
-                        // Can we match the request with a valid project?
-                        if (GetProjectToOpen(openInViewerInfo.ServerId, openInViewerInfo.ProjectId) != null)
+                    // Can we match the request with a valid project?
+                    if (GetProjectToOpen(openInViewerInfo.ServerId, openInViewerInfo.ProjectId) != null)
+                    {
+                        if (m_ProjectSettingStateData.activeProject == Project.Empty)
                         {
-                            if (m_UIProjectStateData.activeProject == Project.Empty)
-                            {
-                                TryOpenProject(openInViewerInfo);
-                            }
-                            else
-                            {
-                                // Ask to close current project only if not the same
-                                if (m_UIProjectStateData.activeProject.projectId != openInViewerInfo.ProjectId && m_UIProjectStateData.activeProject.serverProjectId != openInViewerInfo.ServerId)
-                                {
-                                    PopupCloseProjectDialog(openInViewerInfo, UserApprovedOpenInViewer);
-                                }
-                            }
+                            TryOpenKnownProject(openInViewerInfo);
                         }
                         else
                         {
-                            PopupAccessDeniedMessage();
+                            // Ask to close current project only if not the same
+                            if (m_ProjectSettingStateData.activeProject.projectId != openInViewerInfo.ProjectId && m_ProjectSettingStateData.activeProject.serverProjectId != openInViewerInfo.ServerId)
+                            {
+                                PopupCloseProjectDialog(openInViewerInfo, UserApprovedOpenInViewer);
+                            }
                         }
-                        break;
-                    case LoginState.LoggingIn:
-                    case LoginState.LoggedOut:
-                        m_CachedOpenInViewerInfo = openInViewerInfo;
-                        m_UISessionStateData.sessionState.linkShareLoggedOut = true;
-                        sessionStateChanged?.Invoke(sessionStateData);
-                        break;
-                    case LoginState.LoggingOut:
-                        break;
+                    }
+                    else
+                    {
+                        PopupAccessDeniedMessage();
+                    }
                 }
+                else
+                {
+                    m_CachedOpenInViewerInfo = openInViewerInfo;
+                }
+
+                m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
             }
+        }
+
+        void OnOpenInViewerDetectedWithArgs(OpenInViewerInfo openInViewerInfo, Dictionary<string, string> queryArgs)
+        {
+            m_QueryArgs = queryArgs;
+            OnOpenInViewerDetected(openInViewerInfo);
         }
 
         void PopupCloseProjectDialog(OpenInViewerInfo openInViewerInfo, Action<OpenInViewerInfo> OnApprove)
@@ -860,114 +907,108 @@ namespace Unity.Reflect.Viewer.UI
             {
                 OnApprove(openInViewerInfo);
             };
-            data.negativeCallback = delegate { };
+            data.negativeCallback = delegate
+            { };
             m_PopUpManager.DisplayModalPopUp(data);
         }
 
         void UserApprovedOpenInViewer(OpenInViewerInfo openInViewerInfo)
         {
-            var session = m_UISessionStateData;
-            switch (session.sessionState.loggedState)
+            if (m_UISessionStateData.loggedState.Equals(LoginState.LoggedIn) &&
+                m_UISessionStateData.projectListState.Equals(ProjectListState.Ready))
             {
-                case LoginState.LoggedIn:
-                    if (!TryOpenProject(openInViewerInfo))
-                    {
-                        PopupAccessDeniedMessage();
-                    }
-                    break;
-                case LoginState.LoggingIn:
-                case LoginState.LoggedOut:
-                    m_CachedOpenInViewerInfo = openInViewerInfo;
-                    break;
-                case LoginState.LoggingOut:
-                    break;
+                if (!TryOpenKnownProject(openInViewerInfo))
+                {
+                    PopupAccessDeniedMessage();
+                }
+            }
+            else
+            {
+                m_CachedOpenInViewerInfo = openInViewerInfo;
             }
         }
 
-        bool TryOpenProject(OpenInViewerInfo openInViewerInfo)
+        bool TryOpenKnownProject(OpenInViewerInfo openInViewerInfo)
         {
             var project = GetProjectToOpen(openInViewerInfo.ServerId, openInViewerInfo.ProjectId);
             if (project != null)
             {
-                OpenProject(project);
+                RequestOpenProject(project);
                 return true;
             }
+
             return false;
         }
 
         void OnLinkSharingDetected(string linkToken)
         {
-            var session = m_UISessionStateData;
-            switch (session.sessionState.loggedState)
-            {
-                case LoginState.LoggedIn:
-                    // process token
-                    m_LinkSharingManager.ProcessSharingToken(session.sessionState.user.AccessToken, linkToken);
+            StartCoroutine(LinkSharingDetected(linkToken));
+        }
 
-                    break;
-                case LoginState.LoggingIn:
-                case LoginState.LoggedOut:
-                    m_CachedLinkToken = linkToken;
-                    m_UISessionStateData.sessionState.linkShareLoggedOut = true;
-                    sessionStateChanged?.Invoke(sessionStateData);
-                    break;
-                case LoginState.LoggingOut:
-                    break;
+        IEnumerator LinkSharingDetected(string linkToken)
+        {
+            while (!m_Initialized)
+            {
+                yield return null;
             }
+
+            m_UISessionStateData.isOpenWithLinkSharing = true;
+            m_UISessionStateData.cachedLinkToken = linkToken;
+
+            if (m_UISessionStateData.loggedState.Equals(LoginState.LoggedIn) &&
+                m_UISessionStateData.projectListState.Equals(ProjectListState.Ready))
+            {
+                m_AccessTokenManagerUpdater.CreateAccessTokenWithLinkToken(linkToken, m_UISessionStateData.user.AccessToken, OpenProjectFromLinkSharing);
+                m_UISessionStateData.linkShareLoggedOut = false;
+            }
+            else if (!m_UISessionStateData.loggedState.Equals(LoginState.ProcessingToken) && !m_UISessionStateData.loggedState.Equals(LoginState.LoggedIn))
+            {
+                m_AccessTokenManagerUpdater.CreateAccessTokenWithLinkToken(linkToken, null, OpenProjectFromLinkSharing);
+                m_UISessionStateData.linkShareLoggedOut = false;
+            }
+            else
+            {
+                m_UISessionStateData.linkShareLoggedOut = true;
+            }
+
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
         }
 
         IEnumerator StartLogin()
         {
             yield return null;
             m_MessageManager.SetStatusMessage("Logging in...");
-            stateChanged?.Invoke(m_UIStateData);
+            m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
 
-            m_UISessionStateData.sessionState.loggedState = LoginState.LoggingIn;
+            m_UISessionStateData.loggedState = LoginState.LoggingIn;
             m_LoginManager.Login();
-            sessionStateChanged?.Invoke(sessionStateData);
+            m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
+        }
+
+        void OnLinkSharingDetectedWithArgs(string linkToken, Dictionary<string, string> queryArgs)
+        {
+            m_QueryArgs = queryArgs;
+            OnLinkSharingDetected(linkToken);
         }
 
         Project GetProjectToOpen(string serverId, string projectId)
         {
-            return m_UISessionStateData.sessionState.rooms
-                .Select(x => x.project)
+            return m_UISessionStateData.rooms
+                .Select(x => ((ProjectRoom)x).project)
                 .FirstOrDefault(x => x.host.ServerId.Equals(serverId)
-                                     && x.projectId.Equals(projectId));
+                    && x.projectId.Equals(projectId));
         }
 
-        void OnLinkSharingProjectInfo(UnityProject projectInfo)
+        void StarOpenProjectFromModal(AccessToken accessToken)
         {
-            var project = GetProjectToOpen(projectInfo.Host.ServerId, projectInfo.ProjectId) ?? new Project(projectInfo);
-
-            if (m_UIProjectStateData.activeProject != Project.Empty)
-            {
-                // close project popup.
-                var data = m_PopUpManager.GetModalPopUpData();
-                data.title = k_CloseProjectTitle;
-                data.text = k_CloseProjectText;
-                data.negativeText = "Cancel";
-                data.positiveCallback = delegate
-                {
-                    StarOpenProjectFromModal(project);
-                };
-                m_PopUpManager.DisplayModalPopUp(data);
-            }
-            else
-            {
-                OpenProject(project);
-            }
+            StartCoroutine(OpenProjectFromModal(accessToken));
         }
 
-        void StarOpenProjectFromModal(Project project)
-        {
-            StartCoroutine(OpenProjectFromModal(project));
-        }
-
-        IEnumerator OpenProjectFromModal(Project project)
+        IEnumerator OpenProjectFromModal(AccessToken accessToken)
         {
             // Avoid sticky modal popup
             yield return new WaitForSeconds(0.5f);
-            OpenProject(project);
+            OpenProject(accessToken);
         }
 
         void PopupAccessDeniedMessage()
@@ -976,7 +1017,7 @@ namespace Unity.Reflect.Viewer.UI
             var data = m_PopUpManager.GetModalPopUpData();
             data.title = k_AccessDeniedTitle;
             data.text = k_AccessDeniedText;
-            data.positiveText = "Close";
+            data.positiveText = k_Close;
             m_PopUpManager.DisplayModalPopUp(data);
         }
 
@@ -988,23 +1029,375 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnLinkCreatedException(Exception exception)
         {
-            // todo
+            Debug.Log("OnLinkCreatedException");
         }
-        void OnProjectInfoException(Exception exception)
+
+        void OpenProjectFromLinkSharing(AccessToken accessToken)
         {
-            // open dialog
-            var data = m_PopUpManager.GetModalPopUpData();
-            data.positiveText = "Close";
-            if (exception is ConnectionException)
+            Debug.Log($"accessToken.SyncServiceAccessToken = {accessToken.SyncServiceAccessToken}");
+            m_RequestedProject = new Project(accessToken.UnityProject);
+
+            if (m_ProjectSettingStateData.activeProject != Project.Empty)
             {
-                data.title = k_ConnectionErrorTitle;
-                data.text = k_ConnectionErrorText;
+                // Ask to close only if not the same project
+                if (m_ProjectSettingStateData.activeProject.serverProjectId != m_RequestedProject.serverProjectId)
+                {
+                    // close project popup.
+                    var data = m_PopUpManager.GetModalPopUpData();
+                    data.title = k_CloseProjectTitle;
+                    data.text = k_CloseProjectText;
+                    data.negativeText = "Cancel";
+                    data.positiveCallback = delegate
+                    {
+                        StarOpenProjectFromModal(accessToken);
+                    };
+                    data.negativeCallback = delegate
+                    {
+                        m_RequestedProject = Project.Empty;
+                    };
+                    m_PopUpManager.DisplayModalPopUp(data);
+                }
+                else
+                {
+                    // Same project. Handle query args, if any.
+                    if (m_QueryArgs.Count > 0)
+                    {
+                        QueryArgHandler.InvokeQueryArgMethods(m_QueryArgs);
+                        m_QueryArgs.Clear();
+                    }
+                }
             }
             else
             {
-                data.title = k_AccessDeniedTitle;
-                data.text = k_AccessDeniedText;
+                OpenProject(accessToken);
             }
+        }
+
+        void OnCreateAccessToken(AccessToken accessToken)
+        {
+            Debug.Log("OnCreateAccessToken");
+        }
+
+        void OnRefreshAccessToken(AccessToken accessToken)
+        {
+            Debug.Log("OnRefreshAccessToken");
+        }
+
+        void OnAccessTokenCreatedWithLinkToken(AccessToken accessToken)
+        {
+            Debug.Log("OnAccessTokenCreatedWithLinkToken");
+        }
+
+        void SetAccessTokenUser(UnityUser user)
+        {
+            // If Viewer has not been logged in yet. (Anonymous User)
+            if (m_UISessionStateData.user == null || m_UISessionStateData.user.UserId != user.UserId)
+            {
+                ConnectMultiplayerEvents();
+
+                PlayerClientBridge.MatchmakerManager.Connect(user.AccessToken,
+                    m_MultiplayerController.connectToLocalServer);
+
+                m_UIStateData.colorPalette = PlayerClientBridge.MatchmakerManager.Palette.Select(c =>
+                    new Color(c.R / (float)255, c.G / (float)255, c.B / (float)255)
+                ).ToArray();
+
+                m_UISessionStateData.user = user;
+                m_UISessionStateData.userIdentity =
+                    new UserIdentity(null, -1, user?.DisplayName, DateTime.MinValue, null);
+
+                m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
+                m_SessionStateContextTarget.UpdateWith(ref m_UISessionStateData);
+
+                // if anonymous user, Hide Appbar buttons
+                if (m_UISessionStateData.loggedState != LoginState.LoggedIn)
+                {
+                    m_AppBarStateData.buttonInteractable = new ButtonInteractable { type = (int)ButtonType.ProjectList, interactable = false };
+                    m_AppBarContextTarget.UpdateWith(ref m_AppBarStateData);
+                    m_AppBarStateData.buttonInteractable = new ButtonInteractable { type = (int)ButtonType.LinkSharing, interactable = false };
+                    m_AppBarContextTarget.UpdateWith(ref m_AppBarStateData);
+                }
+            }
+        }
+
+        void OpenProject(AccessToken accessToken)
+        {
+            // Validate Requested project match returned project in AccessToken
+            if (m_RequestedProject != Project.Empty && m_RequestedProject.UnityProject.ProjectId.Equals(accessToken.UnityProject.ProjectId))
+            {
+                OpenProject(m_RequestedProject, accessToken);
+            }
+            else
+            {
+                Debug.LogWarning($"AccessToken Project mismatch: {m_RequestedProject.UnityProject.Name}, {m_RequestedProject.UnityProject.ProjectId}/{accessToken.UnityProject.ProjectId}");
+            }
+        }
+
+        void OpenProject(Project project, AccessToken accessToken = null, bool isRestarting = false)
+        {
+            m_RequestedProject = Project.Empty;
+            CloseProject(isRestarting);
+
+            CloseAllDialogs();
+
+            project.host.SyncServerAccessToken = accessToken?.SyncServiceAccessToken;
+            m_CurrentOpenProject = m_ProjectSettingStateData.activeProject = project;
+            m_ProjectSettingStateData.accessToken = accessToken;
+
+            if (accessToken != null)
+            {
+                DNALicenseInfo dnaInfo = new DNALicenseInfo();
+                dnaInfo.floatingSeat = accessToken.FloatingSeatDuration;
+                dnaInfo.entitlements = accessToken.GetEntitlements();
+                m_DeltaDNAStateData.dnaLicenseInfo = dnaInfo;
+            }
+
+            EnableMARSSession(true);
+
+            var projectIndex = Array.FindIndex(m_UISessionStateData.rooms, (room) => ((ProjectRoom)room).project.serverProjectId == project.serverProjectId);
+            if (projectIndex == -1) // Opening a project not in the project list
+            {
+                m_UISessionStateData.linkSharedProjectRoom = new ProjectRoom(project);
+            }
+
+            if (accessToken != null)
+                SetAccessTokenUser(accessToken.UnityUser);
+
+            if (!isRestarting)
+                m_MessageManager.SetStatusMessage($"Opening {m_ProjectSettingStateData.activeProject.name}...");
+
+            m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
+            m_DeltaDNAStateContextTarget.UpdateWith(ref m_DeltaDNAStateData);
+            m_ProjectSettingStateData.activeProjectThumbnail = ThumbnailController.LoadThumbnailForProject(m_ProjectSettingStateData.activeProject);
+            m_ProjectManagementContextTarget.UpdateWith(ref m_ProjectSettingStateData);
+
+            m_Reflect.StreamingStarting += OnStreamingStarting;
+
+            m_Reflect.OpenProject(project, m_UISessionStateData.user, accessToken, isRestarting, bridge =>
+            {
+                if (!bridge.IsInitialized)
+                    return;
+
+                m_Bridge = bridge;
+                m_ViewerBridge = m_Reflect.ViewerBridge;
+
+                // Update UI with value in asset only when we change the asset
+                // This will preserve the current state when changing project with the same setup
+                var reloadSettings = m_Reflect.Asset != m_LasLoadedAsset;
+                m_LasLoadedAsset = m_Reflect.Asset;
+                if (reloadSettings)
+                {
+                    m_SceneOptionData.enableLightData = m_Bridge.GetFirstOrEmptySettings<LightActor.Settings>().EnableLights;
+                    m_UIStateData.syncEnabled = m_Bridge.GetFirstOrEmptySettings<SyncTreeActor.Settings>().IsLiveSyncEnabled;
+
+                    var boxSettings = m_Bridge.GetFirstOrEmptySettings<BoundingBoxActor.Settings>();
+                    boxSettings.DisplayOnlyBoundingBoxes = false;
+
+                    var debugOptionsData = m_UIDebugStateData.debugOptionsData;
+                    debugOptionsData.useDebugBoundingBoxMaterials = boxSettings.UseDebugMaterials;
+
+                    var spatialSettings = m_Bridge.GetFirstOrEmptySettings<SpatialActor.Settings>();
+
+                    // ensure depth culling is off by default on devices that don't support AsycGPUReadback
+                    spatialSettings.UseDepthCulling &= m_PipelineStateData.deviceCapability.HasFlag(SetVREnableAction.DeviceCapability.SupportsAsyncGPUReadback);
+
+                    debugOptionsData.spatialPriorityWeights = new Vector3(spatialSettings.PriorityWeightAngle,
+                        spatialSettings.PriorityWeightDistance, spatialSettings.PriorityWeightSize);
+
+                    debugOptionsData.useCulling = spatialSettings.UseCulling;
+
+                    var syncTreeSettings = m_Bridge.GetFirstOrEmptySettings<SyncTreeActor.Settings>();
+                    debugOptionsData.useSpatialManifest = syncTreeSettings.UseSpatialManifest;
+                    debugOptionsData.useHlods = syncTreeSettings.UseHlods;
+                    debugOptionsData.hlodDelayMode = (int)syncTreeSettings.HlodDelayMode;
+                    debugOptionsData.hlodPrioritizer = (int)syncTreeSettings.Prioritizer;
+                    debugOptionsData.targetFps = syncTreeSettings.TargetFps;
+
+                    var debugActorSettings = m_Bridge.GetFirstOrEmptySettings<DebugActor.Settings>();
+                    debugOptionsData.showActorDebug = debugActorSettings.ShowGui;
+
+                    m_UIDebugStateData.debugOptionsData = debugOptionsData;
+                }
+                else
+                {
+                    m_Bridge.GetFirstOrEmptySettings<LightActor.Settings>().EnableLights = m_SceneOptionData.enableLightData;
+                    m_Bridge.GetFirstOrEmptySettings<SyncTreeActor.Settings>().IsLiveSyncEnabled = m_UIStateData.syncEnabled;
+
+                    var boxSettings = m_Bridge.GetFirstOrEmptySettings<BoundingBoxActor.Settings>();
+                    boxSettings.DisplayOnlyBoundingBoxes = false;
+                    boxSettings.UseDebugMaterials = m_UIDebugStateData.debugOptionsData.useDebugBoundingBoxMaterials;
+
+                    var spatialSettings = m_Bridge.GetFirstOrEmptySettings<SpatialActor.Settings>();
+
+                    // ensure depth culling is off by default on devices that don't support AsycGPUReadback
+                    spatialSettings.UseDepthCulling &= m_PipelineStateData.deviceCapability.HasFlag(SetVREnableAction.DeviceCapability.SupportsAsyncGPUReadback);
+                    spatialSettings.PriorityWeightAngle = m_UIDebugStateData.debugOptionsData.spatialPriorityWeights.x;
+                    spatialSettings.PriorityWeightDistance = m_UIDebugStateData.debugOptionsData.spatialPriorityWeights.y;
+                    spatialSettings.PriorityWeightSize = m_UIDebugStateData.debugOptionsData.spatialPriorityWeights.z;
+                    spatialSettings.UseCulling = m_UIDebugStateData.debugOptionsData.useCulling;
+
+                    var syncTreeSettings = m_Bridge.GetFirstOrEmptySettings<SyncTreeActor.Settings>();
+                    syncTreeSettings.UseSpatialManifest = m_UIDebugStateData.debugOptionsData.useSpatialManifest;
+                    syncTreeSettings.UseHlods = m_UIDebugStateData.debugOptionsData.useHlods;
+                    syncTreeSettings.HlodDelayMode = (HlodMode)m_UIDebugStateData.debugOptionsData.hlodDelayMode;
+                    syncTreeSettings.Prioritizer = (SyncTreeActor.Prioritizer)m_UIDebugStateData.debugOptionsData.hlodPrioritizer;
+                    syncTreeSettings.TargetFps = m_UIDebugStateData.debugOptionsData.targetFps;
+
+                    var debugActorSettings = m_Bridge.GetFirstOrEmptySettings<DebugActor.Settings>();
+                    debugActorSettings.ShowGui = m_UIDebugStateData.debugOptionsData.showActorDebug;
+                }
+            });
+
+            // set enable texture and light
+            Shader.SetGlobalFloat(SetEnableTextureAction.k_UseTexture, m_SceneOptionData.enableTexture ? 1 : 0);
+
+            m_ARStateData.placementStateData.boundingBoxRootNode.gameObject.SetActive(true);
+
+            var spatialSettings = m_Reflect.Bridge.GetFirstMatchingSettings<SpatialActor.Settings>();
+            if (spatialSettings != null)
+            {
+                m_TeleportSelector = new SpatialSelector
+                {
+                    SpatialPicker = m_Reflect.ViewerBridge,
+                    SpatialPickerAsync = m_Reflect.ViewerBridge,
+                    WorldRoot = m_PipelineStateData.rootNode
+                };
+                m_UIProjectStateData.teleportPicker = m_TeleportSelector;
+
+                m_ProjectStateContextTarget.UpdateWith(ref m_UIProjectStateData);
+            }
+
+            // reset the toolbars
+            ResetToolBars();
+            m_UIStateData.navigationStateData.EnableAllNavigation(true);
+
+            m_UIStateData.settingsToolStateData = new SettingsToolStateData
+            {
+                bimFilterEnabled = true,
+                sceneSettingsEnabled = true,
+                sunStudyEnabled = true,
+                markerSettingsEnabled = true
+            };
+
+            m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
+            m_NavigationContextTarget.UpdateWith(ref m_UIStateData.navigationStateData, UpdateNotification.ForceNotify);
+            m_SettingsToolContextTarget.UpdateWith(ref m_UIStateData.settingsToolStateData);
+            m_ToolStateContextTarget.UpdateWith(ref m_UIStateData.toolState);
+            m_DebugOptionContextTarget.UpdateWith(ref m_UIDebugStateData.debugOptionsData);
+            m_StateInfoContextTarget.UpdateWith(ref m_UIDebugStateData.statsInfoData);
+            m_SceneOptionContextTarget.UpdateWith(ref m_SceneOptionData);
+
+            if (accessToken != null)
+                PlayerClientBridge.MatchmakerManager.JoinRoom(m_ProjectSettingStateData.activeProject.serverProjectId, () => m_ProjectSettingStateData.accessToken.CloudServicesAccessToken);
+
+            QueryArgHandler.InvokeQueryArgMethods(m_QueryArgs);
+            m_QueryArgs.Clear();
+        }
+
+        void ConfigurePopupExceptionMessage(Exception exception, ref ModalPopup.ModalPopupData data)
+        {
+            switch (exception)
+            {
+                case NoSeatEntitlementException _:
+                    data.title = k_NoSeats;
+                    if (m_UISessionStateData.loggedState.Equals(LoginState.LoggedIn))
+                    {
+                        data.text = k_MaxSeatsLoggedIn;
+                    }
+                    else
+                    {
+                        data.text = k_MaxSeatsLoggedOut;
+                    }
+                    break;
+                case ForbiddenException _:
+                    data.title = k_AccessDeniedTitle;
+                    data.text = k_AccessDeniedText;
+                    break;
+                default:
+                    data.title = k_Error;
+                    data.text = exception.Message;
+                    break;
+            }
+        }
+
+        void OnGeneralException(Exception exception)
+        {
+            var data = m_PopUpManager.GetModalPopUpData();
+            ConfigurePopupExceptionMessage(exception, ref data);
+
+            data.positiveText = k_Close;
+            m_PopUpManager.DisplayModalPopUp(data);
+        }
+
+        void OnCreateAccessTokenException(Exception exception)
+        {
+            Debug.LogException(exception);
+            if (m_RequestedProject != Project.Empty && m_RequestedProject.IsLocal)
+            {
+                OpenProject(m_RequestedProject);
+            }
+            else
+            {
+                CloseAllDialogs();
+
+                Action additionalAction = null;
+                var data = m_PopUpManager.GetModalPopUpData();
+                data.positiveCallback = () =>
+                {
+                    //to cancel failed project request if any
+                    m_RequestedProject = Project.Empty;
+                    m_ProjectSettingStateData.activeProject = m_CurrentOpenProject;
+                    m_ProjectManagementContextTarget.UpdateWith(ref m_ProjectSettingStateData);
+
+                    additionalAction?.Invoke();
+                };
+
+                if (m_CurrentOpenProject == Project.Empty)
+                {
+                    if (m_UISessionStateData.user == null)
+                    {
+                        data.positiveText = k_Login;
+                        additionalAction = () =>
+                        {
+                            m_UIStateData.activeDialog = OpenDialogAction.DialogType.LoginScreen;
+                            m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
+                        };
+                    }
+                    else
+                    {
+                        data.positiveText = k_OpenProjectList;
+                        additionalAction = () =>
+                        {
+                            RefreshProjectList();
+                            m_UIStateData.activeDialog = OpenDialogAction.DialogType.LandingScreen;
+                            m_UIStateContextTarget.UpdateWith(ref m_UIStateData);
+                        };
+                    }
+                }
+
+                ConfigurePopupExceptionMessage(exception, ref data);
+
+                m_PopUpManager.DisplayModalPopUp(data);
+            }
+        }
+
+        void OnAccessTokenCreateWithLinkTokenException(Exception exception)
+        {
+            Debug.LogException(exception);
+        }
+
+        void OnRefreshAccessTokenException(Exception exception)
+        {
+            // when refresh Token is failed. what we gonna do?
+            Debug.LogException(exception);
+        }
+
+        void OnProjectsRefreshException(ProjectListRefreshException exception)
+        {
+            var data = m_PopUpManager.GetModalPopUpData();
+            data.positiveText = k_Close;
+            data.title = k_Error;
+            data.text = exception.Message + "\n Previously Downloaded Projects might still be available";
             m_PopUpManager.DisplayModalPopUp(data);
         }
     }

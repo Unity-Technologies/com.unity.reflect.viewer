@@ -1,21 +1,31 @@
 ﻿using System;
+using System.Runtime.InteropServices;
+using Unity.Properties;
+using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    [Serializable]
-    public struct ProgressData : IEquatable<ProgressData>
+    [Serializable, GeneratePropertyBag]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct ProgressData : IEquatable<ProgressData>, IProgressDataProvider
     {
-        public enum ProgressState
-        {
-            NoPendingRequest,
-            PendingIndeterminate,
-            PendingDeterminate,
-        }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public SetProgressStateAction.ProgressState progressState { get; set; }
 
-        public ProgressState progressState;
-        public int currentProgress;
-        public int totalCount;
-        public string message;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int currentProgress { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int totalCount { get; set; }
+
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public string message { get; set; }
 
         public static bool operator ==(ProgressData a, ProgressData b)
         {
@@ -30,7 +40,7 @@ namespace Unity.Reflect.Viewer.UI
         public bool Equals(ProgressData other)
         {
             return progressState == other.progressState && currentProgress == other.currentProgress &&
-                totalCount == other.totalCount && message == other.message;
+                   totalCount == other.totalCount && message == other.message;
         }
 
         public override bool Equals(object obj)

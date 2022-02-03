@@ -36,10 +36,10 @@ namespace Unity.Reflect.Viewer
 
         public NetworkUserData(string id)
         {
-            this.matchmakerId = id;
-            this.visualRepresentation = null;
-            this.networkUser = null;
-            this.lastUpdateTimeStamp = DateTime.Now;
+            matchmakerId = id;
+            visualRepresentation = null;
+            networkUser = null;
+            lastUpdateTimeStamp = DateTime.Now;
             selectedStreamKey = default;
             selectedObject = null;
             vivoxParticipant = null;
@@ -61,7 +61,11 @@ namespace Unity.Reflect.Viewer
             return matchmakerId == other.matchmakerId &&
                 networkUser == other.networkUser &&
                 visualRepresentation == other.visualRepresentation &&
-                lastUpdateTimeStamp == other.lastUpdateTimeStamp;
+                lastUpdateTimeStamp == other.lastUpdateTimeStamp &&
+                selectedStreamKey == other.selectedStreamKey &&
+                selectedObject == other.selectedObject &&
+                vivoxParticipant == other.vivoxParticipant &&
+                voiceStateData.Equals(other.voiceStateData);
         }
 
         public override bool Equals(object obj)

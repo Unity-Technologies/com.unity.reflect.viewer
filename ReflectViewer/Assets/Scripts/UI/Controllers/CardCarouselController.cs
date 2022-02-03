@@ -1,5 +1,7 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -11,10 +13,10 @@ namespace Unity.Reflect.Viewer.UI
         Button m_Button;
 
         [SerializeField]
-        ARMode m_ARMode;
+        SetARModeAction.ARMode m_ARMode;
 #pragma warning restore CS0649
 
-        public event Action<ARMode> buttonClicked;
+        public event Action<SetARModeAction.ARMode> buttonClicked;
 
         void Start()
         {

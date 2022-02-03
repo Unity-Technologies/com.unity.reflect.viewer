@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.UI;
 
 namespace Unity.Reflect.Viewer.UI
@@ -13,14 +15,18 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         CollaborationUIController m_CollaboratorsList;
 
-        LoginState? m_LoginState;
         IEnumerable<string> m_UserIds = new string[0];
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
 
         void Awake()
         {
-            UIStateManager.roomConnectionStateChanged += OnConnectionStateChanged;
-            UIStateManager.sessionStateChanged += OnSessionStateDataChanged;
-            UIStateManager.stateChanged += OnUIStateDataChanged;
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<List<NetworkUserData>>(RoomConnectionContext.current, nameof(IRoomConnectionDataProvider<NetworkUserData>.users), OnUsersChanged));
+            SetPanelActive(true);
+        }
+
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
         }
 
         void SetPanelActive(bool isActive)
@@ -33,41 +39,17 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        void OnConnectionStateChanged(RoomConnectionStateData connectionState)
+        void OnUsersChanged(List<NetworkUserData> users)
         {
-            var userIds = connectionState.users.Select(u => u.matchmakerId);
+            var userIds = users.Select(u => u.matchmakerId);
 
-            if(EnumerableExtension.SafeSequenceEquals(m_UserIds, userIds))
+            if (!EnumerableExtension.SafeSequenceEquals(m_UserIds, userIds))
             {
-                m_UserIds = userIds;
+                m_UserIds = new List<string>(userIds);
                 m_CollaboratorsList.UpdateUserList(m_UserIds.ToArray());
             }
-        }
 
-        void OnUIStateDataChanged(UIStateData stateData)
-        {
-            m_CollaboratorsList.UpdateUserList(m_UserIds.ToArray());
-        }
-
-        void OnSessionStateDataChanged(UISessionStateData data)
-        {
-            if (!m_LoginState.HasValue || m_LoginState != data.sessionState.loggedState)
-            {
-                switch (data.sessionState.loggedState)
-                {
-                    case LoginState.LoggedIn:
-                        SetPanelActive(true);
-                        break;
-                    case LoginState.LoggedOut:
-                        SetPanelActive(false);
-                        break;
-                    case LoginState.LoggingIn:
-                        break;
-                    case LoginState.LoggingOut:
-                        break;
-                }
-                m_LoginState = data.sessionState.loggedState;
-            }
+            m_CollaboratorsList.UpdateUsers(m_UserIds.ToArray());
         }
     }
 }

@@ -72,3 +72,10 @@ Assets/UniMerge.meta
 # Samples files
 Assets/Samples/
 Assets/Samples.meta
+
+# Auto-generated config
+.vsconfig
+
+# User-defined settings
+UserSettings/
+Assets/StreamingAssets/.PerformanceTestProjects

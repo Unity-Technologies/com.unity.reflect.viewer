@@ -1,0 +1,5 @@
+{
+	"displayName":"Viewer Core Example",
+	"description": "Sample for the Reflect Viewer Core demonstrating how to use Prefabs, UI Selectors, Sharpflux in an Unity Application at runtime.",
+	"createSeparatePackage": false
+}

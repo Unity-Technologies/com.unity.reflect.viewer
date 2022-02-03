@@ -132,7 +132,7 @@ namespace Unity.Reflect.Viewer
         {
             m_RigidBody = GetComponent<Rigidbody>();
             m_Capsule = GetComponent<CapsuleCollider>();
-            mouseLook.Init(transform, cam.transform, m_InputActionAsset["Quick WorldOrbit Action"]);
+            mouseLook.Init(transform, cam.transform, m_InputActionAsset);
             m_InputActionAsset["Jump Action"].performed += OnJump;
             m_RunningAction = m_InputActionAsset["Run Action"];
         }
@@ -234,8 +234,6 @@ namespace Unity.Reflect.Viewer
 
             // get the rotation before it's changed
             float oldYRotation = transform.eulerAngles.y;
-
-            mouseLook.LookRotation(transform, cam.transform);
 
             if (m_IsGrounded || advancedSettings.airControl)
             {

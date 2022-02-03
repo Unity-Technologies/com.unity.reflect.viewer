@@ -1,0 +1,21 @@
+<UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xmlns:props="Unity.Properties.UI" xmlns:internal-props="Unity.Properties.UI.Internal" id="PropertyBagExplorer">
+    <ui:VisualElement class="unity-properties__expand unity-properties__property-bag-explorer__container">
+        <internal-props:Splitter 
+                class="unity-properties__property-bag-explorer__splitter"
+                orientation="horizontal"
+                fixed-pane-index="0"
+                fixed-pane-initial-dimension="250"
+        >
+            <props:InspectorElement
+                    class="unity-properties__property-bag-explorer__list"
+                    binding-path="DisplayList"
+            />
+            <ui:ScrollView>
+                <props:InspectorElement
+                        class="unity-properties__property-bag-explorer__detail"
+                        binding-path="Details"
+                />
+            </ui:ScrollView>
+        </internal-props:Splitter>
+    </ui:VisualElement>
+</UXML>

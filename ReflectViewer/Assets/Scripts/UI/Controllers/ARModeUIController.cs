@@ -1,8 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using SharpFlux;
 using SharpFlux.Dispatching;
+using Unity.MARS;
 #if UNITY_EDITOR
 using UnityEditor.MARS.Simulation;
 using Unity.MARS.Simulation;
@@ -11,12 +11,13 @@ using Unity.MARS.Providers.Synthetic;
 using Unity.MARS.Providers;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.Reflect.Viewer.Input;
-
 using Object = UnityEngine.Object;
 
 #if URP_AVAILABLE
-    using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.Universal;
 #endif
 
 namespace Unity.Reflect.Viewer.UI
@@ -24,7 +25,7 @@ namespace Unity.Reflect.Viewer.UI
     /// <summary>
     /// Controller responsible for managing the selection of the type of orbit tool
     /// </summary>
-    public class ARModeUIController : MonoBehaviour, IExposedPropertyTable
+    public class ARModeUIController : MonoBehaviour, IExposedPropertyTable, IARModeUIController
     {
 #pragma warning disable CS0649
         [SerializeField]
@@ -44,33 +45,49 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         float m_DefaultSimulationCameraHeight = 1.6f;
 #pragma warning restore CS0649
-
-        bool m_ToolbarsEnabled;
-        InstructionUIState? m_CachedInstructionUI;
-        bool? m_CachedOperationCancelled;
-        bool? m_CachedAREnabled;
-
-        bool m_CachedScaleEnabled;
-        bool m_CachedRotateEnabled;
-
         MARS.MARSCamera m_MARSCamera;
 #if URP_AVAILABLE
         UniversalAdditionalCameraData m_CameraData;
 #endif
         float m_InitialScaleSize;
-        float m_InitialNearClippingPlane;
-        float m_InitialFarClippingPlane;
-        ArchitectureScale? m_CachedModelScale;
+        float m_InitialModelScale;
         bool m_ScaleActionInProgress;
         Array m_ScaleValues;
-        IInstructionUI m_CurrentInstructionUI;
-        ARMode? m_ArMode;
-        DialogType m_CurrentActiveDialog = DialogType.None;
+        IARInstructionUI m_CurrentIARInstructionUI;
+
+        IUISelector<ARPlacementStateData> m_ARPlacementStateDataSelector;
+        IUISelector<SetModelScaleAction.ArchitectureScale> m_ModelScaleSelector;
+        IUISelector<Transform> m_RootSelector;
+        IUISelector<bool> m_ARScaleEnabledSelector;
+        IUISelector<bool> m_ARRotateEnabledSelector;
+        MARSSession m_MarsSession = null;
+        IUISelector<bool> m_ToolBarEnabledSelector;
+        SetARModeAction.ARMode m_ARmode = SetARModeAction.ARMode.None;
+
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.arStateChanged += OnARStateDataChanged;
+            EnableMARSSession(true);
+            foreach (var obj in InstructionUIList)
+            {
+                var instructionUI = obj as IARInstructionUI;
+                instructionUI.Initialize(this);
+            }
+
+            m_DisposeOnDestroy.Add(m_ARScaleEnabledSelector = UISelectorFactory.createSelector<bool>(ARToolStateContext.current, nameof(IARToolStatePropertiesDataProvider.scaleEnabled)));
+            m_DisposeOnDestroy.Add(m_ARRotateEnabledSelector = UISelectorFactory.createSelector<bool>(ARToolStateContext.current, nameof(IARToolStatePropertiesDataProvider.rotateEnabled)));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(ARContext.current, nameof(IARModeDataProvider.arEnabled), OnAREnabledChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetInstructionUIStateAction.InstructionUIState>(ARContext.current, nameof(IARModeDataProvider.instructionUIState), OnInstructionUIStateChanged));
+
+            var arModeSelector = UISelectorFactory.createSelector<SetARModeAction.ARMode>(ARContext.current, nameof(IARModeDataProvider.arMode), OnARModeChanged);
+            m_DisposeOnDestroy.Add(arModeSelector);
+            m_DisposeOnDestroy.Add(m_ARPlacementStateDataSelector = UISelectorFactory.createSelector<ARPlacementStateData>(ARContext.current, nameof(IARPlacement<ARPlacementStateData>.placementStateData)));
+            m_DisposeOnDestroy.Add(m_ModelScaleSelector = UISelectorFactory.createSelector<SetModelScaleAction.ArchitectureScale>(ARPlacementContext.current, nameof(IARPlacementDataProvider.modelScale)));
+            m_DisposeOnDestroy.Add(m_RootSelector = UISelectorFactory.createSelector<Transform>(PipelineContext.current, nameof(IPipelineDataProvider.rootNode)));
+            m_DisposeOnDestroy.Add(m_ToolBarEnabledSelector = UISelectorFactory.createSelector<bool>(UIStateContext.current, nameof(IToolBarDataProvider.toolbarsEnabled), null));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(UIStateContext.current, nameof(IUIStateDataProvider.operationCancelled), OnOperationCancelledChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog), OnActiveDialogChanged));
 
             m_MARSCamera = Camera.main.GetComponent<MARS.MARSCamera>();
 #if URP_AVAILABLE
@@ -81,21 +98,28 @@ namespace Unity.Reflect.Viewer.UI
             m_InputActionAsset["Placement Scale Action"].started += OnPlacementScaleActionStarted;
             m_InputActionAsset["Placement Scale Action"].performed += OnPlacementScaleAction;
 
-            m_ScaleValues = Enum.GetValues(typeof(ArchitectureScale));
+            m_ScaleValues = Enum.GetValues(typeof(SetModelScaleAction.ArchitectureScale));
 
-            foreach (var obj in InstructionUIList)
+            // Force ARMode because the awake can be called on the next frame than UISelector
+            OnARModeChanged(arModeSelector.GetValue());
+        }
+
+        void OnActiveDialogChanged(OpenDialogAction.DialogType newData)
+        {
+            m_InstructionUI.SetActive(newData == OpenDialogAction.DialogType.None);
+        }
+
+        void OnOperationCancelledChanged(bool newData)
+        {
+            if (m_ToolBarEnabledSelector.GetValue() && newData)
             {
-                var instructionUI = obj as IInstructionUI;
-                instructionUI.Initialize(this);
+                m_CurrentIARInstructionUI.Cancel();
             }
-
-            m_InitialNearClippingPlane = m_MARSCamera.GetComponent<Camera>().nearClipPlane;
-            m_InitialFarClippingPlane = m_MARSCamera.GetComponent<Camera>().farClipPlane;
         }
 
         void OnPlacementScaleActionStarted(InputAction.CallbackContext context)
         {
-            if (!m_CachedScaleEnabled)
+            if (!m_ARScaleEnabledSelector.GetValue())
                 return;
 
             PinchGestureInteraction interaction = context.interaction as PinchGestureInteraction;
@@ -103,7 +127,7 @@ namespace Unity.Reflect.Viewer.UI
             {
                 PinchGesture pinchGesture = interaction?.currentGesture as PinchGesture;
                 m_InitialScaleSize = pinchGesture.gap;
-                m_CachedModelScale = UIStateManager.current.stateData.modelScale;
+                m_InitialModelScale = (float) m_ModelScaleSelector.GetValue();
                 m_ScaleActionInProgress = true;
                 pinchGesture.onFinished += OnPlacementScaleActionFinished;
             }
@@ -116,7 +140,7 @@ namespace Unity.Reflect.Viewer.UI
 
         void OnPlacementRotateAction(InputAction.CallbackContext context)
         {
-            if (OrphanUIController.isTouchBlockedByUI || m_CachedRotateEnabled != true || m_ScaleActionInProgress)
+            if (OrphanUIController.isTouchBlockedByUI || m_ARRotateEnabledSelector.GetValue() != true || m_ScaleActionInProgress)
                 return;
 
             var delta = context.ReadValue<Vector2>();
@@ -128,12 +152,12 @@ namespace Unity.Reflect.Viewer.UI
 
             var rotationAmount = -1.0f * (rotatedDelta.x / Screen.dpi) * m_RotationRateDegreesDrag;
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelRotation, new Vector3(0.0f, rotationAmount, 0.0f)));
+            Dispatcher.Dispatch(SetModelRotationAction.From(new Vector3(0.0f, rotationAmount, 0.0f)));
         }
 
         void OnPlacementScaleAction(InputAction.CallbackContext context)
         {
-            if (!m_CachedScaleEnabled)
+            if (!m_ARScaleEnabledSelector.GetValue())
                 return;
 
             PinchGestureInteraction interaction = context.interaction as PinchGestureInteraction;
@@ -141,55 +165,26 @@ namespace Unity.Reflect.Viewer.UI
             {
                 PinchGesture pinchGesture = interaction?.currentGesture as PinchGesture;
                 var ratio = m_InitialScaleSize / pinchGesture.gap; // inverted because scale size is 1/N
-                var newScale = GetNearestEnumValue((float)m_CachedModelScale * ratio);
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetModelScale, newScale));
+                var newScale = GetNearestEnumValue(m_InitialModelScale * ratio);
+                Dispatcher.Dispatch(SetModelScaleAction.From(newScale));
             }
         }
 
-        ArchitectureScale GetNearestEnumValue(float value)
+        SetModelScaleAction.ArchitectureScale GetNearestEnumValue(float value)
         {
-            ArchitectureScale returnValue = ArchitectureScale.OneToOne;
+            SetModelScaleAction.ArchitectureScale returnValue = SetModelScaleAction.ArchitectureScale.OneToOne;
             float distance = float.MaxValue;
             foreach (var enumValue in m_ScaleValues)
             {
-                var newValue =  Math.Abs(value - Convert.ToSingle(enumValue));
+                var newValue = Math.Abs(value - Convert.ToSingle(enumValue));
                 if (newValue < distance)
                 {
-                    returnValue = (ArchitectureScale)enumValue;
+                    returnValue = (SetModelScaleAction.ArchitectureScale)enumValue;
                     distance = newValue;
                 }
             }
+
             return returnValue;
-        }
-
-        void Start()
-        {
-            // since this starts on async scene load, needs to be up to date
-            OnStateDataChanged(UIStateManager.current.stateData);
-            OnARStateDataChanged(UIStateManager.current.arStateData);
-        }
-
-        void OnStateDataChanged(UIStateData stateData)
-        {
-            if (m_ToolbarsEnabled != stateData.toolbarsEnabled)
-            {
-                m_ToolbarsEnabled = stateData.toolbarsEnabled;
-            }
-
-            if (m_CachedOperationCancelled != stateData.operationCancelled && m_ToolbarsEnabled)
-            {
-                m_CachedOperationCancelled = stateData.operationCancelled;
-                if (m_CachedOperationCancelled == true)
-                {
-                    m_CurrentInstructionUI.Cancel();
-                }
-            }
-
-            if (m_CurrentActiveDialog != stateData.activeDialog)
-            {
-                m_CurrentActiveDialog = stateData.activeDialog;
-                m_InstructionUI.SetActive(m_CurrentActiveDialog == DialogType.None);
-            }
         }
 
         void EnableSimulationViewInEditor(bool enable)
@@ -209,11 +204,11 @@ namespace Unity.Reflect.Viewer.UI
 #endif
         }
 
-        void OnARStateDataChanged(UIARStateData arStateData)
+        void OnAREnabledChanged(bool newData)
         {
-            if (m_CachedAREnabled != arStateData.arEnabled)
+            if (m_MARSCamera != null)
             {
-                if (arStateData.arEnabled)
+                if (newData)
                 {
                     EnableARMode();
                 }
@@ -221,45 +216,60 @@ namespace Unity.Reflect.Viewer.UI
                 {
                     DisableARMode();
                 }
-                m_CachedAREnabled = arStateData.arEnabled;
             }
+        }
 
-            if (m_ArMode != arStateData.arMode)
+        void OnInstructionUIStateChanged(SetInstructionUIStateAction.InstructionUIState newData)
+        {
+            if (newData == SetInstructionUIStateAction.InstructionUIState.Init)
             {
-                m_ArMode = arStateData.arMode;
-                if (m_ArMode == null)
-                    return;
-
-                m_CurrentInstructionUI = null;
-                foreach (var obj in InstructionUIList)
-                {
-                    var instructionUI = obj as IInstructionUI;
-                    if (instructionUI.arMode == arStateData.arMode)
-                    {
-                        m_CurrentInstructionUI = instructionUI;
-                        break;
-                    }
-                }
-
-                if (m_CurrentInstructionUI == null)
-                {
-                    Debug.LogError("AR Instruction UI is null");
-                    return;
-                }
-                m_CurrentInstructionUI.Restart();
+                StartCoroutine(StartInstructionAR());
             }
+        }
 
-            if (m_CachedInstructionUI != arStateData.instructionUIState)
+        void OnARModeChanged(SetARModeAction.ARMode newData)
+        {
+            if (m_ARmode == newData)
+                return;
+
+            m_ARmode = newData;
+            if (newData == SetARModeAction.ARMode.None)
+                return;
+
+            m_CurrentIARInstructionUI = null;
+            foreach (var obj in InstructionUIList)
             {
-                m_CachedInstructionUI = arStateData.instructionUIState;
-                if (m_CachedInstructionUI == InstructionUIState.Init)
+                var instructionUI = obj as IARInstructionUI;
+                if (instructionUI.arMode == newData)
                 {
-                    StartCoroutine(StartInstrucitonAR());
+                    m_CurrentIARInstructionUI = instructionUI;
+                    break;
                 }
             }
 
-            m_CachedScaleEnabled = arStateData.arToolStateData.scaleEnabled;
-            m_CachedRotateEnabled = arStateData.arToolStateData.rotateEnabled;
+            if (m_CurrentIARInstructionUI == null)
+            {
+                Debug.LogError("AR Instruction UI is null");
+                return;
+            }
+
+            m_CurrentIARInstructionUI.Restart();
+        }
+
+        void EnableMARSSession(bool activate)
+        {
+            Debug.Log($"Enable MARSSession: {activate}");
+
+            if (m_MarsSession == null)
+            {
+                m_MarsSession = FindObjectOfType<MARSSession>();
+                if (m_MarsSession == null)
+                {
+                    return;
+                }
+            }
+
+            m_MarsSession.enabled = activate;
         }
 
         void EnableARMode()
@@ -271,11 +281,12 @@ namespace Unity.Reflect.Viewer.UI
             EnableSimulationViewInEditor(true);
 
             // disable RootNode
-            UIStateManager.current.m_RootNode.SetActive(false);
-            UIStateManager.current.m_BoundingBoxRootNode.SetActive(false);
+            m_RootSelector.GetValue().gameObject.SetActive(false);
+            m_ARPlacementStateDataSelector.GetValue().boundingBoxRootNode.gameObject.SetActive(false);
 #if URP_AVAILABLE
+
             // Set AR Renderer
-            m_CameraData.SetRenderer((int) UniversalRenderer.ARRenderer);
+            m_CameraData.SetRenderer((int)UniversalRenderer.ARRenderer);
 #endif
             m_MARSCamera.enabled = true;
 
@@ -288,34 +299,26 @@ namespace Unity.Reflect.Viewer.UI
             m_MARSCamera.GetComponent<Camera>().cullingMask = -1;
 
             InitSimulationCameraPosition();
-
-            ChangeClippingPlane(0.01f, m_InitialFarClippingPlane * 10f);
         }
-
-        void ChangeClippingPlane(float near, float far)
-        {
-            Camera marsCamera = m_MARSCamera.GetComponent<Camera>();
-            marsCamera.nearClipPlane = near;
-            marsCamera.farClipPlane = far;
-        }
-
 
         void DisableARMode()
         {
+            Camera.main.clearFlags = CameraClearFlags.Skybox;
             var m_actionMap = m_InputActionAsset.FindActionMap("AR", true);
             m_actionMap.Disable();
 
             // disable SimulationView
             EnableSimulationViewInEditor(false);
 
-            // enable RootNode
             m_MARSCamera.enabled = false;
 #if URP_AVAILABLE
+
             // return to default Renderer
-            m_CameraData.SetRenderer((int) UniversalRenderer.DefaultForwardRenderer);
+            m_CameraData.SetRenderer((int)UniversalRenderer.DefaultForwardRenderer);
 #endif
 
-            UIStateManager.current.m_RootNode.SetActive(true);
+            // enable RootNode
+            m_RootSelector.GetValue().gameObject.SetActive(true);
 
             if (UIStateManager.current.SessionReady())
             {
@@ -328,12 +331,18 @@ namespace Unity.Reflect.Viewer.UI
             // Disable the gizmo layer when we are not in AR.
             m_MARSCamera.GetComponent<Camera>().cullingMask &= ~(1 << LayerMask.NameToLayer("Gizmo"));
 
-            ChangeClippingPlane(m_InitialNearClippingPlane, m_InitialFarClippingPlane);
+            // Hack: internal camera state is not refreshing the farPlane update.
+            // Toggling this field seems to reset the internal state and update appropriately
+            m_MARSCamera.GetComponent<Camera>().orthographic = true;
+            m_MARSCamera.GetComponent<Camera>().orthographic = false;
+
+            m_CurrentIARInstructionUI?.Reset();
         }
 
         void InitSimulationCameraPosition()
         {
 #if UNITY_EDITOR
+
             // Set camera height position
             Vector3 camPos = Camera.main.transform.position;
             camPos.y = m_DefaultSimulationCameraHeight;
@@ -352,38 +361,37 @@ namespace Unity.Reflect.Viewer.UI
 #endif
         }
 
-        IEnumerator StartInstrucitonAR()
+        IEnumerator StartInstructionAR()
         {
             yield return new WaitForSeconds(0);
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetInstructionUIState, InstructionUIState.Started));
+            Dispatcher.Dispatch(SetInstructionUIStateAction.From(SetInstructionUIStateAction.InstructionUIState.Started));
         }
 
         void OnDestroy()
         {
+            Dispatcher.Dispatch(SetARModeAction.From(SetARModeAction.ARMode.None));
+
             StopAllCoroutines();
 
             if (m_MARSCamera != null)
                 m_MARSCamera.enabled = false;
 
-            if (UIStateManager.current.m_PlacementRules != null)
+            if (UIStateManager.current != null && m_ARPlacementStateDataSelector.GetValue().placementRulesGameObject != null)
             {
-                DestroyImmediate(UIStateManager.current.m_PlacementRules);
-                UIStateManager.current.m_PlacementRules = null;
+                DestroyImmediate(m_ARPlacementStateDataSelector.GetValue().placementRulesGameObject);
             }
 
             UIStateManager.current.ResetSession();
             UIStateManager.current.PauseSession();
 
-            m_CachedInstructionUI = null;
-            m_CachedOperationCancelled = null;
-
             // remove input system hooks
             m_InputActionAsset["Placement Rotate Action"].performed -= OnPlacementRotateAction;
             m_InputActionAsset["Placement Scale Action"].started -= OnPlacementScaleActionStarted;
             m_InputActionAsset["Placement Scale Action"].performed -= OnPlacementScaleAction;
-            UIStateManager.stateChanged -= OnStateDataChanged;
-            UIStateManager.arStateChanged -= OnARStateDataChanged;
+
+            m_ARPlacementStateDataSelector = null;
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
         }
 
         public void SetReferenceValue(PropertyName id, Object value)
@@ -408,6 +416,7 @@ namespace Unity.Reflect.Viewer.UI
                 idValid = true;
                 return m_ReferenceList[index];
             }
+
             idValid = false;
             return null;
         }
@@ -419,6 +428,17 @@ namespace Unity.Reflect.Viewer.UI
             {
                 m_ReferenceList.RemoveAt(index);
                 m_PropertyNameList.RemoveAt(index);
+            }
+        }
+
+        public void ActivePlacementRules(SetModelFloorAction.PlacementRule rule)
+        {
+            if (m_ARPlacementStateDataSelector.GetValue().placementRulesGameObject != null && rule == m_ARPlacementStateDataSelector.GetValue().placementRule)
+            {
+                if (rule != SetModelFloorAction.PlacementRule.None)
+                {
+                    m_ARPlacementStateDataSelector.GetValue().placementRulesGameObject.SetActive(true);
+                }
             }
         }
 

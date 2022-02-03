@@ -1,9 +1,11 @@
 ﻿using System;
-using UnityEngine;
-using SharpFlux;
+using System.Collections.Generic;
 using SharpFlux.Dispatching;
+using UnityEngine;
 using Unity.TouchFramework;
-using UnityEngine.Reflect;
+using UnityEngine.Reflect.Utils;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace Unity.Reflect.Viewer.UI
 {
@@ -30,14 +32,24 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField, Tooltip("Button to switch to a right view")]
         ToolButton m_RightViewButton;
 
-        CameraOptionData m_CameraOptionData;
+        IUISelector<bool> m_WalkModeEnableSelector;
+        IUISelector<ICameraViewOption> m_CameraViewTypeSelector;
+        IUISelector<SetDialogModeAction.DialogMode> m_DialogModeSelector;
+        CameraViewOption m_CameraViewOption;
 
 #pragma warning restore 0649
+
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        void OnDestroy()
+        {
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
         void Start()
         {
             DrawCustomGizmos();
-            m_CameraOptionData = UIStateManager.current.stateData.cameraOptionData;
+            m_FanOutWindow.Close();
         }
 
         void Awake()
@@ -46,6 +58,19 @@ namespace Unity.Reflect.Viewer.UI
             m_TopViewButton.buttonClicked += OnTopView;
             m_LeftViewButton.buttonClicked += OnLeftView;
             m_RightViewButton.buttonClicked += OnRightView;
+
+            m_DisposeOnDestroy.Add(m_WalkModeEnableSelector = UISelectorFactory.createSelector<bool>(WalkModeContext.current, nameof(IWalkModeDataProvider.walkEnabled)));
+            m_DisposeOnDestroy.Add(m_CameraViewTypeSelector = UISelectorFactory.createSelector<ICameraViewOption>(CameraOptionsContext.current, nameof(ICameraOptionsDataProvider.cameraViewOption)));
+            m_DisposeOnDestroy.Add(m_DialogModeSelector = UISelectorFactory.createSelector<SetDialogModeAction.DialogMode>(UIStateContext.current, nameof(IDialogDataProvider.dialogMode)));
+
+            var screenDpi = UIUtils.GetScreenDpi();
+            var deviceType = UIUtils.GetDeviceType(Screen.width, Screen.height, screenDpi);
+            if (deviceType == SetDisplayAction.DisplayType.Phone)
+            {
+                var position = m_FanOutWindow.transform.position;
+                position.x += 60;
+                m_FanOutWindow.transform.position = position;
+            }
         }
 
         public void HideGizmo()
@@ -58,55 +83,42 @@ namespace Unity.Reflect.Viewer.UI
             m_Target.gameObject.SetActive(true);
         }
 
-        void CheckClickAmount(CameraViewType currentCameraViewType)
-        {
-            if (m_CameraOptionData.cameraViewType != currentCameraViewType)
-            {
-                m_CameraOptionData.numberOfCLick = 0;
-            }
-            else
-            {
-                m_CameraOptionData.numberOfCLick += 1;
-            }
-
-            m_CameraOptionData.cameraViewType = currentCameraViewType;
-        }
-
         void OnRightView()
         {
-            CheckClickAmount(CameraViewType.Right);
-            DispatchAction();
+            DispatchAction(SetCameraViewTypeAction.CameraViewType.Right);
         }
 
         void OnLeftView()
         {
-            CheckClickAmount(CameraViewType.Left);
-            DispatchAction();
+            DispatchAction(SetCameraViewTypeAction.CameraViewType.Left);
         }
 
         void OnTopView()
         {
-            CheckClickAmount(CameraViewType.Top);
-            m_CameraOptionData.numberOfCLick = 0;
-            DispatchAction();
+            DispatchAction(SetCameraViewTypeAction.CameraViewType.Top);
         }
 
-        void DispatchAction()
+        void DispatchAction(SetCameraViewTypeAction.CameraViewType cameraViewType)
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, m_CameraOptionData));
+            m_CameraViewOption.cameraViewType = cameraViewType;
+            Dispatcher.Dispatch(SetCameraViewOptionAction.From(m_CameraViewOption));
         }
 
         [ContextMenu(nameof(OnNavigationButtonClicked))]
         void OnNavigationButtonClicked()
         {
-            var dialogType = m_FanOutWindow.open ? DialogType.None : DialogType.GizmoMode;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.OpenDialog, dialogType));
+            if (m_WalkModeEnableSelector.GetValue() && m_DialogModeSelector.GetValue() != SetDialogModeAction.DialogMode.Help)
+                return;
+
+            var dialogType = m_FanOutWindow.open ? OpenDialogAction.DialogType.None : OpenDialogAction.DialogType.GizmoMode;
+            Dispatcher.Dispatch(OpenSubDialogAction.From(dialogType));
         }
 
         void Update()
         {
             //Apply camera movement to the gizmo Cube
-            m_Target.rotation = Quaternion.Inverse(Camera.main.transform.rotation);
+            if (Camera.main)
+                m_Target.rotation = Quaternion.Inverse(Camera.main.transform.rotation);
         }
 
         void DrawCustomGizmos()

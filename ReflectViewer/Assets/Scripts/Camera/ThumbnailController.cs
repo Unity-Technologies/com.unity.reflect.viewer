@@ -6,6 +6,7 @@ using Unity.Reflect.Viewer.UI;
 using Unity.XRTools.Utils;
 using UnityEngine;
 using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
 
 namespace Unity.Reflect.Viewer
 {
@@ -16,7 +17,7 @@ namespace Unity.Reflect.Viewer
 
         public const int k_ThumbnailHistoryAmount = 10;
 
-        static PlayerStorage m_PlayerStorage;
+        static PlayerStorage PlayerStorage => Storage.cache;
 
 #pragma warning disable CS0649
         [SerializeField]
@@ -24,15 +25,20 @@ namespace Unity.Reflect.Viewer
         [SerializeField]
         LayerMask m_ThumbnailMask;
 #pragma warning restore CS0649
+        IUISelector<Project> m_ActiveProjectGetter;
 
         public void Awake()
         {
-            m_PlayerStorage = new PlayerStorage(UnityEngine.Reflect.ProjectServer.ProjectDataPath, true, false);
+            m_ActiveProjectGetter = UISelectorFactory.createSelector<Project>(ProjectManagementContext<Project>.current, nameof(IProjectDataProvider<Project>.activeProject));
+        }
+
+        void OnDestroy()
+        {
+            m_ActiveProjectGetter?.Dispose();
         }
 
         public static Sprite LoadThumbnailForProject(Project project)
         {
-            m_PlayerStorage.HasLocalData(project);
             var thumbnailPath = GetProjectThumbnailLoadPath(project);
             if (File.Exists(thumbnailPath))
             {
@@ -53,7 +59,7 @@ namespace Unity.Reflect.Viewer
 
             if (m_Camera != null)
             {
-                var thumbnailPositionRotation = FreeFlyCamera.CalculateViewFitPosition(projectStateData.rootBounds, 20.0f, 0.75f, m_Camera.fieldOfView);
+                var thumbnailPositionRotation = FreeFlyCamera.CalculateViewFitPosition(projectStateData.rootBounds, 20.0f, 0.90f, m_Camera.fieldOfView, m_Camera.aspect);
                 var thumbnailTexture = CaptureCameraFrame(
                     m_Camera,
                     k_ThumbnailDimension, k_ThumbnailDimension,
@@ -61,7 +67,7 @@ namespace Unity.Reflect.Viewer
                     m_ThumbnailMask);
 
                 var imageData = thumbnailTexture.EncodeToPNG();
-                var path = GetProjectThumbnailSavePath(projectStateData.activeProject);
+                var path = GetProjectThumbnailSavePath(m_ActiveProjectGetter.GetValue());
                 File.WriteAllBytes(path, imageData);
                 return Sprite.Create(thumbnailTexture, new Rect(0, 0, thumbnailTexture.width, thumbnailTexture.height), new Vector2(0.5f, 0.5f), 100.0f);
             }
@@ -70,7 +76,7 @@ namespace Unity.Reflect.Viewer
 
         public static string GetProjectThumbnailSavePath(Project project)
         {
-            var thumbnailFolder = new DirectoryInfo(string.Format("{0}/{1}", m_PlayerStorage.GetProjectFolder(project), k_ThumbnailFolderName));
+            var thumbnailFolder = new DirectoryInfo(string.Format("{0}/{1}", PlayerStorage.GetProjectFolder(project), k_ThumbnailFolderName));
             if (!Directory.Exists(thumbnailFolder.FullName))
                 Directory.CreateDirectory(thumbnailFolder.FullName);
 
@@ -94,7 +100,7 @@ namespace Unity.Reflect.Viewer
 
         public static string GetProjectThumbnailLoadPath(Project project)
         {
-            var thumbnailFolder = new DirectoryInfo(string.Format("{0}/{1}", m_PlayerStorage.GetProjectFolder(project), k_ThumbnailFolderName));
+            var thumbnailFolder = new DirectoryInfo(string.Format("{0}/{1}", PlayerStorage.GetProjectFolder(project), k_ThumbnailFolderName));
             if (!Directory.Exists(thumbnailFolder.FullName))
                 Directory.CreateDirectory(thumbnailFolder.FullName);
 

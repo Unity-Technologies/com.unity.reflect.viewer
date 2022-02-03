@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SharpFlux.Dispatching;
 using Unity.Reflect.Multiplayer;
 using Unity.Reflect.Viewer;
 using Unity.Reflect.Viewer.UI;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 using Random = UnityEngine.Random;
 
 [CustomPropertyDrawer(typeof(RoomConnectionStateData))]
@@ -21,7 +23,8 @@ public class ConnectionStateDataDrawer : PropertyDrawer
         {
             if (GUI.Button(new Rect(position.x + position.width / 3, position.y + position.height - s_ButtonHeight - s_ButtonMargin, position.width / 3, s_ButtonHeight), "Update Application Change"))
             {
-                UIStateManager.current.ForceSendConnectionChangedEvent();
+                // TODO: UpdateSessionStateEvent
+                // UIStateManager.current.ForceSendSessionStateChangedEvent();
             }
         }
     }

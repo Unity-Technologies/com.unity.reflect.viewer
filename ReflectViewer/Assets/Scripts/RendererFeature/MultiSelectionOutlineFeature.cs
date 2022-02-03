@@ -26,7 +26,8 @@ namespace Unity.Reflect.Viewer.UI
         // MUST be named "settings" (lowercase) to be shown in the Render Features inspector
         public MultiSelectionOutlineSettings settings = new MultiSelectionOutlineSettings();
 
-        public List<SelectionOutlineData> datas {
+        public List<SelectionOutlineData> datas
+        {
             get => m_MultiSelectionOutlineRenderPass.datas;
             set => m_MultiSelectionOutlineRenderPass.datas = value;
         }
@@ -142,10 +143,21 @@ namespace Unity.Reflect.Viewer.UI
                 {
                     CoreUtils.SetRenderTarget(cmd, m_maskTexture.Identifier(), ClearFlag.All, Color.clear);
 
-                    foreach (var renderer in data.renderers)
+                    var removed = new List<int>();
+                    for (var i = 0; i < data.renderers.Count; ++i)
                     {
+                        var renderer = data.renderers[i];
+                        if (renderer == null)
+                        {
+                            removed.Add(i);
+                            continue;
+                        }
+
                         cmd.DrawRenderer(renderer, materialToBlit, 0, (int)PassId.SelectionPassMask);
                     }
+
+                    foreach (var index in removed)
+                        data.renderers.RemoveAt(index);
 
                     cmd.SetGlobalColor(s_BlurDirection, new Color(1, 0, 0, 0));
                     cmd.Blit(m_maskTexture.id, m_blurTexture.id, materialToBlit, (int)PassId.SelectionPassBlur);
@@ -163,7 +175,7 @@ namespace Unity.Reflect.Viewer.UI
 
                 cmd.Blit(m_finalTexture.id, source, materialToBlit, (int)PassId.SelectionPassFinal);
                 CheckStereoKeyword(ref renderingData, ref cmd);
-                
+
                 context.ExecuteCommandBuffer(cmd);
                 cmd.Clear();
 
@@ -175,7 +187,7 @@ namespace Unity.Reflect.Viewer.UI
         {
             // Add the following code snippet after calling cmd.Blit
             // in 2020.2+URP, cmd.Blit has a bug to turn off stereo shader keyword. Enable keyword again manually.
-            if(renderingData.cameraData.isStereoEnabled)
+            if (renderingData.cameraData.isStereoEnabled)
             {
                 if (SystemInfo.supportsMultiview)
                     cmd.EnableShaderKeyword("STEREO_MULTIVIEW_ON");

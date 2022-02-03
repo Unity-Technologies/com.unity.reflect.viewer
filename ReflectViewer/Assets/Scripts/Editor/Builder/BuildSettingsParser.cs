@@ -67,7 +67,7 @@ namespace Unity.Reflect.Viewer.Builder
             if (commandLineArgsByKey.ContainsKey(BuilderConstants.OUTPUT_PATH))
             {
                 buildDirectory = commandLineArgsByKey[BuilderConstants.OUTPUT_PATH];
-            }            
+            }                    
         }
 
         private void SwitchToRespectiveBuildTarget(string buildTarget)
@@ -84,7 +84,7 @@ namespace Unity.Reflect.Viewer.Builder
                     activeBuildTarget = BuildTarget.StandaloneOSX;
                     break;
                 case BuilderConstants.WIN_BUILD_TARGET:
-                    activeBuildTarget = BuildTarget.StandaloneWindows;
+                    activeBuildTarget = BuildTarget.StandaloneWindows64;
                     break;
                 default:
                     throw new Exception("[BuildSettingsParser] BUILD FAILED. Invalid Build target: " + buildTarget);
@@ -101,7 +101,7 @@ namespace Unity.Reflect.Viewer.Builder
                 switch (activeBuildTarget)
                 {
                     case BuildTarget.Android:
-                        PlayerSettings.Android.bundleVersionCode = bundleVersionCode;
+                        PlayerSettings.Android.bundleVersionCode += bundleVersionCode;
                         break;
                     case BuildTarget.iOS:
                         PlayerSettings.iOS.buildNumber = versionArgument;

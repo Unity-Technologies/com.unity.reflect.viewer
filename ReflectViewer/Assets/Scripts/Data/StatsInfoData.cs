@@ -1,18 +1,32 @@
 ﻿using System;
+using Unity.Properties;
+using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.Reflect.Viewer.Pipeline;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    [Serializable]
-    public struct StatsInfoData : IEquatable<StatsInfoData>
+    [Serializable, GeneratePropertyBag]
+    public struct StatsInfoData : IEquatable<StatsInfoData>, IStatsInfoStreamDataProvider<StreamCountData>, IStatsInfoFPSDataProvider
     {
-        public int fpsMax;
-        public int fpsAvg;
-        public int fpsMin;
-
-        public StreamCountData assetsCountData;
-        public StreamCountData instancesCountData;
-        public StreamCountData gameObjectsCountData;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int fpsMax { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int fpsAvg { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int fpsMin { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public StreamCountData assetsCountData { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public StreamCountData instancesCountData { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public StreamCountData gameObjectsCountData { get; set; }
 
         public static bool operator ==(StatsInfoData a, StatsInfoData b)
         {

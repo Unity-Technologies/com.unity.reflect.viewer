@@ -1,19 +1,27 @@
 using System;
 using System.Collections;
-using SharpFlux;
+using System.Collections.Generic;
+using System.Linq;
 using SharpFlux.Dispatching;
+using Unity.Reflect.Actors;
+using Unity.Reflect.Geometry;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using UnityEngine.Reflect;
 using UnityEngine.Reflect.Viewer;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.Reflect.Viewer.Input;
+using UnityEngine.XR.Interaction.Toolkit;
 
 namespace Unity.Reflect.Viewer.UI
 {
-    public class OrbitModeUIController : MonoBehaviour
+    public class OrbitModeUIController: MonoBehaviour
     {
 #pragma warning disable CS0649
+        [SerializeField]
+        ViewerReflectBootstrapper m_Reflect;
         [SerializeField]
         FreeFlyCamera m_Camera;
         [SerializeField]
@@ -29,123 +37,346 @@ namespace Unity.Reflect.Viewer.UI
         [SerializeField]
         GameObject m_GizmoCube;
         [SerializeField]
-        Button m_OrbitButton;
-        [SerializeField]
-        Button m_PanButton;
-        [SerializeField]
-        Button m_ZoomButton;
-        [SerializeField]
         ToolButton m_DebugButton;
         [SerializeField]
         float m_ZoomGestureSensibility = 30.0f;
 
         [SerializeField]
-        GameObject m_PointMesh;
+        float m_ResetDelaySeconds = 0.4f;
+
+        [SerializeField]
+        float m_TeleportAllowDistance = 100.0f;
 #pragma warning restore CS0649
 
-        ToolType? m_CachedToolType;
-        ToolType? m_PreviousToolType;
-        ToolType? m_PreviousOrbitToolType = ToolType.OrbitTool;
-        OrbitType? m_PreviousOrbitType;
-        NavigationMode? m_CachedNavigationMode;
-        NavigationState? m_CachedNavigationState;
-        CameraOptionData? m_CachedCameraOptionData;
-        DebugOptionsData? m_CachedDebugOptions;
-        InfoType? m_CachedInfoType;
         bool m_ArEnabled;
-
         static readonly float k_ToolDebounceTime = 0.2f;
-
-        bool m_ZoomPressed;
-        bool m_PanPressed;
-        bool isTeleportInit = false;
-
-        Bounds m_InitialCameraBounds;
-
-        DialogType m_CurrentActiveDialog;
-
+        Aabb m_InitialCameraBounds;
+        Aabb m_InitialZoneBounds;
+        bool m_HasBeenPositioned;
+        List<SceneZone> m_Zones = new List<SceneZone>();
+        List<GameObject> m_ZoneGameObjects = new List<GameObject>();
+        OpenDialogAction.DialogType m_CurrentActiveDialog;
         Vector3 m_LastMovingAction;
-
         DeltaCalculator m_ZoomDelta;
         DeltaCalculator m_PanDelta;
         DeltaCalculator m_WorldOrbitDelta;
-
         InputAction m_MovingAction;
-
         uint m_InputSkipper = 0;
-
-        bool m_ToolbarsEnabled;
         bool? m_GizmoEnabled;
-
         bool m_ZoomGestureInProgress;
         bool m_PanGestureInProgress;
         Color m_DefaultColor;
         Coroutine m_ZoomGestureCoroutine;
         Coroutine m_PanGestureCoroutine;
-
         float m_GestureCameraStartPosition;
+        Vector2 m_LastTapPoint;
+        Coroutine m_ResetCoroutine;
+        WaitForSeconds m_DelayWaitForSeconds;
+        IUISelector<bool> m_GestureTrackingEnabledSelector;
+        IUISelector<bool> m_VREnableSelector;
+        IUISelector<SelectObjectAction.IObjectSelectionInfo> m_ObjectSelectionInfoSelector;
+        SetOrbitTypeAction.OrbitType m_TouchOrbitType;
+        SetVREnableAction.DeviceCapability m_DeviceCapability;
+        IUISelector<SetOrbitTypeAction.OrbitType> m_OrbitTypeSelector;
+        IUISelector<SetActiveToolAction.ToolType> m_ActiveToolSelector;
+        bool m_MoveEnabled;
+        SetNavigationModeAction.NavigationMode m_CachedNavigationMode;
+        IUISelector<ICameraViewOption> m_CameraViewSelector;
+        IUISelector<bool> m_TeleportEnabledSelector;
+        IUISelector<SetInfoTypeAction.InfoType> m_InfoTypeSelector;
+        IUISelector<string> m_FollowUserIDSelector;
+        IUISelector m_TouchOrbitTypeSelector;
+        IUISelector m_DeviceCapabilitySelector;
+        IUISelector<SetNavigationModeAction.NavigationMode> m_NavigationModeSelector;
+        List<IDisposable> m_DisposeOnDestroy = new List<IDisposable>();
+
+        void OnApplicationFocus(bool hasFocus)
+        {
+            m_MovingAction?.Reset();
+        }
+
+        void OnDestroy()
+        {
+            m_TouchOrbitTypeSelector?.Dispose();
+            m_DeviceCapabilitySelector?.Dispose();
+            m_NavigationModeSelector?.Dispose();
+            m_DisposeOnDestroy.ForEach(x => x.Dispose());
+        }
 
         public void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
-            UIStateManager.projectStateChanged += OnProjectStateDataChanged;
-            UIStateManager.debugStateChanged += OnDebugStateDataChanged;
+            m_Reflect.ActorSystemStarting += (bridge, isRestarting) =>
+            {
+                if (!isRestarting)
+                {
+                    m_InitialCameraBounds = default;
+                    m_HasBeenPositioned = false;
+                }
+                m_InitialZoneBounds = default;
+                m_Zones.Clear();
+                m_ZoneGameObjects.ForEach(x => Destroy(x));
+                m_ZoneGameObjects.Clear();
 
-            m_InputActionAsset["Pan Mode Action"].performed += OnPanMode;
-            m_InputActionAsset["Zoom Mode Action"].performed += OnZoomMode;
+                bridge.Subscribe<SceneZonesChanged>(ctx =>
+                {
+                    if (m_HasBeenPositioned)
+                        return;
+
+                    m_Zones = ctx.Data.Zones;
+                    m_InitialZoneBounds = m_Zones[0].Bounds;
+
+                    m_HasBeenPositioned = m_Zones.All(x => x.IsReliable);
+
+                    Reset();
+                });
+            };
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<Bounds>(ProjectContext.current, nameof(IProjectBound.rootBounds), bounds =>
+            {
+                var newBound = bounds.ToReflect();
+                var isFirstUpdate = m_InitialCameraBounds == default && newBound != default;
+
+                if (newBound != default)
+                    m_InitialCameraBounds = newBound;
+
+                if (isFirstUpdate)
+                {
+                    // Avoid dispatching into a dispatch
+                    IEnumerator WaitAFrame()
+                    {
+                        yield return null;
+                        Reset(); // use dispatch to ensure XR cameras also properly change
+                    }
+                    StartCoroutine(WaitAFrame());
+                }
+            }));
+            m_DisposeOnDestroy.Add(m_ObjectSelectionInfoSelector = UISelectorFactory.createSelector<SelectObjectAction.IObjectSelectionInfo>(ProjectContext.current, nameof(IObjectSelectorDataProvider.objectSelectionInfo),
+                info => m_FocusButton.interactable = (info != null) ? ((ObjectSelectionInfo)info).CurrentSelectedObject() != null : false));
+
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(UIStateContext.current, nameof(IToolBarDataProvider.toolbarsEnabled),
+                enabled => m_ResetButton.button.interactable = enabled));
+            m_DisposeOnDestroy.Add(m_ActiveToolSelector = UISelectorFactory.createSelector<SetActiveToolAction.ToolType>(ToolStateContext.current, nameof(IToolStateDataProvider.activeTool)));
+            m_DisposeOnDestroy.Add(m_VREnableSelector = UISelectorFactory.createSelector<bool>(VRContext.current, nameof(IVREnableDataProvider.VREnable)));
+            m_DisposeOnDestroy.Add(m_GestureTrackingEnabledSelector = UISelectorFactory.createSelector<bool>(DebugOptionContext.current, nameof(IDebugOptionDataProvider.gesturesTrackingEnabled)));
+            m_DisposeOnDestroy.Add(m_OrbitTypeSelector = UISelectorFactory.createSelector<SetOrbitTypeAction.OrbitType>(ToolStateContext.current, nameof(IToolStateDataProvider.orbitType)));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(NavigationContext.current, nameof(INavigationDataProvider.gizmoEnabled), OnGizmoEnabledChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(NavigationContext.current, nameof(INavigationDataProvider.moveEnabled), OnMoveEnabledChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(NavigationContext.current, nameof(INavigationDataProvider.freeFlyCameraEnabled), OnFreeFlyCameraEnabledChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(NavigationContext.current, nameof(INavigationDataProvider.orbitEnabled), OnOrbitEnabledChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(NavigationContext.current, nameof(INavigationDataProvider.panEnabled), OnPanEnabledChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(NavigationContext.current, nameof(INavigationDataProvider.zoomEnabled), OnZoomEnabledChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<bool>(NavigationContext.current, nameof(INavigationDataProvider.worldOrbitEnabled), OnWorldOrbitEnabledChanged));
+            m_DisposeOnDestroy.Add(m_TeleportEnabledSelector = UISelectorFactory.createSelector<bool>(NavigationContext.current, nameof(INavigationDataProvider.teleportEnabled), OnTeleportEnabledChanged));
+            m_DisposeOnDestroy.Add(UISelectorFactory.createSelector<SetNavigationModeAction.NavigationMode>(NavigationContext.current, nameof(INavigationDataProvider.navigationMode), OnNavigationModeChanged));
+            m_DisposeOnDestroy.Add(m_CameraViewSelector = UISelectorFactory.createSelector<ICameraViewOption>(CameraOptionsContext.current, nameof(ICameraOptionsDataProvider.cameraViewOption), OnCameraViewTypeChanged));
+            m_DisposeOnDestroy.Add(m_InfoTypeSelector = UISelectorFactory.createSelector<SetInfoTypeAction.InfoType>(ToolStateContext.current, nameof(IToolStateDataProvider.infoType)));
+            m_DisposeOnDestroy.Add(m_FollowUserIDSelector = UISelectorFactory.createSelector<string>(FollowUserContext.current, nameof(IFollowUserDataProvider.userId)));
+
+            m_InputActionAsset["Orbit Action"].performed += OnOrbit;
+            m_InputActionAsset["Quick WorldOrbit Action"].performed += OnQuickWorldOrbit;
             m_InputActionAsset["Zoom Gesture Action"].started += OnZoomGestureStarted;
             m_InputActionAsset["Zoom Gesture Action"].performed += OnZoomGesture;
-            m_InputActionAsset["Zoom Action"].performed += OnZoom;
             m_InputActionAsset["Quick Zoom Action"].performed += OnQuickZoom;
             m_InputActionAsset["Pan Gesture Action"].started += OnPanGestureStarted;
             m_InputActionAsset["Pan Gesture Action"].performed += OnPanGesture;
-            m_InputActionAsset["Pan Action"].performed += OnPan;
-            m_InputActionAsset["Orbit Action"].performed += OnOrbit;
             m_InputActionAsset["Quick Pan Action"].performed += OnQuickPan;
-            m_InputActionAsset["Quick WorldOrbit Action"].performed += OnQuickWorldOrbit;
+            m_InputActionAsset["Quick Pan Start"].performed += OnQuickPanStart;
             m_InputActionAsset["Teleport Action"].performed += OnTeleport;
             m_InputActionAsset["TouchTeleport Action"].performed += OnTeleport;
             m_InputActionAsset["Focus Action"].performed += OnFocusButtonPressed;
             m_MovingAction = m_InputActionAsset["Moving Action"];
 
+            m_InputActionAsset["Click"].performed += OnClick;
+
             m_ResetButton.buttonClicked += OnResetButtonClicked;
             m_FocusButton.onClick.AddListener(OnFocusButtonClicked);
-            m_OrbitButton.onClick.AddListener(OnOrbitButtonClicked);
-            m_PanButton.onClick.AddListener(OnPanButtonClicked);
-            m_ZoomButton.onClick.AddListener(OnZoomButtonClicked);
 
             m_DefaultColor = m_DebugButton.buttonRound.color;
-
-            m_PointMesh = Instantiate(m_PointMesh);
-            m_PointMesh.SetActive(false);
+            m_DelayWaitForSeconds = new WaitForSeconds(m_ResetDelaySeconds);
         }
 
-        void OnZoomButtonClicked()
+        void OnCameraViewTypeChanged(ICameraViewOption data)
         {
-            m_PreviousOrbitToolType = ToolType.ZoomTool;
+            OnInteraction();
+            switch (data?.cameraViewType)
+            {
+                case SetCameraViewTypeAction.CameraViewType.Top:
+                    OnTopView();
+                    break;
+                case SetCameraViewTypeAction.CameraViewType.Left:
+                    OnLeftView();
+                    break;
+                case SetCameraViewTypeAction.CameraViewType.Right:
+                    OnRightView();
+                    break;
+            }
         }
 
-        void OnPanButtonClicked()
+        void OnGizmoEnabledChanged(bool data)
         {
-            m_PreviousOrbitToolType = ToolType.PanTool;
+            m_GizmoCube.SetActive(data);
+
+            /*
+            TODO: Temporary fix till next MARS Update. This code will make sure that the cube stay hidden in AR mode.
+            */
+            GizmoController gizmoController = GetComponent<GizmoController>();
+            if (!data)
+            {
+                gizmoController.HideGizmo();
+            }
+            else
+            {
+                gizmoController.ShowGizmo();
+            }
         }
 
-        void OnOrbitButtonClicked()
+        void OnNavigationModeChanged(SetNavigationModeAction.NavigationMode navMode)
         {
-            m_PreviousOrbitToolType = ToolType.OrbitTool;
+            if (navMode == SetNavigationModeAction.NavigationMode.Orbit && m_CachedNavigationMode != SetNavigationModeAction.NavigationMode.Walk)
+            {
+                StartCoroutine(WaitAndRun(ResetHomeView));
+            }
+
+            StartCoroutine(WaitAndRun(SetARFollowVisibility));
+
+            m_CachedNavigationMode = navMode;
+        }
+
+        void OnTeleportEnabledChanged(bool data)
+        {
+            if (data)
+            {
+                m_InputActionAsset["Teleport Action"].Enable();
+                m_InputActionAsset["TouchTeleport Action"].Enable();
+            }
+            else
+            {
+                m_InputActionAsset["Teleport Action"].Disable();
+                m_InputActionAsset["TouchTeleport Action"].Disable();
+            }
+        }
+
+        void OnWorldOrbitEnabledChanged(bool data)
+        {
+            if (data)
+            {
+                m_InputActionAsset["Quick WorldOrbit Action"].Enable();
+            }
+            else
+            {
+                m_InputActionAsset["Quick WorldOrbit Action"].Disable();
+            }
+        }
+
+        void OnZoomEnabledChanged(bool data)
+        {
+            if (data)
+            {
+                m_InputActionAsset["Zoom Gesture Action"].Enable();
+                m_InputActionAsset["Zoom Gesture Action"].Enable();
+                m_InputActionAsset["Quick Zoom Action"].Enable();
+            }
+            else
+            {
+                m_InputActionAsset["Zoom Gesture Action"].Disable();
+                m_InputActionAsset["Zoom Gesture Action"].Disable();
+                m_InputActionAsset["Quick Zoom Action"].Disable();
+            }
+
+        }
+
+        void OnPanEnabledChanged(bool data)
+        {
+            if (data)
+            {
+                m_InputActionAsset["Pan Gesture Action"].Enable();
+                m_InputActionAsset["Pan Gesture Action"].Enable();
+                m_InputActionAsset["Quick Pan Action"].Enable();
+                m_InputActionAsset["Quick Pan Start"].Enable();
+            }
+            else
+            {
+                m_InputActionAsset["Pan Gesture Action"].Disable();
+                m_InputActionAsset["Pan Gesture Action"].Disable();
+                m_InputActionAsset["Quick Pan Action"].Disable();
+                m_InputActionAsset["Quick Pan Start"].Disable();
+            }
+        }
+
+        void OnOrbitEnabledChanged(bool data)
+        {
+            if (data)
+            {
+                m_InputActionAsset["Orbit Action"].Enable();
+            }
+            else
+            {
+                m_InputActionAsset["Orbit Action"].Disable();
+            }
+        }
+
+        void OnFreeFlyCameraEnabledChanged(bool data)
+        {
+            m_Camera.enabled = data;
+            m_FocusButton.enabled = data;
+        }
+
+        void OnMoveEnabledChanged(bool data)
+        {
+            m_TouchOrbitTypeSelector?.Dispose();
+            m_DeviceCapabilitySelector?.Dispose();
+            m_MoveEnabled = data;
+
+            if (m_MovingAction != null)
+            {
+                if (data)
+                {
+                    m_MovingAction.Enable();
+                }
+                else
+                {
+                    m_MovingAction.Disable();
+                    m_Camera.ForceStop();
+                    m_LastMovingAction = Vector3.zero;
+                    m_Camera.MoveInLocalDirection(Vector3.zero, LookAtConstraint.Follow);
+                }
+                m_TouchOrbitTypeSelector = UISelectorFactory.createSelector<SetOrbitTypeAction.OrbitType>(SceneOptionContext.current, nameof(ISceneOptionData<SkyboxData>.touchOrbitType), OnTouchOrbitTypeChanged);
+                m_DeviceCapabilitySelector = UISelectorFactory.createSelector<SetVREnableAction.DeviceCapability>(PipelineContext.current, nameof(IPipelineDataProvider.deviceCapability), OnDeviceCapabilityChanged);
+            }
+            m_NavigationModeSelector = UISelectorFactory.createSelector<SetNavigationModeAction.NavigationMode>(NavigationContext.current, nameof(INavigationDataProvider.navigationMode));
         }
 
         void OnFocusButtonClicked()
         {
-            var selectedObj = UIStateManager.current.projectStateData.objectSelectionInfo.CurrentSelectedObject();
+            var selectedObj = ((ObjectSelectionInfo)m_ObjectSelectionInfoSelector.GetValue()).CurrentSelectedObject();
             if (selectedObj != null)
             {
                 Vector3 focusPoint = selectedObj.transform.position;
                 var childBounds = selectedObj.CalculateBoundsInChildren();
                 if (childBounds.HasValue)
                     focusPoint = childBounds.Value.center;
-                m_Camera.FocusOnPoint(focusPoint);
+
+                if (!m_VREnableSelector.GetValue())
+                {
+                    m_Camera.FocusOnPoint(focusPoint);
+                }
+                else
+                {
+                    var camTransform = Camera.main.transform;
+                    var xrRig = camTransform.GetComponentInParent<XRRig>();
+
+                    SetFocusCameraPosition(xrRig, focusPoint);
+                    var direction = (focusPoint - camTransform.position).normalized;
+                    xrRig.MatchRigUpRigForward(Vector3.up, direction);
+                }
             }
+        }
+
+        void SetFocusCameraPosition(XRRig xrRig, Vector3 focusPoint)
+        {
+            var cameraPlane = new Plane(xrRig.transform.forward, xrRig.transform.position);
+            var targetCameraPos = cameraPlane.ClosestPointOnPlane(focusPoint);
+            xrRig.MoveCameraToWorldLocation(targetCameraPos);
         }
 
         void OnFocusButtonPressed(InputAction.CallbackContext context)
@@ -184,6 +415,9 @@ namespace Unity.Reflect.Viewer.UI
                 TwoFingerDragGesture dragGesture = interaction?.currentGesture as TwoFingerDragGesture;
                 m_PanGestureInProgress = true;
                 dragGesture.onFinished += OnPanGestureFinished;
+
+                Vector2 pos = Pointer.current.position.ReadValue();
+                m_Camera.PanStart(pos);
             }
         }
 
@@ -201,23 +435,6 @@ namespace Unity.Reflect.Viewer.UI
 
             if (Time.unscaledDeltaTime <= m_UINavigationControllerSettings.inputLagCutoffThreshold)
             {
-                if (UIStateManager.current.stateData.navigationState.moveEnabled)
-                {
-                    m_MovingAction.Enable();
-                }
-                else
-                {
-                    m_MovingAction.Disable();
-                    return;
-                }
-
-                var val = m_MovingAction.ReadValue<Vector3>();
-                if (val != m_LastMovingAction)
-                {
-                    m_LastMovingAction = val;
-                    m_Camera.MoveInLocalDirection(val, LookAtConstraint.Follow);
-                }
-
                 if (Time.unscaledDeltaTime <= m_UINavigationControllerSettings.inputLagSkipThreshold)
                 {
                     if (!m_MovingAction.enabled)
@@ -232,6 +449,18 @@ namespace Unity.Reflect.Viewer.UI
                         m_MovingAction.Disable();
                     }
                 }
+
+                if (!m_MoveEnabled)
+                {
+                    return;
+                }
+
+                var val = m_MovingAction.ReadValue<Vector3>();
+                if (val != m_LastMovingAction)
+                {
+                    m_LastMovingAction = val;
+                    m_Camera.MoveInLocalDirection(val, LookAtConstraint.Follow);
+                }
             }
             else
             {
@@ -241,8 +470,8 @@ namespace Unity.Reflect.Viewer.UI
                 m_Camera.MoveInLocalDirection(Vector3.zero, LookAtConstraint.Follow);
             }
 
-            if (m_CachedInfoType != null && m_CachedInfoType == InfoType.Debug &&
-                m_CachedDebugOptions != null && m_CachedDebugOptions.Value.gesturesTrackingEnabled)
+            if (m_InfoTypeSelector.GetValue() == SetInfoTypeAction.InfoType.Debug &&
+                m_GestureTrackingEnabledSelector.GetValue())
             {
                 if (m_ZoomGestureInProgress)
                 {
@@ -265,218 +494,48 @@ namespace Unity.Reflect.Viewer.UI
             }
         }
 
-        void OnDebugStateDataChanged(UIDebugStateData data)
-        {
-            if (m_CachedDebugOptions != data.debugOptionsData)
-                m_CachedDebugOptions = data.debugOptionsData;
-        }
-
-        void OnProjectStateDataChanged(UIProjectStateData data)
-        {
-            if (data.rootBounds != m_InitialCameraBounds)
-            {
-                m_InitialCameraBounds = data.rootBounds;
-                OnResetButtonClicked(); // use dispatch to ensure XR cameras also properly change
-            }
-
-            m_FocusButton.interactable = UIStateManager.current.projectStateData.objectSelectionInfo.CurrentSelectedObject() != null;
-        }
-
-        void OnStateDataChanged(UIStateData stateData)
-        {
-            if (m_ToolbarsEnabled != stateData.toolbarsEnabled)
-            {
-                m_ResetButton.button.interactable = stateData.toolbarsEnabled;
-                m_ToolbarsEnabled = stateData.toolbarsEnabled;
-            }
-
-            if (m_CachedNavigationState != stateData.navigationState)
-            {
-                m_Camera.enabled = stateData.navigationState.freeFlyCameraEnabled;
-                m_FocusButton.enabled = stateData.navigationState.freeFlyCameraEnabled;
-
-                if (stateData.navigationState.orbitEnabled)
-                {
-                    m_InputActionAsset["Orbit Action"].Enable();
-                }
-                else
-                {
-                    m_InputActionAsset["Orbit Action"].Disable();
-                }
-
-                if (stateData.navigationState.panEnabled)
-                {
-                    m_InputActionAsset["Pan Mode Action"].Enable();
-                    m_InputActionAsset["Pan Gesture Action"].Enable();
-                    m_InputActionAsset["Pan Gesture Action"].Enable();
-                    m_InputActionAsset["Pan Action"].Enable();
-                    m_InputActionAsset["Quick Pan Action"].Enable();
-                }
-                else
-                {
-                    m_InputActionAsset["Pan Mode Action"].Disable();
-                    m_InputActionAsset["Pan Gesture Action"].Disable();
-                    m_InputActionAsset["Pan Gesture Action"].Disable();
-                    m_InputActionAsset["Pan Action"].Disable();
-                    m_InputActionAsset["Quick Pan Action"].Disable();
-                }
-
-                if (stateData.navigationState.zoomEnabled)
-                {
-                    m_InputActionAsset["Zoom Mode Action"].Enable();
-                    m_InputActionAsset["Zoom Gesture Action"].Enable();
-                    m_InputActionAsset["Zoom Gesture Action"].Enable();
-                    m_InputActionAsset["Zoom Action"].Enable();
-                    m_InputActionAsset["Quick Zoom Action"].Enable();
-                }
-                else
-                {
-                    m_InputActionAsset["Zoom Mode Action"].Disable();
-                    m_InputActionAsset["Zoom Gesture Action"].Disable();
-                    m_InputActionAsset["Zoom Gesture Action"].Disable();
-                    m_InputActionAsset["Zoom Action"].Disable();
-                    m_InputActionAsset["Quick Zoom Action"].Disable();
-                }
-
-                if (stateData.navigationState.moveEnabled)
-                {
-                    m_InputActionAsset["Moving Action"].Enable();
-                }
-                else
-                {
-                    m_InputActionAsset["Moving Action"].Disable();
-                }
-
-                if (stateData.navigationState.worldOrbitEnabled)
-                {
-                    m_InputActionAsset["Quick WorldOrbit Action"].Enable();
-                }
-                else
-                {
-                    m_InputActionAsset["Quick WorldOrbit Action"].Disable();
-                }
-
-                if (stateData.navigationState.teleportEnabled)
-                {
-                    m_InputActionAsset["Teleport Action"].Enable();
-                    m_InputActionAsset["TouchTeleport Action"].Enable();
-                }
-                else
-                {
-                    m_InputActionAsset["Teleport Action"].Disable();
-                    m_InputActionAsset["TouchTeleport Action"].Disable();
-                }
-
-                if (m_CachedNavigationMode != stateData.navigationState.navigationMode)
-                {
-                    if (stateData.navigationState.navigationMode == NavigationMode.Orbit && m_CachedNavigationMode != NavigationMode.Walk)
-                    {
-                        StartCoroutine(ResetHomeView());
-                    }
-
-                    m_CachedNavigationMode = stateData.navigationState.navigationMode;
-                }
-
-                m_GizmoCube.SetActive(stateData.navigationState.gizmoEnabled);
-
-                /*
-                 TODO: Temporary fix till next MARS Update. This code will make sure that the cube stay hidden in AR mode.
-                 */
-                GizmoController gizmoController = GetComponent<GizmoController>();
-                if (!stateData.navigationState.gizmoEnabled)
-                {
-                    gizmoController.HideGizmo();
-                }
-                else
-                {
-                    gizmoController.ShowGizmo();
-                }
-
-                m_CachedNavigationState = stateData.navigationState;
-            }
-
-            if (m_CachedToolType == null || m_CachedToolType != stateData.toolState.activeTool)
-            {
-                m_CachedToolType = stateData.toolState.activeTool;
-            }
-
-            if (m_CachedCameraOptionData != stateData.cameraOptionData)
-            {
-                switch (stateData.cameraOptionData.cameraViewType)
-                {
-                    case CameraViewType.Top:
-                        OnTopView();
-                        break;
-                    case CameraViewType.Left:
-                        OnLeftView();
-                        break;
-                    case CameraViewType.Right:
-                        OnRightView();
-                        break;
-                }
-
-                m_CachedCameraOptionData = stateData.cameraOptionData;
-            }
-
-            if (m_CachedInfoType != stateData.toolState.infoType)
-            {
-                m_CachedInfoType = stateData.toolState.infoType;
-            }
-        }
-
         void LeaveFollowUserMode()
         {
-            if (!string.IsNullOrEmpty(UIStateManager.current.stateData.toolState.followUserTool.userId))
+            if (!string.IsNullOrEmpty(m_FollowUserIDSelector?.GetValue()))
             {
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.FollowUser, null));
+                var followUserData = new FollowUserAction.FollowUserData();
+                followUserData.matchmakerId = "";
+                followUserData.visualRepresentationGameObject = null;
+                Dispatcher.Dispatch(FollowUserAction.From(followUserData));
             }
         }
 
-        IEnumerator ResetHomeView()
+        IEnumerator WaitAndRun(Action action)
         {
-            yield return new WaitForSeconds(0);
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ResetHomeView, null));
+            yield return null;
+            action.Invoke();
+        }
+
+        void SetARFollowVisibility()
+        {
+            var isARMode = m_NavigationModeSelector.GetValue() == SetNavigationModeAction.NavigationMode.AR;
+            if (isARMode)
+            {
+                LeaveFollowUserMode();
+            }
+            Dispatcher.Dispatch(SetAppBarButtonVisibilityAction.From(
+                new ButtonVisibility { type = (int)ButtonType.Follow, visible = !isARMode }
+            ));
+        }
+
+        void ResetHomeView()
+        {
+            Dispatcher.Dispatch(SetCameraViewTypeAction.From(SetCameraViewTypeAction.CameraViewType.Default));
+            Dispatcher.Dispatch(SetCameraTransformInfoAction.From(ResetCamera()));
             m_Camera.camera.clearFlags = CameraClearFlags.Skybox;
         }
 
-        void OnZoomMode(InputAction.CallbackContext context)
-        {
-            if (!CheckTreatInput(context))
-                return;
-
-            var toolState = UIStateManager.current.stateData.toolState;
-
-            if (context.control.IsPressed())
-            {
-                if (toolState.activeTool == ToolType.PanTool)
-                {
-                    toolState.activeTool = ToolType.ZoomTool;
-                }
-                else
-                {
-                    m_ZoomPressed = true;
-                    if (!IsTemporaryTool(toolState.activeTool))
-                    {
-                        m_PreviousToolType = toolState.activeTool;
-                    }
-                }
-            }
-            else
-            {
-                toolState.activeTool = m_PanPressed ? ToolType.PanTool : m_PreviousToolType ?? ToolType.None;
-                m_ZoomPressed = false;
-            }
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-        }
-
-        bool IsTemporaryTool(ToolType activeTool)
+        bool IsTemporaryTool(SetActiveToolAction.ToolType activeTool)
         {
             switch (activeTool)
             {
-                case ToolType.ClippingTool:
-                case ToolType.OrbitTool:
-                case ToolType.SelectTool:
+                case SetActiveToolAction.ToolType.ClippingTool:
+                case SetActiveToolAction.ToolType.SelectTool:
                     return false;
             }
 
@@ -496,31 +555,6 @@ namespace Unity.Reflect.Viewer.UI
             return CheckTreatInput(deltaTime);
         }
 
-        void OnPanMode(InputAction.CallbackContext context)
-        {
-            if (!CheckTreatInput(context))
-                return;
-
-            var toolState = UIStateManager.current.stateData.toolState;
-
-            if (context.control.IsPressed())
-            {
-                m_PanPressed = true;
-                if (!IsTemporaryTool(toolState.activeTool))
-                {
-                    m_PreviousToolType = toolState.activeTool;
-                }
-
-                toolState.activeTool = m_ZoomPressed ? ToolType.ZoomTool : ToolType.PanTool;
-            }
-            else
-            {
-                toolState.activeTool = m_PreviousToolType ?? ToolType.None;
-                m_PanPressed = false;
-            }
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-        }
 
         void OnInteraction()
         {
@@ -539,32 +573,31 @@ namespace Unity.Reflect.Viewer.UI
             OnInteraction();
         }
 
-        void Orbit(Vector2 delta)
+        void Orbit(Vector2 delta, SetOrbitTypeAction.OrbitType orbitType)
         {
-            var data = UIStateManager.current.stateData;
-            switch (data.toolState.orbitType)
+            switch (orbitType)
             {
-                case OrbitType.WorldOrbit:
+                case SetOrbitTypeAction.OrbitType.WorldOrbit:
                     m_Camera.Rotate(new Vector2(delta.y, delta.x));
                     break;
-                case OrbitType.OrbitAtPoint:
+                case SetOrbitTypeAction.OrbitType.OrbitAtPoint:
                     m_Camera.OrbitAroundLookAt(new Vector2(delta.y, delta.x));
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
 
-            if (m_CachedCameraOptionData?.cameraViewType != CameraViewType.Default)
+            if (m_CameraViewSelector.GetValue() != null && m_CameraViewSelector.GetValue().cameraViewType != SetCameraViewTypeAction.CameraViewType.Default)
             {
-                data.cameraOptionData.cameraViewType = CameraViewType.Default;
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetCameraOption, data.cameraOptionData));
+                Dispatcher.Dispatch(SetCameraViewTypeAction.From(SetCameraViewTypeAction.CameraViewType.Default));
             }
+
             OnInteraction();
         }
 
         void OnOrbit(InputAction.CallbackContext context)
         {
-            if (m_CachedToolType != ToolType.OrbitTool || OrphanUIController.isTouchBlockedByUI ||
+            if (OrphanUIController.isTouchBlockedByUI ||
                 m_ZoomGestureInProgress || m_PanGestureInProgress || !CheckTreatInput(context))
                 return;
 
@@ -574,19 +607,13 @@ namespace Unity.Reflect.Viewer.UI
             var delta = m_WorldOrbitDelta.delta;
             var worldVector = new Vector2(delta.x, -delta.y);
 
-            Orbit(worldVector);
+            if (m_DeviceCapability.HasFlag(SetVREnableAction.DeviceCapability.ARCapability))
+                Orbit(worldVector, m_TouchOrbitType);
+            else
+                Orbit(worldVector, SetOrbitTypeAction.OrbitType.OrbitAtPoint);
+
         }
 
-        void OnPan(InputAction.CallbackContext context)
-        {
-            if (m_CachedToolType != ToolType.PanTool || OrphanUIController.isTouchBlockedByUI ||
-                m_ZoomGestureInProgress || !CheckTreatInput(context))
-                return;
-
-            m_PanDelta.SetNewFrameDelta(context.ReadValue<Vector2>());
-            var delta = m_PanDelta.delta * -Vector2.one;
-            Pan(delta);
-        }
 
         void OnPanGesture(InputAction.CallbackContext context)
         {
@@ -601,23 +628,9 @@ namespace Unity.Reflect.Viewer.UI
                     StopCoroutine(m_PanGestureCoroutine);
                 m_PanGestureCoroutine = StartCoroutine(StopPanGesture());
                 m_PanDelta.SetNewFrameDelta(dragGesture.Delta);
-                float ratio = 0.01f;
-#if UNITY_ANDROID
-                ratio = 0.1f;
-#endif
-                var delta = m_PanDelta.delta * (-Vector2.one * ratio);
+                var delta = dragGesture.Delta * -Vector2.one;
                 Pan(delta);
             }
-        }
-
-        void OnZoom(InputAction.CallbackContext context)
-        {
-            if (m_CachedToolType != ToolType.ZoomTool || OrphanUIController.isTouchBlockedByUI ||
-                m_PanGestureInProgress || !CheckTreatInput(context))
-                return;
-
-            m_ZoomDelta.SetNewFrameDelta(context.ReadValue<Vector2>());
-            Zoom(m_ZoomDelta.delta);
         }
 
         void OnZoomGesture(InputAction.CallbackContext context)
@@ -632,8 +645,7 @@ namespace Unity.Reflect.Viewer.UI
                 if (m_ZoomGestureCoroutine != null)
                     StopCoroutine(m_ZoomGestureCoroutine);
                 m_ZoomGestureCoroutine = StartCoroutine(StopZoomGesture());
-#if UNITY_ANDROID
-                // TODO: This should be the general algorithm, but we will need to test it on iOS first.
+
                 var distance = m_GestureCameraStartPosition - (m_GestureCameraStartPosition) * ((pinchGesture.gap - pinchGesture.startGap) / Screen.height);
                 if (distance > m_GestureCameraStartPosition)
                 {
@@ -642,10 +654,6 @@ namespace Unity.Reflect.Viewer.UI
                 }
 
                 m_Camera.SetDistanceFromLookAt(distance);
-#else
-                m_ZoomDelta.SetNewFrameDelta(new Vector2(0.0f, pinchGesture.gapDelta / pinchGesture.gap) * m_ZoomGestureSensibility);
-                Zoom(m_ZoomDelta.delta);
-#endif
             }
         }
 
@@ -661,64 +669,6 @@ namespace Unity.Reflect.Viewer.UI
             OnPanGestureFinished(null);
         }
 
-        struct QuickToolData
-        {
-            public ToolType toolType;
-            public OrbitType orbitType;
-        }
-
-        void OnQuickToolEnd()
-        {
-            var toolState = UIStateManager.current.stateData.toolState;
-            var navigationToolState = toolState;
-
-            toolState.activeTool = m_PanPressed ? (m_ZoomPressed ? ToolType.ZoomTool : ToolType.PanTool) : m_PreviousToolType ?? ToolType.None;
-            m_PreviousToolType = null;
-            if (m_PreviousOrbitType != null)
-            {
-                toolState.orbitType = m_PreviousOrbitType ?? toolState.orbitType;
-                m_PreviousOrbitType = null;
-            }
-
-            // Reset Orbit tool type first
-            navigationToolState.activeTool = m_PreviousOrbitToolType ?? ToolType.None;
-            navigationToolState.orbitType = OrbitType.OrbitAtPoint;
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, navigationToolState));
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-        }
-
-        IEnumerator DelayEndQuickTool(QuickToolData toolData)
-        {
-            var toolState = UIStateManager.current.stateData.toolState;
-
-            if (m_PreviousToolType == null)
-            {
-                m_PreviousToolType = toolState.activeTool;
-            }
-
-            if (toolState.activeTool != toolData.toolType || (toolData.orbitType != OrbitType.None && toolState.orbitType != toolData.orbitType))
-            {
-                if (toolState.orbitType != toolData.orbitType)
-                {
-                    m_PreviousOrbitType = toolState.orbitType;
-                }
-
-                toolState.activeTool = toolData.toolType;
-
-                if (toolData.toolType == ToolType.OrbitTool)
-                {
-                    toolState.orbitType = toolData.orbitType;
-                }
-            }
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetToolState, toolState));
-
-            yield return new WaitForSeconds(k_ToolDebounceTime);
-
-            OnQuickToolEnd();
-        }
-
         void OnQuickZoom(InputAction.CallbackContext context)
         {
             if (OrphanUIController.isPointBlockedByUI)
@@ -726,9 +676,6 @@ namespace Unity.Reflect.Viewer.UI
 
             if (CheckTreatInput(context))
             {
-                StopCoroutine(nameof(DelayEndQuickTool));
-                StartCoroutine(nameof(DelayEndQuickTool), new QuickToolData() { toolType = ToolType.ZoomTool, orbitType = OrbitType.None });
-
                 m_ZoomDelta.SetNewFrameDelta(context.ReadValue<Vector2>());
                 Zoom(m_ZoomDelta.delta);
             }
@@ -741,13 +688,19 @@ namespace Unity.Reflect.Viewer.UI
 
             if (CheckTreatInput(context))
             {
-                StopCoroutine(nameof(DelayEndQuickTool));
-                StartCoroutine(nameof(DelayEndQuickTool), new QuickToolData() { toolType = ToolType.PanTool, orbitType = OrbitType.None });
-
                 m_PanDelta.SetNewFrameDelta(context.ReadValue<Vector2>());
                 var delta = m_PanDelta.delta * -Vector2.one;
 
                 Pan(delta);
+            }
+        }
+
+        void OnQuickPanStart(InputAction.CallbackContext context)
+        {
+            if (CheckTreatInput(context) && context.control.IsPressed())
+            {
+                Vector2 pos = Pointer.current.position.ReadValue();
+                m_Camera.PanStart(pos);
             }
         }
 
@@ -756,15 +709,11 @@ namespace Unity.Reflect.Viewer.UI
             if (OrphanUIController.isTouchBlockedByUI || !CheckTreatInput(context))
                 return;
 
-            StopCoroutine(nameof(DelayEndQuickTool));
-            StartCoroutine(nameof(DelayEndQuickTool),
-                new QuickToolData() { toolType = ToolType.OrbitTool, orbitType = OrbitType.WorldOrbit });
-
             m_WorldOrbitDelta.SetNewFrameDelta(context.ReadValue<Vector2>());
             var delta = m_WorldOrbitDelta.delta;
             var worldVector = new Vector2(delta.x, -delta.y);
 
-            Orbit(worldVector);
+            Orbit(worldVector, SetOrbitTypeAction.OrbitType.WorldOrbit);
         }
 
         void OnTeleport(InputAction.CallbackContext context)
@@ -772,62 +721,48 @@ namespace Unity.Reflect.Viewer.UI
             if (OrphanUIController.isTouchBlockedByUI || m_TeleportController == null || !CheckTreatInput(context))
                 return;
 
-            m_TeleportController.TriggerTeleport(Pointer.current.position.ReadValue());
-        }
+            Vector2 current = Pointer.current.position.ReadValue();
+            var distance = Vector2.Distance(m_LastTapPoint, current);
 
-        public bool OnGetTeleportTarget(bool placementMeshActive, bool teleport = false)
-        {
-            Vector2 pointerPos = Pointer.current.position.ReadValue();
-            bool validTarget = MeshTargetPlacement(pointerPos);
-            m_PointMesh.SetActive(placementMeshActive);
-            if (validTarget && teleport)
+            if (distance > m_TeleportAllowDistance)
             {
-                m_TeleportController.TriggerTeleport(pointerPos);
-                isTeleportInit = false;
+                return;
             }
 
-            return validTarget;
+            m_TeleportController.TriggerTeleport(current);
         }
 
-        public Vector3 GetWalkReticlePosition()
+        public void TriggerTeleport(Vector2 pointerPos)
         {
-            return m_PointMesh.transform.position;
+            m_TeleportController.TriggerTeleport(pointerPos);
         }
 
-        bool MeshTargetPlacement(Vector2 pointerPos)
+        public void AsyncGetTeleportTarget(Vector2 pointerPos, Action<Vector3> callback)
         {
-            Vector3 target = m_TeleportController.GetTeleportTarget(pointerPos);
-            bool validTarget = (target != Vector3.zero);
-
-            if (!isTeleportInit)
-            {
-                m_PointMesh.SetActive(true);
-                isTeleportInit = true;
-            }
-
-#if ENABLE_VR
-            Vector3 originalpos = new Vector3(pointerPos.x, pointerPos.y, GetComponent<Canvas>().planeDistance);
-            m_PointMesh.GetComponent<BezierCurve>().StartPosition = m_Camera.camera.ScreenToWorldPoint(originalpos);
-#endif
-            m_PointMesh.transform.position = target;
-            float size = (m_Camera.transform.position - target).magnitude;
-            m_PointMesh.transform.localScale = Vector3.one * size;
-
-            return validTarget;
+            m_TeleportController.AsyncGetTeleportTarget(pointerPos, callback);
         }
 
         void OnResetButtonClicked()
         {
             // Helpmode
-            if (HelpDialogController.SetHelpID(HelpModeEntryID.HomeReset)) return;
+            if (HelpDialogController.SetHelpID(SetHelpModeIDAction.HelpModeEntryID.HomeReset))
+                return;
 
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.ResetHomeView, null));
+            OnInteraction();
+            Reset();
+        }
+
+        void Reset()
+        {
+            Dispatcher.Dispatch(SetCameraViewTypeAction.From(SetCameraViewTypeAction.CameraViewType.Default));
+            Dispatcher.Dispatch(SetCameraTransformInfoAction.From(ResetCamera()));
         }
 
         public CameraTransformInfo ResetCamera()
         {
+            var bounds = m_InitialZoneBounds != default ? m_InitialZoneBounds : m_InitialCameraBounds;
             m_Camera.camera.clearFlags = CameraClearFlags.Skybox;
-            m_Camera.SetupInitialCameraPosition(m_InitialCameraBounds, 20.0f, 0.75f);
+            m_Camera.SetupInitialCameraPosition(bounds.ToUnity(), 20.0f, 0.90f);
             var camTransform = m_Camera.camera.transform;
             return new CameraTransformInfo { position = camTransform.position, rotation = camTransform.eulerAngles };
         }
@@ -845,6 +780,58 @@ namespace Unity.Reflect.Viewer.UI
         void OnTopView()
         {
             m_Camera.ContinuousOrbitAroundLookAt(new Vector2(90, 0), true);
+        }
+
+        void OnClick(InputAction.CallbackContext context)
+        {
+            if (m_TeleportEnabledSelector.GetValue() == false)
+                return;
+
+            Vector2 current = Pointer.current.position.ReadValue();
+            if (m_LastTapPoint == Vector2.zero)
+            {
+                m_LastTapPoint = current;
+                if (m_ResetCoroutine != null)
+                {
+                    StopCoroutine(m_ResetCoroutine);
+                    m_ResetCoroutine = null;
+                }
+
+                m_ResetCoroutine = StartCoroutine(ResetLastTapPoint());
+            }
+            else
+            {
+                var distance = Vector2.Distance(m_LastTapPoint, current);
+                if (distance > m_TeleportAllowDistance)
+                {
+                    m_InputActionAsset["TouchTeleport Action"].Reset();
+                    m_InputActionAsset["Teleport Action"].Reset();
+                    if (m_ResetCoroutine != null)
+                    {
+                        StopCoroutine(m_ResetCoroutine);
+                        m_ResetCoroutine = null;
+                    }
+
+                    m_LastTapPoint = Vector2.zero;
+                }
+            }
+        }
+
+        IEnumerator ResetLastTapPoint()
+        {
+            yield return m_DelayWaitForSeconds;
+            m_LastTapPoint = Vector2.zero;
+        }
+
+
+        void OnTouchOrbitTypeChanged(SetOrbitTypeAction.OrbitType orbitType)
+        {
+            m_TouchOrbitType = orbitType;
+        }
+
+        void OnDeviceCapabilityChanged(SetVREnableAction.DeviceCapability deviceCapability)
+        {
+            m_DeviceCapability = deviceCapability;
         }
     }
 }

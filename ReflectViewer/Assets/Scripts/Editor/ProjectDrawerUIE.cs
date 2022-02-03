@@ -5,23 +5,24 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.Reflect;
+using UnityEngine.Reflect.Viewer.Core;
 using UnityEngine.UIElements;
 
 // ProjectDrawerUIE
 [CustomPropertyDrawer(typeof(Project))]
-public class ProjectDrawerUIE : PropertyDrawer
+public class ProjectDrawerUIE: PropertyDrawer
 {
     bool m_valid;
+
     [Serializable]
-    internal class ProjectDummy 
+    internal class ProjectDummy
     {
         public string Name;
         public string ProjectId;
         public UnityProjectHost Host;
-        public UnityProject.SourceOption Source;
     }
 
-    internal class ProjectSO : ScriptableObject
+    internal class ProjectSO: ScriptableObject
     {
         public ProjectDummy project;
     }
@@ -38,55 +39,60 @@ public class ProjectDrawerUIE : PropertyDrawer
         return EditorGUIUtility.singleLineHeight;
     }
 
-    public override void OnGUI( Rect position, SerializedProperty property, GUIContent label ) {
+    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+    {
         var project = ScriptableObject.CreateInstance<ProjectSO>();
 
         project.project = new ProjectDummy();
-        var realProject = property.serializedObject.targetObject as UIStateManager;
-        if (realProject && label.text.Equals("Active Project"))
+        if (SessionStateContext<UnityUser, LinkPermission>.current != null)
         {
-            try
+            using (var sessionRoomsSelector = UISelectorFactory.createSelector<ProjectRoom[]>(SessionStateContext<UnityUser, LinkPermission>.current, nameof(ISessionStateDataProvider<UnityUser, LinkPermission>.rooms)))
             {
-                UnityProject unityProject = realProject.projectStateData.activeProject;
-                project.project.Name = unityProject.Name;
-                project.project.ProjectId = unityProject.ProjectId;
-                project.project.Host = unityProject.Host;
-                project.project.Source = unityProject.Source;
-                m_valid = true;
-            }
-            catch (Exception)
-            {
-                m_valid = false;
+                var realProject = property.serializedObject.targetObject as UIStateManager;
+                if (realProject && label.text.Equals("Active Project"))
+                {
+                    try
+                    {
+                        UnityProject unityProject = realProject.projectSettingStateData.activeProject;
+                        project.project.Name = unityProject.Name;
+                        project.project.ProjectId = unityProject.ProjectId;
+                        project.project.Host = unityProject.Host;
+                        m_valid = true;
+                    }
+                    catch (Exception)
+                    {
+                        m_valid = false;
+                    }
+                }
+                else
+                {
+                    if (realProject && label.text.StartsWith("Element"))
+                    {
+                        try
+                        {
+                            var index = int.Parse(label.text.Split(' ')[1]);
+                            var projectRoom = (ProjectRoom)sessionRoomsSelector.GetValue()[index];
+                            UnityProject unityProject = projectRoom.project;
+                            project.project.Name = unityProject.Name;
+                            project.project.ProjectId = unityProject.ProjectId;
+                            project.project.Host = unityProject.Host;
+                            m_valid = true;
+                        }
+                        catch (Exception)
+                        {
+                            m_valid = false;
+                        }
+                    }
+                }
             }
         }
-        else
-        {
-            if (realProject && label.text.StartsWith("Element"))
-            {
-                try
-                {
-                    var index = int.Parse(label.text.Split(' ')[1]);
-                    UnityProject unityProject = realProject.sessionStateData.sessionState.rooms[index].project;
-                    project.project.Name = unityProject.Name;
-                    project.project.ProjectId = unityProject.ProjectId;
-                    project.project.Host = unityProject.Host;
-                    project.project.Source = unityProject.Source;
-                    m_valid = true;  
-                }
-                catch (Exception)
-                {
-                    m_valid = false;
-                }
-            }
-        }
-        
         SerializedObject serializedObject = new UnityEditor.SerializedObject(project);
 
         SerializedProperty serializedPropertyProject = serializedObject.FindProperty("project");
-        
-        EditorGUI.BeginProperty( position, label, property );
 
-        EditorGUI.LabelField( new Rect( position.x, position.y, position.width, 16 ), label );
+        EditorGUI.BeginProperty(position, label, property);
+
+        EditorGUI.LabelField(new Rect(position.x, position.y, position.width, 16), label);
 
         if (m_valid)
         {
@@ -96,18 +102,18 @@ public class ProjectDrawerUIE : PropertyDrawer
 
             EditorGUI.indentLevel++;
 
-            EditorGUI.PropertyField( nameRect, serializedPropertyProject.FindPropertyRelative( "Name" ) );
-            EditorGUI.PropertyField( projecIdRect, serializedPropertyProject.FindPropertyRelative( "ProjectId" ) );
+            EditorGUI.PropertyField(nameRect, serializedPropertyProject.FindPropertyRelative("Name"));
+            EditorGUI.PropertyField(projecIdRect, serializedPropertyProject.FindPropertyRelative("ProjectId"));
             var hostProperty = serializedPropertyProject.FindPropertyRelative("Host");
             if (hostProperty != null)
             {
-                EditorGUI.PropertyField( hostRect, serializedPropertyProject.FindPropertyRelative( "Host" ) );
+                EditorGUI.PropertyField(hostRect, serializedPropertyProject.FindPropertyRelative("Host"));
             }
 
-            EditorGUI.indentLevel--;            
+            EditorGUI.indentLevel--;
         }
         EditorGUI.EndProperty();
-        
+
         ScriptableObject.DestroyImmediate(project);
     }
 }

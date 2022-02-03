@@ -1,10 +1,12 @@
 using System;
+using Unity.Properties;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
 
 namespace Unity.Reflect.Viewer
 {
-    [Serializable]
-    public struct QualityState : IEquatable<QualityState>
+    [Serializable, GeneratePropertyBag]
+    public struct QualityState : IEquatable<QualityState>, IQualitySettingsDataProvider
     {
         public static readonly QualityState defaultData = new QualityState()
         {
@@ -15,11 +17,21 @@ namespace Unity.Reflect.Viewer
             lastQualityChangeTimestamp = -1
         };
 
-        public int fpsThresholdQualityDecrease;
-        public int fpsThresholdQualityIncrease;
-        public int qualityLevel;
-        public bool isAutomatic;
-        public float lastQualityChangeTimestamp;
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int fpsThresholdQualityDecrease { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int fpsThresholdQualityIncrease { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public int qualityLevel { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public bool isAutomatic { get; set; }
+        [CreateProperty]
+        [field: SerializeField, DontCreateProperty]
+        public float lastQualityChangeTimestamp { get; set; }
 
         public static bool operator ==(QualityState a, QualityState b)
         {

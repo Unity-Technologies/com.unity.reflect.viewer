@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 
 namespace UnityEngine.Reflect.MeasureTool
 {
@@ -10,7 +12,7 @@ namespace UnityEngine.Reflect.MeasureTool
         [Serializable]
         public struct SelectionContext
         {
-            public IAnchor selectedAnchor;
+            public SelectObjectMeasureToolAction.IAnchor selectedAnchor;
         }
 
         public List<SelectionContext> SelectionContextList;

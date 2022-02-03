@@ -1,18 +1,18 @@
-﻿using SharpFlux;
+using System;
 using SharpFlux.Dispatching;
-using Unity.Reflect.Viewer.UI;
 using Unity.TouchFramework;
 using UnityEngine;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.UI;
 
 namespace UnityEngine.Reflect.Utils
 {
     [RequireComponent(typeof(Button))]
-    public class UIDialogButton : MonoBehaviour
+    public class UIDialogButton: MonoBehaviour
     {
-
         [SerializeField, Tooltip("Dialog Type")]
-        DialogType m_DialogType;
+        OpenDialogAction.DialogType m_DialogType;
         [SerializeField, Tooltip("Is Sub Dialog")]
         bool m_IsSubDialog;
         [SerializeField, Tooltip("Button Image")]
@@ -26,20 +26,44 @@ namespace UnityEngine.Reflect.Utils
 
         public delegate bool OpenDialogCondition();
         public OpenDialogCondition openDialogCondition = () => true;
+        IUISelector<OpenDialogAction.DialogType> m_ActiveSubDialogSelector;
+        IUISelector<OpenDialogAction.DialogType> m_ActiveDialogSelector;
+
+        void OnDestroy()
+        {
+            m_ActiveDialogSelector?.Dispose();
+            m_ActiveSubDialogSelector?.Dispose();
+        }
 
         void Awake()
         {
-            UIStateManager.stateChanged += OnStateDataChanged;
+            m_ActiveSubDialogSelector = UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeSubDialog), OnActiveSubDialogChanged);
+            m_ActiveDialogSelector = UISelectorFactory.createSelector<OpenDialogAction.DialogType>(UIStateContext.current, nameof(IDialogDataProvider.activeDialog), OnActiveDialogChanged);
 
             m_Button = GetComponent<Button>();
             m_Button.onClick.AddListener(OnDialogButtonClick);
         }
 
-        void OnStateDataChanged(UIStateData stateData)
+        void OnActiveDialogChanged(OpenDialogAction.DialogType data)
         {
-            if (m_DialogType != DialogType.None)
+            if (m_DialogType != OpenDialogAction.DialogType.None)
             {
-                if ((m_IsSubDialog && stateData.activeSubDialog == m_DialogType) || stateData.activeDialog == m_DialogType)
+                if (data == m_DialogType)
+                {
+                    m_ButtonImage.color = UIConfig.propertySelectedColor;
+                }
+                else
+                {
+                    m_ButtonImage.color = Color.clear;
+                }
+            }
+        }
+
+        void OnActiveSubDialogChanged(OpenDialogAction.DialogType data)
+        {
+            if (m_DialogType != OpenDialogAction.DialogType.None)
+            {
+                if (m_IsSubDialog && data == m_DialogType)
                 {
                     m_ButtonImage.color = UIConfig.propertySelectedColor;
                 }
@@ -52,13 +76,21 @@ namespace UnityEngine.Reflect.Utils
 
         void OnDialogButtonClick()
         {
-            if (m_DialogType != DialogType.None)
+            if (m_DialogType != OpenDialogAction.DialogType.None)
             {
-                var activeDialog = m_IsSubDialog ? UIStateManager.current.stateData.activeSubDialog : UIStateManager.current.stateData.activeDialog;
-                var dialogType = activeDialog != m_DialogType && openDialogCondition() ? m_DialogType : DialogType.None;
-                var action = m_IsSubDialog ? ActionTypes.OpenSubDialog : ActionTypes.OpenDialog;
-                Dispatcher.Dispatch(Payload<ActionTypes>.From(action, dialogType));
-                if (!ReferenceEquals(m_Dialog, null) && m_MoveDialogToButton && dialogType != DialogType.None)
+                var activeDialog = m_IsSubDialog ? m_ActiveSubDialogSelector.GetValue() : m_ActiveDialogSelector.GetValue();
+                var dialogType = activeDialog != m_DialogType && openDialogCondition() ? m_DialogType : OpenDialogAction.DialogType.None;
+
+                if (m_IsSubDialog)
+                {
+                    Dispatcher.Dispatch(OpenSubDialogAction.From(dialogType));
+                }
+                else
+                {
+                    Dispatcher.Dispatch(OpenDialogAction.From(dialogType));
+                }
+
+                if (!ReferenceEquals(m_Dialog, null) && m_MoveDialogToButton && dialogType != OpenDialogAction.DialogType.None)
                 {
                     m_Dialog.transform.position = m_Button.transform.position;
                 }

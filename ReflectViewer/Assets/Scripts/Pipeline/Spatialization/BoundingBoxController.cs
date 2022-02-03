@@ -25,7 +25,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
 
         protected override BoundingBoxController Create(ReflectBootstrapper hook, ISyncModelProvider provider, IExposedPropertyTable resolver)
         {
-            var p = new BoundingBoxController(hook.services.eventHub, settings.boundingBoxRoot.Resolve(resolver), settings);
+            var p = new BoundingBoxController(hook.Services.EventHub, settings.boundingBoxRoot.Resolve(resolver), settings);
 
             assetInput.streamEvent = p.OnAssetEvent;
             filteredInput.streamEvent = p.OnFilteredAssetEvent;
@@ -53,7 +53,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         EventHub.Handle m_ErrorHandle;
 
         readonly Dictionary<StreamKey, BoundingBoxReference> m_BoundingBoxesByStreamKey = new Dictionary<StreamKey, BoundingBoxReference>();
-        readonly Dictionary<StreamKey, GameObject> m_GameObjectsByStreamKey = new Dictionary<StreamKey, GameObject>();
+        readonly Dictionary<StreamKey, (GameObject gameObject, Renderer[] renderers)> m_GameObjectsByStreamKey = new Dictionary<StreamKey, (GameObject, Renderer[])>();
         readonly Dictionary<StreamState, Material> m_DefaultMaterialPresets = new Dictionary<StreamState, Material>();
         readonly Dictionary<StreamState, Material> m_DebugMaterialPresets = new Dictionary<StreamState, Material>();
         readonly Transform m_Root;
@@ -265,17 +265,18 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             switch (eventType)
             {
                 case StreamEvent.Added:
-                    m_GameObjectsByStreamKey[gameObject.key] = gameObject.data;
+                    var renderers = gameObject.data.GetComponentsInChildren<Renderer>();
+                    m_GameObjectsByStreamKey[gameObject.key] = (gameObject.data, renderers);
                     if (m_BoundingBoxesByStreamKey.TryGetValue(gameObject.key, out var box))
                     {
                         SetStreamState(box, StreamState.GameObject);
                         // deactivate gameObject if box was inactive for loading hidden objects
                         var wasActive = box.gameObject.activeSelf;
-                        gameObject.data.SetActive(wasActive);
+                        SetRendererState(renderers, wasActive);
                         box.gameObject.SetActive(m_DisplayOnlyBoundingBoxes && wasActive);
                     }
                     if (m_DisplayOnlyBoundingBoxes)
-                        gameObject.data.SetActive(false);
+                        SetRendererState(renderers, false);
                     if (settings.useStaticBatching && m_GameObjectsByStreamKey.Count == m_BoundingBoxesByStreamKey.Count)
                         StaticBatchingUtility.Combine(gameObject.data.transform.parent.gameObject);
                     break;
@@ -296,13 +297,13 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
                     if (m_BoundingBoxesByStreamKey.TryGetValue(gameObject.key, out var box))
                         box.gameObject.SetActive(m_DisplayOnlyBoundingBoxes || gameObject.data == null);
                     if (m_GameObjectsByStreamKey.TryGetValue(gameObject.key, out var obj))
-                        obj.SetActive(!m_DisplayOnlyBoundingBoxes && gameObject.data != null);
+                        SetRendererState(obj.renderers, !m_DisplayOnlyBoundingBoxes && gameObject.data != null);
                     break;
                 case StreamEvent.Removed:
                     if (m_BoundingBoxesByStreamKey.TryGetValue(gameObject.key, out box))
                         box.gameObject.SetActive(false);
                     if (m_GameObjectsByStreamKey.TryGetValue(gameObject.key, out obj))
-                        obj.SetActive(false);
+                        SetRendererState(obj.renderers, false);
                     break;
             }
         }
@@ -311,7 +312,7 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
         {
             foreach (var kvp in m_GameObjectsByStreamKey)
             {
-                kvp.Value.SetActive(!displayOnlyBoundingBoxes);
+                SetRendererState(kvp.Value.renderers, !displayOnlyBoundingBoxes);
                 if (m_BoundingBoxesByStreamKey.TryGetValue(kvp.Key, out var box))
                     box.gameObject.SetActive(displayOnlyBoundingBoxes);
             }
@@ -330,6 +331,12 @@ namespace UnityEngine.Reflect.Viewer.Pipeline
             }
 
             m_GlobalBounds.SetMinMax(min, max);
+        }
+
+        void SetRendererState(Renderer[] renderers, bool isVisible)
+        {
+            foreach (var renderer in renderers)
+                renderer.enabled = isVisible;
         }
 
         public override void OnPipelineInitialized()

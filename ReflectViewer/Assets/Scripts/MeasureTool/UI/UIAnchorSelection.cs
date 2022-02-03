@@ -1,51 +1,51 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using SharpFlux;
 using SharpFlux.Dispatching;
 using TMPro;
-using Unity.Reflect.Viewer;
+using Unity.Reflect.Viewer.Core.Actions;
 using Unity.Reflect.Viewer.UI;
 using Unity.XRTools.Utils;
-using UnityEngine.Reflect.Viewer;
+using UnityEngine.Reflect.Viewer.Core;
+using UnityEngine.Reflect.Viewer.Core.Actions;
 using UnityEngine.Reflect.Viewer.Pipeline;
 
 namespace UnityEngine.Reflect.MeasureTool
 {
-    public class UIAnchorSelection
+    public class UIAnchorSelection: IDisposable
     {
         AnchorSelector AnchorPicker { get; }
         int? m_CurrentSelectedAnchorIndex;
-        MeasureToolStateData? m_CachedMeasureToolStateData;
         float m_Offset = 70f;
-        List<IAnchor> m_AnchorsList;
-        readonly List<Tuple<GameObject, RaycastHit>> m_Results = new List<Tuple<GameObject, RaycastHit>>();
+        List<SelectObjectMeasureToolAction.IAnchor> m_AnchorsList;
         List<Tuple<int, GameObject>> m_AnchorIndexToCursorObject = new List<Tuple<int, GameObject>>();
         Camera m_MainCamera;
         Vector3? m_PreviousPadPosition;
         double m_Tolerance = 0.1f;
-        Transform m_RightController;
         float m_LineWidthMultiplier = 100f;
         float m_MeasureTextWidthMin = 150f;
 
         TextMeshProUGUI m_MeasureText;
         DraggableButton m_DraggablePad;
         LineRenderer m_Line;
+        Func<ToggleMeasureToolAction.MeasureMode> m_MeasureModeGetter;
+        Func<bool> m_VREnableGetter;
+        Func<Transform> m_VRControllerGetter;
 
-        public UIAnchorSelection(ref TextMeshProUGUI textMesh, ref DraggableButton draggablePad, ref LineRenderer line)
+        public UIAnchorSelection(TextMeshProUGUI textMesh, DraggableButton draggablePad, LineRenderer line, Func<ToggleMeasureToolAction.MeasureMode> measureModeGetter,
+            Func<bool> vrEnableGetter, Func<Transform> vrControllerGetter)
         {
             AnchorPicker = new AnchorSelector();
-            AnchorPicker.CurrentAnchorTypeSelection = AnchorType.Point;
-            m_AnchorsList = new List<IAnchor>();
+            AnchorPicker.CurrentAnchorTypeSelection = ToggleMeasureToolAction.AnchorType.Point;
+            m_AnchorsList = new List<SelectObjectMeasureToolAction.IAnchor>();
 
             m_MeasureText = textMesh;
             m_DraggablePad = draggablePad;
             m_Line = line;
-        }
 
-        public void SetControllerTransform(TransformVariable rightController)
-        {
-            m_RightController = rightController.Value;
+            m_MeasureModeGetter = measureModeGetter;
+            m_VREnableGetter = vrEnableGetter;
+            m_VRControllerGetter = vrControllerGetter;
         }
 
         void LabelFOV(Vector3 start, Vector3 end, Transform label)
@@ -77,7 +77,7 @@ namespace UnityEngine.Reflect.MeasureTool
                     m_Line.startWidth = Vector3.Distance(((PointAnchor)m_AnchorsList[0]).position, m_MainCamera.transform.position) / m_LineWidthMultiplier;
                     m_Line.endWidth = Vector3.Distance(((PointAnchor)m_AnchorsList[1]).position, m_MainCamera.transform.position) / m_LineWidthMultiplier;
 
-                    if (UIStateManager.current.stateData.VREnable)
+                    if (m_VREnableGetter())
                     {
                         measureText.transform.gameObject.SetActive(true);
                         measureText.localScale = Vector3.one * 2f;
@@ -121,7 +121,7 @@ namespace UnityEngine.Reflect.MeasureTool
 
 
                 // Keep draggablePad screen position when camera moving
-                if (m_CurrentSelectedAnchorIndex != null && !UIStateManager.current.stateData.VREnable)
+                if (m_CurrentSelectedAnchorIndex != null && !m_VREnableGetter())
                 {
                     var currentCursor = m_AnchorIndexToCursorObject.Where(r => r.Item1 == m_CurrentSelectedAnchorIndex).Select(r => r.Item2).FirstOrDefault();
                     var position = m_MainCamera.WorldToScreenPoint(currentCursor.transform.position) + new Vector3(0f, -m_Offset, 0f);
@@ -144,58 +144,42 @@ namespace UnityEngine.Reflect.MeasureTool
             }
         }
 
-        public void OnStateDataChanged(MeasureToolStateData data, GameObject cursor = null)
+        public void OnStateDataChanged(SelectObjectMeasureToolAction.IAnchor selectedAnchor, GameObject cursor = null)
         {
-            if (m_CachedMeasureToolStateData != data)
+            if (cursor != null && selectedAnchor != null)
             {
-                if (m_CachedMeasureToolStateData == null || m_CachedMeasureToolStateData.Value.selectedAnchorsContext != data.selectedAnchorsContext)
+                SetCursorUI(selectedAnchor, cursor);
+
+                if (!cursor.activeSelf)
                 {
-                    if (data.selectedAnchorsContext != null && data.selectedAnchorsContext.Count > 0)
-                    {
-                        var anchor = data.selectedAnchorsContext[0].LastContext.selectedAnchor;
-
-                        if (cursor != null)
-                        {
-                            SetCursorUI(anchor, ref cursor);
-
-                            if (!cursor.activeSelf)
-                            {
-                                cursor.gameObject.SetActive(true);
-                                m_AnchorsList.Add(anchor);
-                            }
-
-                            m_AnchorIndexToCursorObject.Add(new Tuple<int, GameObject>(m_AnchorsList.Count - 1, cursor));
-                            m_CurrentSelectedAnchorIndex = m_AnchorIndexToCursorObject[m_AnchorIndexToCursorObject.Count - 1].Item1;
-
-                            if (!UIStateManager.current.stateData.VREnable)
-                                m_DraggablePad.gameObject.SetActive(true);
-                        }
-                        else if ((UIStateManager.current.stateData.VREnable || m_DraggablePad.button.IsActive()) && m_CurrentSelectedAnchorIndex != null)
-                        {
-                            var currentCursor = m_AnchorIndexToCursorObject.Where(r => r.Item1 == m_CurrentSelectedAnchorIndex).Select(r => r.Item2).FirstOrDefault();
-
-                            SetCursorUI(anchor, ref currentCursor);
-
-                            m_AnchorsList[m_CurrentSelectedAnchorIndex.Value] = anchor;
-                        }
-
-                        data.selectedAnchorsContext[0].SelectionContextList.Clear();
-                    }
+                    cursor.gameObject.SetActive(true);
+                    m_AnchorsList.Add(selectedAnchor);
                 }
 
-                m_CachedMeasureToolStateData = data;
+                m_AnchorIndexToCursorObject.Add(new Tuple<int, GameObject>(m_AnchorsList.Count - 1, cursor));
+                m_CurrentSelectedAnchorIndex = m_AnchorIndexToCursorObject[m_AnchorIndexToCursorObject.Count - 1].Item1;
+
+                if (!m_VREnableGetter())
+                    m_DraggablePad.gameObject.SetActive(true);
+            }
+            else if ((m_VREnableGetter() || m_DraggablePad.button.IsActive()) && m_CurrentSelectedAnchorIndex != null)
+            {
+                var currentCursor = m_AnchorIndexToCursorObject.Where(r => r.Item1 == m_CurrentSelectedAnchorIndex).Select(r => r.Item2).FirstOrDefault();
+
+                SetCursorUI(selectedAnchor, currentCursor);
+
+                m_AnchorsList[m_CurrentSelectedAnchorIndex.Value] = selectedAnchor;
             }
         }
 
-        void SetCursorUI(IAnchor selectedAnchor, ref GameObject cursor)
+        void SetCursorUI(SelectObjectMeasureToolAction.IAnchor selectedAnchor, GameObject cursor)
         {
             switch (selectedAnchor.type)
             {
-                case AnchorType.Point:
+                case ToggleMeasureToolAction.AnchorType.Point:
                 default:
                     cursor.transform.position = ((PointAnchor)selectedAnchor).position;
-                    cursor.transform.forward =  UIStateManager.current.m_RootNode.transform.localRotation * ((PointAnchor)selectedAnchor).normal;
-
+                    cursor.transform.forward = ((PointAnchor)selectedAnchor).normal;
                     break;
             }
         }
@@ -223,28 +207,19 @@ namespace UnityEngine.Reflect.MeasureTool
 
         public void OnBeginDragPad()
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetObjectPicker, AnchorPicker));
+            Dispatcher.Dispatch(SetSpatialSelectorAction.From(AnchorPicker));
         }
 
         public void OnDragPad(DragStateData dragState)
         {
-            if (m_PreviousPadPosition.HasValue && (dragState.position - m_PreviousPadPosition.Value).magnitude < m_Tolerance)
+            if (m_PreviousPadPosition.HasValue && (dragState.position - m_PreviousPadPosition.Value).magnitude < m_Tolerance && !m_VREnableGetter())
                 return;
 
-            dragState.position.y += m_Offset;
             m_PreviousPadPosition = dragState.position;
+            var position =  dragState.position;
+            position.y += m_Offset;
 
-            OnPick(dragState.position);
-
-            if (m_Results == null)
-                return;
-
-            var stateData = m_CachedMeasureToolStateData == null ? MeasureToolStateData.defaultData : m_CachedMeasureToolStateData.Value;
-            var selectedObjects = m_Results.Select(x => x.Item1).Where(x => x.layer != MetadataFilter.k_OtherLayer);
-            stateData.selectedAnchorsContext = selectedObjects.Select(r => r.GetComponent<AnchorSelectionContext>()).Where(g => g != null).ToList();
-            stateData.toolState = true;
-
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetMeasureToolOptions, stateData));
+            OnPick(position, OnPickDragAsyncCallback);
         }
 
         public void OnEndDragPad()
@@ -252,22 +227,14 @@ namespace UnityEngine.Reflect.MeasureTool
             m_PreviousPadPosition = null;
         }
 
-        public bool OnPointerUp(Vector3 position, MeasureToolStateData data)
+        public void OnPointerUp(Vector3 position)
         {
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetObjectPicker, AnchorPicker));
+            Dispatcher.Dispatch(SetSpatialSelectorAction.From(AnchorPicker));
 
-            OnPick(position);
-
-            if (m_Results == null || m_Results.Count == 0)
-                return false;
-
-            var selectedObjects = m_Results.Select(x => x.Item1).Where(x => x.layer != MetadataFilter.k_OtherLayer);
-            data.selectedAnchorsContext = selectedObjects.Select(r => r.GetComponent<AnchorSelectionContext>()).Where(g => g != null).ToList();
-            Dispatcher.Dispatch(Payload<ActionTypes>.From(ActionTypes.SetMeasureToolOptions, data));
-            return true;
+            OnPick(position, OnPickPointerAsyncCallback);
         }
 
-        void OnPick(Vector3 position)
+        void OnPick(Vector3 position, Action<List<Tuple<GameObject, RaycastHit>>> onPickCallBack)
         {
             if (m_MainCamera == null || !m_MainCamera.gameObject.activeInHierarchy)
             {
@@ -281,13 +248,76 @@ namespace UnityEngine.Reflect.MeasureTool
 
             Ray ray = m_MainCamera.ScreenPointToRay(position);
 
-            if (UIStateManager.current.stateData.VREnable)
+            if (m_VREnableGetter())
             {
-                ray.origin = m_RightController.position;
-                ray.direction = m_RightController.forward;
+                ray.origin = m_VRControllerGetter().position;
+                ray.direction = m_VRControllerGetter().forward;
             }
 
-            AnchorPicker.Pick(ray, m_Results);
+            AnchorPicker.Pick(ray, onPickCallBack);
+        }
+
+        void OnPickDragAsyncCallback(List<Tuple<GameObject, RaycastHit>> results)
+        {
+            if (results == null)
+                return;
+
+            var selectedObjects = results.Select(x => x.Item1).Where(x => x.layer != MetadataFilter.k_OtherLayer);
+            var selectedAnchorsContext = selectedObjects.Select(r => r.GetComponent<AnchorSelectionContext>()).Where(g => g != null).ToList();
+
+            SelectObjectMeasureToolAction.IAnchor selectedAnchor = null;
+            if (selectedAnchorsContext.Count > 0)
+                selectedAnchor = selectedAnchorsContext[0].LastContext.selectedAnchor;
+
+            Dispatcher.Dispatch(SelectObjectMeasureToolAction.From(selectedAnchor));
+        }
+
+        void OnPickPointerAsyncCallback(List<Tuple<GameObject, RaycastHit>> results)
+        {
+            if (results == null || results.Count == 0)
+            {
+                Dispatcher.Dispatch(SetStatusMessageWithType.From(
+                    new StatusMessageData() { text = MeasureToolUIController.instructionTapOnSurface, type = StatusMessageType.Instruction }));
+                return;
+            }
+
+            SelectObjectMeasureToolAction.IAnchor selectedAnchor = null;
+            var selectedObjects = results.Select(x => x.Item1).Where(x => x.layer != MetadataFilter.k_OtherLayer);
+            var selectedAnchorsContext = selectedObjects.Select(r => r.GetComponent<AnchorSelectionContext>()).Where(g => g != null).ToList();
+            if (selectedAnchorsContext.Count > 0)
+                selectedAnchor = selectedAnchorsContext[0].LastContext.selectedAnchor;
+
+            Dispatcher.Dispatch(SelectObjectMeasureToolAction.From(selectedAnchor));
+            Dispatcher.Dispatch(ClearStatusAction.From(true));
+            Dispatcher.Dispatch(ClearStatusAction.From(false));
+
+            if (m_MeasureModeGetter() == ToggleMeasureToolAction.MeasureMode.PerpendicularDistance && m_AnchorsList.Count == 1)
+            {
+                Ray ray = new Ray();
+                var firstAnchor = selectedAnchorsContext[0].LastContext.selectedAnchor;
+                if (firstAnchor.type == ToggleMeasureToolAction.AnchorType.Point)
+                {
+                    var anc = ((PointAnchor) firstAnchor);
+                    ray.origin = anc.position;
+                    ray.direction = anc.normal;
+                }
+
+                AnchorPicker.Pick(ray, OnPickPerpendicularAsyncCallback);
+            }
+        }
+
+        void OnPickPerpendicularAsyncCallback(List<Tuple<GameObject, RaycastHit>> results)
+        {
+            if (results != null && results.Count > 0)
+            {
+                SelectObjectMeasureToolAction.IAnchor selectedAnchor = null;
+                var selectedObjects = results.Select(x => x.Item1).Where(x => x.layer != MetadataFilter.k_OtherLayer);
+                var selectedAnchorsContext = selectedObjects.Select(r => r.GetComponent<AnchorSelectionContext>()).Where(g => g != null).ToList();
+                if (selectedAnchorsContext.Count > 0)
+                    selectedAnchor = selectedAnchorsContext[0].LastContext.selectedAnchor;
+
+                Dispatcher.Dispatch(SelectObjectMeasureToolAction.From(selectedAnchor));
+            }
         }
 
         public void SelectCursor(GameObject cursor, Material selectedMaterial, List<Tuple<int, MeshRenderer>> cachedRenderers)
@@ -308,7 +338,7 @@ namespace UnityEngine.Reflect.MeasureTool
                 mesh.material = selectedMaterial;
             }
 
-            if (UIStateManager.current.stateData.VREnable)
+            if (m_VREnableGetter())
                 return;
 
             if (!m_DraggablePad.isActiveAndEnabled)
@@ -340,9 +370,14 @@ namespace UnityEngine.Reflect.MeasureTool
             m_AnchorsList.Clear();
         }
 
-        public void SetAnchorPickerSelectionType(AnchorType anchorType)
+        public void SetAnchorPickerSelectionType(ToggleMeasureToolAction.AnchorType anchorType)
         {
             AnchorPicker.CurrentAnchorTypeSelection = anchorType;
+        }
+
+        public void Dispose()
+        {
+            AnchorPicker?.Dispose();
         }
     }
 }
